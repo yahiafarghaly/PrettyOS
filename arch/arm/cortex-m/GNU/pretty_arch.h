@@ -10,7 +10,7 @@
 
 /*
 *******************************************************************************
-*                               Compiler Specific
+*                               Compiler Specific                             *
 *******************************************************************************
 */
 #define OS_CPU_CountLeadZeros              __builtin_clz
@@ -19,7 +19,7 @@
 
 /*
 *******************************************************************************
-*                               DATA TYPES
+*                               DATA TYPES                                    *
 *******************************************************************************
 */
 
@@ -37,7 +37,7 @@ typedef OS_tCPU_DATA   OS_tRet;                   /* Fit to the easiest type of 
 
 /*
 *******************************************************************************
-*                             Critical Section Management
+*                             Critical Section Management                     *
 *******************************************************************************
 */
 #define OS_CRTICAL_BEGIN()      __asm volatile ("cpsie i" : : : "memory");
@@ -46,7 +46,7 @@ typedef OS_tCPU_DATA   OS_tRet;                   /* Fit to the easiest type of 
 
 /*
 *******************************************************************************
-*                             Arch Specific Functions Prototypes
+*                             Arch Specific Functions Prototypes              *
 *******************************************************************************
 */
 
