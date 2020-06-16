@@ -24,7 +24,8 @@
 *                               Global Variables                              *
 *******************************************************************************
 */
-
+/* State of the OS. */
+OS_tCPU_DATA volatile  OS_Running;
 /* pointer to the current task. */
 OS_TASK_TCB * volatile OS_currentTask;
 /* pointer to the next task to run. */
@@ -106,6 +107,7 @@ OS_Init(OS_tCPU_DATA* pStackBaseIdleTask,
                         stackSizeIdleTask,
                         OS_IDLE_TASK_PRIO_LEVEL);
     OS_currentTask = OS_nextTask = (OS_TASK_TCB*)OS_NULL;
+    OS_Running = OS_FAlSE;
     return (ret);
 }
 
@@ -197,9 +199,18 @@ void OS_Sched(void)
 void
 OS_Run(void)
 {
-    OS_CRTICAL_BEGIN();
-    OS_Sched();
-    OS_CRTICAL_END();
+    if(OS_TRUE == OS_Running)
+    {
+        return;
+    }
+    else
+    {
+        OS_CPU_FirstStart();
+        /* Maybe the processor will not need to execute this. */
+        OS_CRTICAL_BEGIN();
+        OS_Sched();
+        OS_CRTICAL_END();
+    }
 
     /* This should never be executed. */
     for(;;);

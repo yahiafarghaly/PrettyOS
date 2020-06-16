@@ -40,8 +40,8 @@ typedef OS_tCPU_DATA   OS_tRet;                   /* Fit to the easiest type of 
 *                             Critical Section Management                     *
 *******************************************************************************
 */
-#define OS_CRTICAL_BEGIN()      __asm volatile ("cpsie i" : : : "memory");
-#define OS_CRTICAL_END()        __asm volatile ("cpsid i" : : : "memory");
+#define OS_CRTICAL_BEGIN()      __asm volatile ("cpsid i" : : : "memory");
+#define OS_CRTICAL_END()        __asm volatile ("cpsie i" : : : "memory");
 
 
 /*
