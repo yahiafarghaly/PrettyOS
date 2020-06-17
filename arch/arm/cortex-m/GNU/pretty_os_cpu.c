@@ -23,7 +23,6 @@
  *
  * Returns: The new location of the top of stack after the processor insert the registers in the stack
  *          in the proper of order as specified in the Technical Manual of the CPU.
- *           returns zero on error (if n is non-positive)
  *
  * Notes:   ARM Cortex-M stack grows from high to low memory address.
  */

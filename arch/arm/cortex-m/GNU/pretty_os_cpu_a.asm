@@ -1,4 +1,6 @@
-
+/*------------------- Code Generation Directives -----------------*/
+	.cpu cortex-m4
+	.text
 /*------------------------- External References ------------------*/
 .extern OS_Running
 
@@ -15,11 +17,27 @@ NVIC_PENDSVSET=0x10000000   	 	 /* Value to trigger PendSV exception. */
 .global OS_CPU_FirstStart
 .global OS_CPU_InterruptContexSwitch
 
+/************************* void OS_CPU_ContexSwitch(void) *****************
+ * This function triggers the PendSV exception handler to perform
+ * a context switch (where the real work happens).
+ */
 OS_CPU_ContexSwitch:
-	bx	lr
+	ldr		r0, =NVIC_INT_CTRL
+	ldr	    r1, [r0]
+	orr		r1, r1, =NVIC_PENDSVSET
+    str     r1, [r0]
+    bx 		lr
 
+/************************* void OS_CPU_InterruptContexSwitch(void) *****************
+ * This function triggers the PendSV exception handler to perform
+ * a context switch from an interrupt level.
+ */
 OS_CPU_InterruptContexSwitch:
-	bx	lr
+	ldr		r0, =NVIC_INT_CTRL
+	ldr	    r1, [r0]
+	orr		r1, r1, =NVIC_PENDSVSET
+    str     r1, [r0]
+    bx 		lr
 
 /************************* void OS_CPU_FirstStart(void) *****************
  * This function triggers a PendSV exception (which will cause a context switch)
