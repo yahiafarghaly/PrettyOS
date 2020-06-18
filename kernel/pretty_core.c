@@ -205,10 +205,12 @@ OS_Run(void)
     }
     else
     {
-        OS_CPU_FirstStart();
-        /* Maybe the processor will not need to execute this. */
         OS_CRTICAL_BEGIN();
+        /* Find the highest priority task to be scheduled. */
         OS_Sched();
+        /* Start the first task. */
+        OS_CPU_FirstStart();
+        /* Enable the interrupt in case accidentally it is not enabled. */
         OS_CRTICAL_END();
     }
 

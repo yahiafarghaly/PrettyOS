@@ -1,30 +1,43 @@
 /*------------------- Code Generation Directives -----------------*/
+/* Referrences for GNU assembly directives:
+ *		[1]: https://sourceware.org/binutils/docs/as/ARM-Directives.html
+ *		[2]: https://sourceware.org/binutils/docs/as/index.html
+ */
 	.cpu cortex-m4
+	.syntax unified
 	.text
 /*------------------------- External References ------------------*/
-.extern OS_Running
+	.extern OS_Running
+	.extern OS_currentTask
+	.extern OS_nextTask
 
 /*----------------------------- Equals ---------------------------*/
 
-NVIC_INT_CTRL=0xE000ED04 			 /* Interrupt control state register. */
-NVIC_SYSPRI3=0xE000ED22     	 	 /* System priority register (priority 3), advanced with 2 bytes. */
-NVIC_PENDSV_PRI=0xFF        		 /* PendSV priority value (lowest = 0xFF). */
-NVIC_PENDSVSET=0x10000000   	 	 /* Value to trigger PendSV exception. */
+.equ NVIC_INT_CTRL, 	0xE000ED04 			 /* Interrupt control state register. */
+.equ NVIC_SYSPRI3,		0xE000ED22     	 	 /* System priority register (priority 3), advanced with 2 bytes. */
+.equ NVIC_PENDSV_PRI,	0xFF        		 /* PendSV priority value (lowest = 0xFF). */
+.equ NVIC_PENDSVSET,	0x10000000   	 	 /* Value to trigger PendSV exception. */
 
 /*------------------------- Public Functions ---------------------*/
 
-.global OS_CPU_ContexSwitch
-.global OS_CPU_FirstStart
-.global OS_CPU_InterruptContexSwitch
+	.global OS_CPU_ContexSwitch
+	.global OS_CPU_FirstStart
+	.global OS_CPU_InterruptContexSwitch
+	.global OS_CPU_PendSVHandler
+
+/*----------------------------------------------------------------*/
+
 
 /************************* void OS_CPU_ContexSwitch(void) *****************
  * This function triggers the PendSV exception handler to perform
  * a context switch (where the real work happens).
  */
+	.type   OS_CPU_ContexSwitch,%function
+	.thumb_func
 OS_CPU_ContexSwitch:
 	ldr		r0, =NVIC_INT_CTRL
 	ldr	    r1, [r0]
-	orr		r1, r1, =NVIC_PENDSVSET
+	orr		r1, r1, #(NVIC_PENDSVSET)
     str     r1, [r0]
     bx 		lr
 
@@ -32,10 +45,12 @@ OS_CPU_ContexSwitch:
  * This function triggers the PendSV exception handler to perform
  * a context switch from an interrupt level.
  */
+	.type   OS_CPU_InterruptContexSwitch,%function
+	.thumb_func
 OS_CPU_InterruptContexSwitch:
 	ldr		r0, =NVIC_INT_CTRL
 	ldr	    r1, [r0]
-	orr		r1, r1, =NVIC_PENDSVSET
+	orr		r1, r1, #(NVIC_PENDSVSET)
     str     r1, [r0]
     bx 		lr
 
@@ -49,6 +64,8 @@ OS_CPU_InterruptContexSwitch:
  *     - Trigger PendSV exception.
  *     - Enable interrupts (tasks will run with interrupts enabled).
  */
+	.type   OS_CPU_FirstStart,%function
+	.thumb_func
 OS_CPU_FirstStart:
 	/* Set the PendSV exception priority to the lowest Value 0xFF */
 	ldr     r0, =NVIC_SYSPRI3
@@ -66,5 +83,73 @@ OS_CPU_FirstStart:
     cpsie   i
 /* ------- OS_CPU_FirstStart End ------- */
 
-
+/************************* void OS_CPU_PendSVHandler(void) *****************
+ * This where the real context switch happens.
+ *
+ * Description:
+ * ------------
+ * In an OS enivronment, PendSV is recommended to be used for context switching when
+ * no other exceptions or interrupts are active.
+ * The Cortex M3/M4/M4F auto-saves bunch of processor registers on any exception entry,
+ * and restores them on exception return. This leaves us to manaully save R4-R11
+ * registers and proper setup for the stack pointers.
+ *
+ * The context switch is identical if it happens from a thread, interrupt or exception.
+ *
+ * On entry into PendSV handler:
+ *           - The following have been saved on the process stack (by processor):
+ *                xPSR, PC, LR, R12, R0-R3
+ *           - Processor mode is switched to Handler mode (from Thread mode)
+ *			 - SP is switched to the MSP (Main stack) from PSP (Process Stack).
+ *
+ * Pseudo-code:
+ * -----------
+ *		- Disable processor interrupts.
+ *		- if it's the first time:
+ *			- skip saving the cpu registers and jump to `resume`
+ *		- if not:
+ *			- Get the current running task SP.
+ *			- Push the task registers R4-R11 to the task stack pointed by SP.
+ *			- Save the new SP to the stack pointer member variable of the current task
+ *				structure.
+ *			- goto `resume`
+ *		resume:
+ *		- Get the new SP from the next task (SP = OS_nextTask->TASK_SP)
+ *		- Make the current task is equal to the next task.
+ *		- Restore R4-R11 registers from the task stack.
+ *		- Enable processor interrupts.
+ *		- Do exception return which will restore the remaining registers.
+ *
+ */
+	.type   OS_CPU_PendSVHandler,%function
+	.thumb_func
+OS_CPU_PendSVHandler:
+	/* Disable processor interrupts. */
+	cpsid	i
+	/* Skip saving the registers the first time. */
+	ldr		r0,=OS_currentTask
+	ldr		r0,[r0,#0]							/* OS_currentTask->TASK_SP */
+	cbz		r0,OS_CPU_PendSV_resume
+	/* If not the first time, then suspend the current task:
+	   - Push The current task registers into the memory stack.
+	   - Update the current task stack pointer to the new value due to stack push. */
+	push	{r4-r11}							/* Push from R4 to R11 */
+	str		sp,[r0,#0] 							/* OS_currentTask->TASK_SP = SP */
+	/* Resume another task. */
+OS_CPU_PendSV_resume:
+	/* Retreive the next task stack pointer. */
+	ldr		r0,=OS_nextTask
+	ldr		r0,[r0,#0]
+	ldr		sp,[r0,#0]							/* SP = OS_nextTask->TASK_SP */
+	/*Make the current task points to the next one. */
+   	ldr     r1,=OS_nextTask
+    ldr     r1, [r1]
+    ldr     r2,=OS_currentTask
+    str     r1, [r2]							/* OS_currentTask = OS_nextTask */
+    /* Pop the next(resumed) task registers from the memory stack to registers. */
+    pop 	{r4-r11}							/* Pop from R4 to R11 */
+ 	/* Enable processor interrupts. */
+	cpsie	i
+	/* Exception return will restore remaining registers. */
+	bx		lr
 

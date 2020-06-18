@@ -80,6 +80,15 @@ void OS_CPU_InterruptContexSwitch(void);
 void OS_CPU_FirstStart(void);
 
 /*
+ * Function:  OS_CPU_PendSVHandler
+ * --------------------
+ * This where the real context switch happens.
+ *
+ * Note: Make the PendSVHandler entry in the vector table points to this function.
+ */
+void OS_CPU_PendSVHandler(void);
+
+/*
  * Function:  OS_CPU_TaskInit
  * --------------------
  * Initialize the stack frame of the task being created.
