@@ -255,6 +255,11 @@ OS_TimerTick (void)
             workingSet &= ~task_pos;
         }
     }
+
+    /* Preempt Another Task ? */
+    OS_CRTICAL_BEGIN();
+    OS_Sched();
+    OS_CRTICAL_END();
 }
 
 /*
