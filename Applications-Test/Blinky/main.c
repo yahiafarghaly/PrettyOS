@@ -46,9 +46,9 @@ main_GreenBlinky(void* args) {
             BSP_ledBlueOff();
             BSP_ledRedOff();
         }
-        GBlink_count = ((GBlink_count + 1) > 5) ? 0 : (GBlink_count+1);
         App_printStat();
         OS_DelayTicks(100U);
+        GBlink_count = ((GBlink_count + 1) > 5) ? 1 : (GBlink_count+1);
     }
 }
 
@@ -62,16 +62,18 @@ main_BlueBlinky(void* args) {
             BSP_ledGreenOff();
             BSP_ledRedOff();
         }
-        ++BBlink_count;
         App_printStat();
         OS_DelayTicks(500U);
+        ++BBlink_count;
     }
 }
 
 void OS_onIdle(void)
 {
+    App_printStat();
     BSP_ledGreenOff();
     BSP_ledBlueOff();
+    BSP_WaitForInterrupt();
 }
 
 int main() {

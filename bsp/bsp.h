@@ -71,4 +71,11 @@ unsigned long BSP_SystemClockGet(void);
  */
 void BSP_onFailure(char const *module, int location);
 
+/*
+ * Function:  BSP_WaitForInterrupt
+ * ----------------------------
+ * Wait For Interrupt is a hint instruction that suspends execution until an event occurs.
+ */
+void BSP_WaitForInterrupt(void);
+
 #endif // __BSP_H__

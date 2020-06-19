@@ -16,6 +16,7 @@
 #define OS_CPU_CountLeadZeros              __builtin_clz
 #define OS_CPU_likely(x)                   __builtin_expect(!!(x), 1)
 #define OS_CPU_unlikely(x)                 __builtin_expect(!!(x), 0)
+#define OS_CPU_WORD_SIZE_IN_BITS            (32U)
 
 /*
 *******************************************************************************

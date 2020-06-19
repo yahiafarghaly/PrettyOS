@@ -180,10 +180,13 @@ void OS_Sched(void)
         OS_nextTask = &OS_TblTask[OS_HighPrio];
     }
 
-    if(OS_nextTask != OS_currentTask &&
-            OS_nextTask != (OS_TASK_TCB*)OS_NULL)
+    if(OS_CPU_likely(OS_Running))
     {
-        OS_CPU_ContexSwitch();
+        if(OS_nextTask != OS_currentTask &&
+                OS_nextTask != (OS_TASK_TCB*)OS_NULL)
+        {
+            OS_CPU_ContexSwitch();
+        }
     }
 }
 
@@ -234,31 +237,40 @@ OS_TimerTick (void)
     OS_tCPU_DATA i = 0;
     OS_tCPU_DATA workingSet;
 
+    if(OS_Running == OS_FAlSE)
+    {
+        return;
+    }
+
+    OS_CRTICAL_BEGIN();
+
     for(i = 0; i < OS_CONFIG_PRIORTY_ENTRY_COUNT; i++)
     {
         if(OS_TblBlocked[i] != 0U)
         {
             workingSet = OS_TblBlocked[i];
-            OS_tCPU_DATA task_pos = (sizeof(OS_tCPU_DATA) - (OS_tCPU_DATA)OS_CPU_CountLeadZeros(workingSet));
-            OS_TASK_TCB* t = &OS_TblTask[task_pos];
-            --(t->TASK_Ticks);
-            if(0U == t->TASK_Ticks)
+            while(workingSet != 0U)
             {
-                /* Remove the task from the unblock table. */
-                OS_UnBlockTask(t->TASK_priority);
-                /*Add the current task to the ready table to be scheduled. */
-                OS_PrioritySet(t->TASK_priority);
+                OS_tCPU_DATA task_pos = ((OS_CPU_WORD_SIZE_IN_BITS - (OS_tCPU_DATA)OS_CPU_CountLeadZeros(workingSet)) - 1U);
+                OS_TASK_TCB* t = &OS_TblTask[task_pos];
+                --(t->TASK_Ticks);
+                if(0U == t->TASK_Ticks)
+                {
+                    /* Remove the task from the unblock table. */
+                    OS_UnBlockTask(t->TASK_priority);
+                    /*Add the current task to the ready table to be scheduled. */
+                    OS_PrioritySet(t->TASK_priority);
 
+                }
+                /* Remove this processed bit and go to the next priority
+                 * task in the same entry level. */
+                workingSet &= ~(1U << task_pos);
             }
-            /* Remove this processed bit and go to the next priority
-             * task in the same entry level. */
-            workingSet &= ~task_pos;
         }
     }
-
     /* Preempt Another Task ? */
-    OS_CRTICAL_BEGIN();
     OS_Sched();
+
     OS_CRTICAL_END();
 }
 
@@ -277,6 +289,11 @@ OS_DelayTicks (OS_t32U ticks)
 {
     OS_CRTICAL_BEGIN();
 
+    if(ticks == 0U)
+    {
+        OS_CRTICAL_END();
+        return;
+    }
     /* Don't allow blocking the ideal task. */
     if(OS_currentTask != &OS_TblTask[OS_IDLE_TASK_PRIO_LEVEL])
     {
@@ -320,10 +337,10 @@ OS_PriorityHighestGet(void)
     /* Loop Through Entries until find a non empty entry */
     while (*r_tbl == (OS_tCPU_DATA)0) {
         /* Advance by a Complete Entry */
-        prio += sizeof(OS_tCPU_DATA);
+        prio += OS_CPU_WORD_SIZE_IN_BITS;
         r_tbl++;
     }
-    prio += ((sizeof(OS_tCPU_DATA) - (OS_tCPU_DATA)OS_CPU_CountLeadZeros(*r_tbl)) - 1);
+    prio += ((OS_CPU_WORD_SIZE_IN_BITS - (OS_tCPU_DATA)OS_CPU_CountLeadZeros(*r_tbl)) - 1U);
     return (prio);
 }
 
@@ -340,8 +357,8 @@ OS_PriorityHighestGet(void)
 void inline
 OS_PrioritySet(OS_t32U prio)
 {
-    OS_tCPU_DATA bit_pos = prio & (sizeof(OS_tCPU_DATA) - 1);
-    OS_tCPU_DATA entry_pos = prio / sizeof(OS_tCPU_DATA); //TODO: Optimize it with bitwise operation.
+    OS_tCPU_DATA bit_pos = prio & (OS_CPU_WORD_SIZE_IN_BITS - 1);
+    OS_tCPU_DATA entry_pos = prio / OS_CPU_WORD_SIZE_IN_BITS; //TODO: Optimize it with bitwise operation.
     OS_TblReady[entry_pos] |= (1U << bit_pos);
 }
 
@@ -358,8 +375,8 @@ OS_PrioritySet(OS_t32U prio)
 void inline
 OS_PriorityClear(OS_t32U prio)
 {
-    OS_tCPU_DATA bit_pos = prio & (sizeof(OS_tCPU_DATA) - 1);
-    OS_tCPU_DATA entry_pos = prio / sizeof(OS_tCPU_DATA); //TODO: Optimize it with bitwise operation.
+    OS_tCPU_DATA bit_pos = prio & (OS_CPU_WORD_SIZE_IN_BITS - 1);
+    OS_tCPU_DATA entry_pos = prio / OS_CPU_WORD_SIZE_IN_BITS; //TODO: Optimize it with bitwise operation.
     OS_TblReady[entry_pos] &= ~(1U << bit_pos);
 }
 
@@ -376,8 +393,8 @@ OS_PriorityClear(OS_t32U prio)
 void inline
 OS_BlockTask(OS_t32U prio)
 {
-    OS_tCPU_DATA bit_pos = prio & (sizeof(OS_tCPU_DATA) - 1);
-    OS_tCPU_DATA entry_pos = prio / sizeof(OS_tCPU_DATA); //TODO: Optimize it with bitwise operation.
+    OS_tCPU_DATA bit_pos = prio & (OS_CPU_WORD_SIZE_IN_BITS - 1);
+    OS_tCPU_DATA entry_pos = prio / OS_CPU_WORD_SIZE_IN_BITS; //TODO: Optimize it with bitwise operation.
     OS_TblBlocked[entry_pos] |= (1U << bit_pos);
 }
 
@@ -394,8 +411,8 @@ OS_BlockTask(OS_t32U prio)
 void inline
 OS_UnBlockTask(OS_t32U prio)
 {
-    OS_tCPU_DATA bit_pos = prio & (sizeof(OS_tCPU_DATA) - 1);
-    OS_tCPU_DATA entry_pos = prio / sizeof(OS_tCPU_DATA); //TODO: Optimize it with bitwise operation.
+    OS_tCPU_DATA bit_pos = prio & (OS_CPU_WORD_SIZE_IN_BITS - 1);
+    OS_tCPU_DATA entry_pos = prio / OS_CPU_WORD_SIZE_IN_BITS; //TODO: Optimize it with bitwise operation.
     OS_TblBlocked[entry_pos] &= ~(1U << bit_pos);
 }
 

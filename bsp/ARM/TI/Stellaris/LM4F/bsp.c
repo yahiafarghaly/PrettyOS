@@ -130,6 +130,10 @@ BSP_onFailure(char const *module, int location)
     NVIC_SystemReset();
 }
 
+void BSP_WaitForInterrupt(void)
+{
+    __WFI(); /* stop the CPU and Wait for Interrupt */
+}
 
 void SysTick_Handler(void)
 {
