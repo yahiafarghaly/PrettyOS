@@ -46,10 +46,11 @@ static OS_tCPU_DATA OS_TblBlocked[OS_CONFIG_PRIORTY_ENTRY_COUNT] = { 0U };
 static void OS_Sched(void);
 static OS_tRet OS_TCB_RegisterTask(OS_tptr* stackTop,OS_tCPU_DATA priority);
 static OS_tCPU_DATA OS_PriorityHighestGet(void);
-static void OS_PrioritySet(OS_t32U prio);
-static void OS_PriorityClear(OS_t32U prio);
+static void OS_SetReady(OS_t32U prio);
+static void OS_RemoveReady(OS_t32U prio);
 static void OS_BlockTask(OS_t32U prio);
 static void OS_UnBlockTask(OS_t32U prio);
+static inline OS_tCPU_DATA OS_Log2(const OS_tCPU_DATA x);
 
 
 /*
@@ -259,7 +260,7 @@ OS_TimerTick (void)
                     /* Remove the task from the unblock table. */
                     OS_UnBlockTask(t->TASK_priority);
                     /*Add the current task to the ready table to be scheduled. */
-                    OS_PrioritySet(t->TASK_priority);
+                    OS_SetReady(t->TASK_priority);
 
                 }
                 /* Remove this processed bit and go to the next priority
@@ -299,7 +300,7 @@ OS_DelayTicks (OS_t32U ticks)
     {
         OS_currentTask->TASK_Ticks = ticks;
         /* Make the current task to be not scheduled. */
-        OS_PriorityClear(OS_currentTask->TASK_priority);
+        OS_RemoveReady(OS_currentTask->TASK_priority);
         /* Put the current thread into a blocking state. */
         OS_BlockTask(OS_currentTask->TASK_priority);
         /* Preempt Another Task. */
@@ -356,10 +357,10 @@ OS_PriorityHighestGet(void)
  * Returns: None
  */
 void inline
-OS_PrioritySet(OS_t32U prio)
+OS_SetReady(OS_t32U prio)
 {
     OS_tCPU_DATA bit_pos = prio & (OS_CPU_WORD_SIZE_IN_BITS - 1);
-    OS_tCPU_DATA entry_pos = prio / OS_CPU_WORD_SIZE_IN_BITS; //TODO: Optimize it with bitwise operation.
+    OS_tCPU_DATA entry_pos = prio >> OS_Log2(OS_CPU_WORD_SIZE_IN_BITS);
     OS_TblReady[entry_pos] |= (1U << bit_pos);
 }
 
@@ -374,10 +375,10 @@ OS_PrioritySet(OS_t32U prio)
  * Returns: None
  */
 void inline
-OS_PriorityClear(OS_t32U prio)
+OS_RemoveReady(OS_t32U prio)
 {
     OS_tCPU_DATA bit_pos = prio & (OS_CPU_WORD_SIZE_IN_BITS - 1);
-    OS_tCPU_DATA entry_pos = prio / OS_CPU_WORD_SIZE_IN_BITS; //TODO: Optimize it with bitwise operation.
+    OS_tCPU_DATA entry_pos = prio >> OS_Log2(OS_CPU_WORD_SIZE_IN_BITS);
     OS_TblReady[entry_pos] &= ~(1U << bit_pos);
 }
 
@@ -395,7 +396,7 @@ void inline
 OS_BlockTask(OS_t32U prio)
 {
     OS_tCPU_DATA bit_pos = prio & (OS_CPU_WORD_SIZE_IN_BITS - 1);
-    OS_tCPU_DATA entry_pos = prio / OS_CPU_WORD_SIZE_IN_BITS; //TODO: Optimize it with bitwise operation.
+    OS_tCPU_DATA entry_pos = prio >> OS_Log2(OS_CPU_WORD_SIZE_IN_BITS);
     OS_TblBlocked[entry_pos] |= (1U << bit_pos);
 }
 
@@ -413,7 +414,7 @@ void inline
 OS_UnBlockTask(OS_t32U prio)
 {
     OS_tCPU_DATA bit_pos = prio & (OS_CPU_WORD_SIZE_IN_BITS - 1);
-    OS_tCPU_DATA entry_pos = prio / OS_CPU_WORD_SIZE_IN_BITS; //TODO: Optimize it with bitwise operation.
+    OS_tCPU_DATA entry_pos = prio >> OS_Log2(OS_CPU_WORD_SIZE_IN_BITS);
     OS_TblBlocked[entry_pos] &= ~(1U << bit_pos);
 }
 
@@ -453,7 +454,7 @@ OS_TCB_RegisterTask(OS_tptr* stackTop,OS_tCPU_DATA priority)
         thisTask = &OS_TblTask[priority];
         thisTask->TASK_SP = stackTop;
         thisTask->TASK_priority = priority;
-        OS_PrioritySet(priority);
+        OS_SetReady(priority);
         ret = OS_RET_OK;
     }
     else
@@ -462,5 +463,41 @@ OS_TCB_RegisterTask(OS_tptr* stackTop,OS_tCPU_DATA priority)
     }
 
     return (ret);
+}
+
+/*
+ * Function:  OS_Log2
+ * --------------------
+ * Compute the logarithmic number of base 2.
+ * Log(x) = 2^k, This function returns `k` for few numbers of x ( 128, 64, 32, 16, 8, 4, 2 and 1 ).
+ *
+ * Arguments:
+ *          x   is the number raised by the number the function returns.
+ *
+ * Returns: The raised number. (i.e: k)
+ */
+static inline OS_tCPU_DATA
+OS_Log2(const OS_tCPU_DATA x)
+{
+    switch(x)
+    {
+    case 128U:
+        return 7;
+    case 64U:
+        return 6;
+    case 32U:
+        return 5;
+    case 16U:
+        return 4;
+    case 8U:
+        return 3;
+    case 4U:
+        return 2;
+    case 2U:
+        return 1;
+    default:
+        break;
+    }
+    return 0;
 }
 
