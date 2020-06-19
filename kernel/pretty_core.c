@@ -252,7 +252,7 @@ OS_TimerTick (void)
             while(workingSet != 0U)
             {
                 OS_tCPU_DATA task_pos = ((OS_CPU_WORD_SIZE_IN_BITS - (OS_tCPU_DATA)OS_CPU_CountLeadZeros(workingSet)) - 1U);
-                OS_TASK_TCB* t = &OS_TblTask[task_pos];
+                OS_TASK_TCB* t = &OS_TblTask[task_pos + (i * OS_CPU_WORD_SIZE_IN_BITS) ];
                 --(t->TASK_Ticks);
                 if(0U == t->TASK_Ticks)
                 {
@@ -332,14 +332,15 @@ OS_PriorityHighestGet(void)
     OS_tCPU_DATA   *r_tbl;
     OS_tCPU_DATA    prio;
 
-    prio  = 0U;
-    r_tbl = &OS_TblReady[0];
+    prio  = (OS_CPU_WORD_SIZE_IN_BITS*OS_CONFIG_PRIORTY_ENTRY_COUNT);
+    r_tbl = &OS_TblReady[OS_CONFIG_PRIORTY_ENTRY_COUNT - 1U];
     /* Loop Through Entries until find a non empty entry */
     while (*r_tbl == (OS_tCPU_DATA)0) {
-        /* Advance by a Complete Entry */
-        prio += OS_CPU_WORD_SIZE_IN_BITS;
-        r_tbl++;
+        /* Go Back by a Complete Entry */
+        prio -= OS_CPU_WORD_SIZE_IN_BITS;
+        r_tbl = r_tbl - 1;
     }
+    prio -= OS_CPU_WORD_SIZE_IN_BITS;
     prio += ((OS_CPU_WORD_SIZE_IN_BITS - (OS_tCPU_DATA)OS_CPU_CountLeadZeros(*r_tbl)) - 1U);
     return (prio);
 }

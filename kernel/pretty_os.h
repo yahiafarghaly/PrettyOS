@@ -38,10 +38,10 @@ extern "C" {
 #define OS_TRUE                         (1U)
 #define OS_FAlSE                        (0U)
 #define OS_MAX_NUMBER_TASKS             (OS_CPU_WORD_SIZE_IN_BITS*OS_CONFIG_PRIORTY_ENTRY_COUNT)
-#define OS_HIGHEST_PRIO_LEVEL           (0U)
-#define OS_LOWEST_PRIO_LEVEL            (OS_MAX_NUMBER_TASKS - 1U)
+#define OS_HIGHEST_PRIO_LEVEL           (OS_MAX_NUMBER_TASKS - 1U)
+#define OS_LOWEST_PRIO_LEVEL            (0U)
 #define OS_IDLE_TASK_PRIO_LEVEL         (OS_LOWEST_PRIO_LEVEL)
-#define OS_IS_VALID_PRIO(_prio)         ((_prio <= OS_LOWEST_PRIO_LEVEL) && (_prio >= OS_HIGHEST_PRIO_LEVEL))
+#define OS_IS_VALID_PRIO(_prio)         ((_prio >= OS_LOWEST_PRIO_LEVEL) && (_prio <= OS_HIGHEST_PRIO_LEVEL))
 
 /*
 *******************************************************************************

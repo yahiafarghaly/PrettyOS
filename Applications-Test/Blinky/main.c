@@ -82,9 +82,9 @@ int main() {
 
     OS_Init(stack_idleTask, sizeof(stack_idleTask));
 
-    OS_CreateTask(&main_GreenBlinky, OS_NULL, stack_GreenBlink, sizeof(stack_GreenBlink), 5U);
+    OS_CreateTask(&main_GreenBlinky, OS_NULL, stack_GreenBlink, sizeof(stack_GreenBlink), 90U);
 
-    OS_CreateTask(&main_BlueBlinky, OS_NULL, stack_BlueBlink, sizeof(stack_BlueBlink), 2U);
+    OS_CreateTask(&main_BlueBlinky, OS_NULL, stack_BlueBlink, sizeof(stack_BlueBlink), 35U);
 
 
     App_minicom_SendClearScreen();
