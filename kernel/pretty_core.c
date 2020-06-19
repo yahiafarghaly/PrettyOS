@@ -121,10 +121,10 @@ OS_Init(OS_tCPU_DATA* pStackBaseIdleTask,
  *          params                  is a pointer to the user supplied data which is passed to the task.
  *          pStackBase              is a pointer to the bottom of the task stack.
  *          stackSize               is the task stack size.
- *          priority                is the task priority.
- *                                        ( 0 => is the highest priority            )
- *                                        ( OS_IDLE_TASK_PRIO_LEVEL is not allowed  )
- *                                        ( Allowed range is 0 to (OS_IDLE_TASK_PRIO_LEVEL - 1) )
+ *          priority                is the task priority. ( A unique priority must be assigned to each task )
+ *                                      - A greater number means a higher priority
+ *                                      - 0 => is reserved for the OS' Idle Task.
+ *                                      - OS_LOWEST_PRIO_LEVEL(0) < Allowed value <= OS_HIGHEST_PRIO_LEVEL
  *
  * Returns: OS_RET_OK               if successful operation is done.
  *          OS_RET_ERROR_PARAM      Invalid supplied parameter.
