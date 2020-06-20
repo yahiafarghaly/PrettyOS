@@ -32,6 +32,8 @@ OS_TASK_TCB * volatile OS_currentTask;
 OS_TASK_TCB * volatile OS_nextTask;
 /* Interrupt nesting level. */
 OS_t8U  OS_IntNestingLvl;
+/* Scheduler nesting lock level. */
+OS_t8U  OS_LockSchedNesting;
 
 /* Array of TCBs, Each Containing the task internal data. */
 static OS_TASK_TCB OS_TblTask[OS_MAX_NUMBER_TASKS] = { 0U };
@@ -112,6 +114,7 @@ OS_Init(OS_tCPU_DATA* pStackBaseIdleTask,
                         OS_IDLE_TASK_PRIO_LEVEL);
     OS_currentTask = OS_nextTask = (OS_TASK_TCB*)OS_NULL;
     OS_IntNestingLvl = 0U;
+    OS_LockSchedNesting = 0U;
     OS_Running = OS_FAlSE;
     return (ret);
 }
@@ -179,6 +182,76 @@ OS_IntExit(void)
             }
         }
 
+        OS_CRTICAL_END();
+    }
+}
+
+/*
+ * Function:  OS_SchedLock
+ * --------------------
+ * Prevent re-scheduling to take place.
+ * The task that calls OSSchedLock() keeps control of the CPU
+ * even though other higher priority tasks are ready to run.
+ *
+ * Arguments    : None.
+ *
+ * Returns      : None.
+ *
+ * Notes        :   1) You MUST invoke OS_SchedLock() and OS_SchedUnlock() in pair.
+ *                  2) The system ISRs are still serviced.
+ *                  3) Must be used with caution because it affects the normal management of tasks.
+ *                     And your application must not make any system calls that suspend execution
+ *                     of the current task since this may lead to system lock-up.
+ *                  4) Nested lock are up to 255 locks.
+ */
+void
+OS_SchedLock(void)
+{
+    if(OS_TRUE == OS_Running)
+    {
+        OS_CRTICAL_BEGIN();
+        if(0U == OS_IntNestingLvl)                     /* Don't call from an ISR                             */
+        {
+            if (OS_LockSchedNesting < 255U) {          /* Prevent wrapping back to 0                         */
+                ++OS_LockSchedNesting;                 /* Increment lock nesting level                       */
+            }
+        }
+        OS_CRTICAL_END();
+    }
+}
+
+/*
+ * Function:  OS_SchedUnlock
+ * --------------------
+ * Re-allow re-scheduling.
+ *
+ * Arguments    : None.
+ *
+ * Returns      : None.
+ *
+ * Notes        :   1) You MUST invoke OS_SchedLock() and OS_SchedUnlock() in pair.
+ *                  2) It calls the OS scheduler when all nesting locks are unlocked
+ *                     because the current task could have made higher priority tasks ready to run
+ *                     while scheduling was locked.
+ */
+void
+OS_SchedUnlock(void)
+{
+    if(OS_TRUE == OS_Running)
+    {
+        OS_CRTICAL_BEGIN();
+        if(0U == OS_IntNestingLvl)                     /* Don't call from an ISR                             */
+        {
+            if(OS_LockSchedNesting > 0U)               /* Don't decrement if it's 0                          */
+            {
+                --OS_LockSchedNesting;                 /* Decrement lock nesting level                       */
+                if(0U == OS_LockSchedNesting)          /* Call the scheduler if lock reached to 0            */
+                {
+                    OS_CRTICAL_END();
+                    OS_Sched();
+                }
+            }
+        }
         OS_CRTICAL_END();
     }
 }
@@ -255,12 +328,15 @@ OS_Sched(void)
 {
     OS_CRTICAL_BEGIN();
 
-    if(0U == OS_IntNestingLvl)                  /* Re-Schedule if all ISRs are completed.                      */
+    if(0U == OS_IntNestingLvl)                      /* Re-schedule if all ISRs are completed.                      */
     {
-        OS_ScheduleHighest();                   /* Determine the next high task to run.                        */
-        if(OS_nextTask != OS_currentTask)       /* No context switch if the current task is the highest.       */
+        if(0U == OS_LockSchedNesting)               /* Re-schedule if it's not locked.                             */
         {
-            OS_CPU_ContexSwitch();              /* Perform a CPU specific code for task context switch.        */
+            OS_ScheduleHighest();                   /* Determine the next high task to run.                        */
+            if(OS_nextTask != OS_currentTask)       /* No context switch if the current task is the highest.       */
+            {
+                OS_CPU_ContexSwitch();              /* Perform a CPU specific code for task context switch.        */
+            }
         }
     }
 

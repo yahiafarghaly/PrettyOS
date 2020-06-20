@@ -181,6 +181,42 @@ extern void OS_IntEnter(void);
 extern void OS_IntExit(void);
 
 /*
+ * Function:  OS_SchedLock
+ * --------------------
+ * Prevent re-scheduling to take place.
+ * The task that calls OSSchedLock() keeps control of the CPU
+ * even though other higher priority tasks are ready to run.
+ *
+ * Arguments    : None.
+ *
+ * Returns      : None.
+ *
+ * Notes        :   1) You MUST invoke OS_SchedLock() and OS_SchedUnlock() in pair.
+ *                  2) The system ISRs are still serviced.
+ *                  3) Must be used with caution because it affects the normal management of tasks.
+ *                     And your application must not make any system calls that suspend execution
+ *                     of the current task since this may lead to system lock-up.
+ *                  4) Nested lock are up to 255 locks.
+ */
+extern void OS_SchedLock(void);
+
+/*
+ * Function:  OS_SchedUnlock
+ * --------------------
+ * Re-allow re-scheduling.
+ *
+ * Arguments    : None.
+ *
+ * Returns      : None.
+ *
+ * Notes        :   1) You MUST invoke OS_SchedLock() and OS_SchedUnlock() in pair.
+ *                  2) It calls the OS scheduler when all nesting locks are unlocked
+ *                     because the current task could have made higher priority tasks ready to run
+ *                     while scheduling was locked.
+ */
+extern void OS_SchedUnlock(void);
+
+/*
 *******************************************************************************
 *                           OS Functions Prototypes                           *
 *                 REQUIRED: User Implement these functions.                   *
