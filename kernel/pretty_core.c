@@ -30,6 +30,8 @@ OS_tCPU_DATA volatile  OS_Running;
 OS_TASK_TCB * volatile OS_currentTask;
 /* pointer to the next task to run. */
 OS_TASK_TCB * volatile OS_nextTask;
+/* Interrupt nesting level. */
+OS_t8U  OS_IntNestingLvl;
 
 /* Array of TCBs, Each Containing the task internal data. */
 static OS_TASK_TCB OS_TblTask[OS_MAX_NUMBER_TASKS] = { 0U };
@@ -43,6 +45,7 @@ static OS_tCPU_DATA OS_TblBlocked[OS_CONFIG_PRIORTY_ENTRY_COUNT] = { 0U };
 *                     Internal Functions Prototypes                           *
 *******************************************************************************
 */
+static void OS_ScheduleHighest(void);
 static void OS_Sched(void);
 static OS_tRet OS_TCB_RegisterTask(OS_tptr* stackTop,OS_tCPU_DATA priority);
 static OS_tCPU_DATA OS_PriorityHighestGet(void);
@@ -108,8 +111,76 @@ OS_Init(OS_tCPU_DATA* pStackBaseIdleTask,
                         stackSizeIdleTask,
                         OS_IDLE_TASK_PRIO_LEVEL);
     OS_currentTask = OS_nextTask = (OS_TASK_TCB*)OS_NULL;
+    OS_IntNestingLvl = 0U;
     OS_Running = OS_FAlSE;
     return (ret);
+}
+
+/*
+ * Function:  OS_IntEnter
+ * --------------------
+ * Notify PrettyOS that you are about to service an interrupt service routine (ISR).
+ * This allows PrettyOS to keep track of the nested interrupts and thus performing the
+ * rescheduling at the last nested ISR.
+ *
+ * Arguments    : None.
+ *
+ * Returns      : None.
+ *
+ * Notes        :   1) This function must be called with interrupts disabled.
+ *                  2) You MUST invoke OS_IntEnter() and OS_IntExit() in pair.
+ *                      For every call of OS_IntEnter() at the ISR beginning, you have to call OS_IntExit()
+ *                      at the end of the ISR.
+ *                  3) Nested interrupts are allowed up to 255 interrupts.
+ */
+void
+OS_IntEnter(void)
+{
+    if(OS_TRUE == OS_Running)
+    {
+        if(OS_IntNestingLvl < 255U)
+        {
+            ++OS_IntNestingLvl;
+        }
+    }
+}
+
+/*
+ * Function:  OS_IntExit
+ * --------------------
+ * Notify PrettyOS that you have completed servicing an ISR. When the last nested ISR has completed.
+ * the PrettyOS Scheduler is called to determine the new, highest-priority task is ready to run.
+ *
+ * Arguments    : None.
+ *
+ * Returns      : None.
+ *
+ * Notes        :   1) You MUST invoke OS_IntEnter() and OS_IntExit() in pair.
+ *                      For every call of OS_IntEnter() at the ISR beginning, you have to call OS_IntExit()
+ *                      at the end of the ISR.
+ */
+void
+OS_IntExit(void)
+{
+    if(OS_TRUE == OS_Running)                       /* The kernel has already started.                            */
+    {
+        OS_CRTICAL_BEGIN();
+        if(OS_IntNestingLvl > 0U)                   /* Prevent OS_IntNestingLvl from wrapping                     */
+        {
+            --OS_IntNestingLvl;
+        }
+
+        if(0U == OS_IntNestingLvl)                  /* Re-Schedule if all ISRs are completed.                      */
+        {
+            OS_ScheduleHighest();                   /* Determine the next high task to run.                        */
+            if(OS_nextTask != OS_currentTask)       /* No context switch if the current task is the highest.       */
+            {
+                OS_CPU_InterruptContexSwitch();     /* Perform a CPU specific code for interrupt context switch.   */
+            }
+        }
+
+        OS_CRTICAL_END();
+    }
 }
 
 /*
@@ -152,6 +223,13 @@ OS_CreateTask(void (*TASK_Handler)(void* params),
     /* Call the low level function to initialize the stack frame of the task. */
     stack_top = OS_CPU_TaskInit(TASK_Handler, params, pStackBase, stackSize);
     ret = OS_TCB_RegisterTask((OS_tptr*)stack_top,priority);
+    if(OS_RET_OK == ret)
+    {
+        if(OS_TRUE == OS_Running)
+        {
+            OS_Sched(); /* A higher priority task can be created inside another task. So, Schedule it immediately. */
+        }
+    }
 
     OS_CRTICAL_END();
 
@@ -168,7 +246,8 @@ OS_CreateTask(void (*TASK_Handler)(void* params),
  * Returns: None.
  * Notes: Must be called with interrupt disabled.
  */
-void OS_Sched(void)
+void
+OS_Sched(void)
 {
     OS_tCPU_DATA OS_HighPrio =  OS_PriorityHighestGet();
 
@@ -188,6 +267,34 @@ void OS_Sched(void)
         {
             OS_CPU_ContexSwitch();
         }
+    }
+}
+
+/*
+ * Function:  OS_ScheduleHighest
+ * --------------------
+ * Determine the next highest priority task that is ready to run.
+ * The global variable `OS_nextTask` is changed accordingly.
+ *
+ * Arguments    : None.
+ *
+ * Returns      : None.
+ *
+ * Notes        : 1) Interrupts are assumed to be disabled.
+ *                2) This function is internal to PrettyOS functions.
+ */
+void
+OS_ScheduleHighest(void)
+{
+    OS_tCPU_DATA OS_HighPrio =  OS_PriorityHighestGet();
+
+    if(OS_IDLE_TASK_PRIO_LEVEL == OS_HighPrio)
+    {
+        OS_nextTask = &OS_TblTask[OS_IDLE_TASK_PRIO_LEVEL];
+    }
+    else
+    {
+        OS_nextTask = &OS_TblTask[OS_HighPrio];
     }
 }
 
@@ -448,9 +555,6 @@ OS_TCB_RegisterTask(OS_tptr* stackTop,OS_tCPU_DATA priority)
 
     if(OS_CPU_likely(OS_IS_VALID_PRIO(priority)))
     {
-        /*
-         * TODO: Add the code for handling the same priority (Round-Robin).
-         * */
         thisTask = &OS_TblTask[priority];
         thisTask->TASK_SP = stackTop;
         thisTask->TASK_priority = priority;

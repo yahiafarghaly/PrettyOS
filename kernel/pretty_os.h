@@ -59,10 +59,6 @@ typedef struct os_task_tcb
     /* Task Priority */
     OS_t32U TASK_priority;
 
-    /* Doubly LinkedList Pointers for tasks with the same priority */
-    struct os_task_tcb* TCB_Prev;
-    struct os_task_tcb* TCB_Next;
-
 }OS_TASK_TCB;
 
 /*
@@ -131,6 +127,7 @@ extern void OS_Run(void);
  * Returns: None.
  */
 extern void OS_DelayTicks (OS_t32U ticks);
+
 /*
  * Function:  OS_TimerTick
  * --------------------
@@ -142,6 +139,41 @@ extern void OS_DelayTicks (OS_t32U ticks);
  * Notes:   Must be called within the system tick handler.
  */
 extern void OS_TimerTick (void);
+
+/*
+ * Function:  OS_IntEnter
+ * --------------------
+ * Notify PrettyOS that you are about to service an interrupt service routine (ISR).
+ * This allows PrettyOS to keep track of the nested interrupts and thus performing the
+ * rescheduling at the last nested ISR.
+ *
+ * Arguments    : None.
+ *
+ * Returns      : None.
+ *
+ * Notes        :   1) This function must be called with interrupts disabled.
+ *                  2) You MUST invoke OS_IntEnter() and OS_IntExit() in pair.
+ *                      For every call of OS_IntEnter() at the ISR beginning, you have to call OS_IntExit()
+ *                      at the end of the ISR.
+ *                  3) Nested interrupts are allowed up to 255 interrupts.
+ */
+extern void OS_IntEnter(void);
+
+/*
+ * Function:  OS_IntExit
+ * --------------------
+ * Notify PrettyOS that you have completed servicing an ISR. When the last nested ISR has completed.
+ * the PrettyOS Scheduler is called to determine the new, highest-priority task is ready to run.
+ *
+ * Arguments    : None.
+ *
+ * Returns      : None.
+ *
+ * Notes        :   1) You MUST invoke OS_IntEnter() and OS_IntExit() in pair.
+ *                      For every call of OS_IntEnter() at the ISR beginning, you have to call OS_IntExit()
+ *                      at the end of the ISR.
+ */
+extern void OS_IntExit(void);
 
 /*
 *******************************************************************************
@@ -161,6 +193,19 @@ extern void OS_TimerTick (void);
  */
 extern void OS_onIdle(void);
 
+/*
+*******************************************************************************
+*                               Miscellaneous                                 *
+*******************************************************************************
+*/
+
+#ifndef OS_CONFIG_PRIORTY_ENTRY_COUNT
+#error  "pretty_config.h, Missing OS_CONFIG_PRIORTY_ENTRY_COUNT: Max number of levels of priority level count."
+#else
+    #if     OS_CONFIG_PRIORTY_ENTRY_COUNT < 1U
+    #error  "pretty_config.h, OS_CONFIG_PRIORTY_ENTRY_COUNT must be >= 1"
+    #endif
+#endif
 
 #ifdef __cplusplus
 }
