@@ -116,27 +116,32 @@ extern OS_tRet OS_CreateTask(void (*TASK_Handler)(void* params),
  * Returns: None.
  */
 extern void OS_Run(void);
+
 /*
  * Function:  OS_DelayTicks
  * --------------------
  * Block the current task execution for number of system ticks.
  *
- * Arguments:
- *            ticks     is the number of ticks for the task to blocked.
+ * Arguments    :
+ *                ticks : is the number of ticks for the task to be blocked.
  *
- * Returns: None.
+ * Returns      : None.
+ *
+ * Note(s)      : 1) This function is called only from task level code.
  */
 extern void OS_DelayTicks (OS_t32U ticks);
 
 /*
  * Function:  OS_TimerTick
  * --------------------
- * Decrement the ticks for each task.
+ * Signal the occurrence of a "system tick" to the prettyOS which reflects
+ * to the services depending on this "system tick".
  *
- * Arguments: None.
+ * Arguments    : None.
  *
- * Returns: None.
- * Notes:   Must be called within the system tick handler.
+ * Returns      : None.
+ *
+ * Notes        : 1) This function must be called from a ticker ISR.
  */
 extern void OS_TimerTick (void);
 

@@ -239,35 +239,32 @@ OS_CreateTask(void (*TASK_Handler)(void* params),
 /*
  * Function:  OS_Sched
  * --------------------
- * Schedules the next highest priority task.
+ * Determine the next highest priority task that is ready to run,
+ * And perform a task context switch if needed.
+ * This function is invoked by a TASK level code and is not used to re-schedule tasks from ISRs.
+ * (see OS_IntExit() for ISR rescheduling).
  *
- * Arguments: None.
+ * Arguments    : None.
  *
- * Returns: None.
- * Notes: Must be called with interrupt disabled.
+ * Returns      : None.
+ *
+ * Notes        : 1) This function is internal to PrettyOS functions.
  */
 void
 OS_Sched(void)
 {
-    OS_tCPU_DATA OS_HighPrio =  OS_PriorityHighestGet();
+    OS_CRTICAL_BEGIN();
 
-    if(OS_IDLE_TASK_PRIO_LEVEL == OS_HighPrio)
+    if(0U == OS_IntNestingLvl)                  /* Re-Schedule if all ISRs are completed.                      */
     {
-        OS_nextTask = &OS_TblTask[OS_IDLE_TASK_PRIO_LEVEL];
-    }
-    else
-    {
-        OS_nextTask = &OS_TblTask[OS_HighPrio];
-    }
-
-    if(OS_CPU_likely(OS_Running))
-    {
-        if(OS_nextTask != OS_currentTask &&
-                OS_nextTask != (OS_TASK_TCB*)OS_NULL)
+        OS_ScheduleHighest();                   /* Determine the next high task to run.                        */
+        if(OS_nextTask != OS_currentTask)       /* No context switch if the current task is the highest.       */
         {
-            OS_CPU_ContexSwitch();
+            OS_CPU_ContexSwitch();              /* Perform a CPU specific code for task context switch.        */
         }
     }
+
+    OS_CRTICAL_END();
 }
 
 /*
@@ -318,7 +315,7 @@ OS_Run(void)
     {
         OS_CRTICAL_BEGIN();
         /* Find the highest priority task to be scheduled. */
-        OS_Sched();
+        OS_ScheduleHighest();
         /* Start the first task. */
         OS_CPU_FirstStart();
         /* Enable the interrupt in case accidentally it is not enabled. */
@@ -332,12 +329,14 @@ OS_Run(void)
 /*
  * Function:  OS_TimerTick
  * --------------------
- * Decrement the ticks for each task.
+ * Signal the occurrence of a "system tick" to the prettyOS which reflects
+ * to the services depending on this "system tick".
  *
- * Arguments: None.
+ * Arguments    : None.
  *
- * Returns: None.
- * Notes:   Must be called within the system tick handler.
+ * Returns      : None.
+ *
+ * Notes        : 1) This function must be called from a ticker ISR.
  */
 void
 OS_TimerTick (void)
@@ -376,8 +375,6 @@ OS_TimerTick (void)
             }
         }
     }
-    /* Preempt Another Task ? */
-    OS_Sched();
 
     OS_CRTICAL_END();
 }
@@ -387,10 +384,12 @@ OS_TimerTick (void)
  * --------------------
  * Block the current task execution for number of system ticks.
  *
- * Arguments:
- *            ticks     is the number of ticks for the task to be blocked.
+ * Arguments    :
+ *                ticks : is the number of ticks for the task to be blocked.
  *
- * Returns: None.
+ * Returns      : None.
+ *
+ * Note(s)      : 1) This function is called only from task level code.
  */
 void
 OS_DelayTicks (OS_t32U ticks)

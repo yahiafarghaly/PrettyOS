@@ -137,6 +137,8 @@ void BSP_WaitForInterrupt(void)
 
 void SysTick_Handler(void)
 {
+    OS_IntEnter();
     OS_TimerTick();
+    OS_IntExit();
 }
 
