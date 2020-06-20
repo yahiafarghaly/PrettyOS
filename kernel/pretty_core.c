@@ -165,20 +165,23 @@ OS_IntEnter(void)
 void
 OS_IntExit(void)
 {
-    if(OS_TRUE == OS_Running)                       /* The kernel has already started.                            */
+    if(OS_TRUE == OS_Running)                           /* The kernel has already started.                            */
     {
         OS_CRTICAL_BEGIN();
-        if(OS_IntNestingLvl > 0U)                   /* Prevent OS_IntNestingLvl from wrapping                     */
+        if(OS_IntNestingLvl > 0U)                       /* Prevent OS_IntNestingLvl from wrapping                     */
         {
             --OS_IntNestingLvl;
         }
 
-        if(0U == OS_IntNestingLvl)                  /* Re-Schedule if all ISRs are completed.                      */
+        if(0U == OS_IntNestingLvl)                      /* Re-schedule if all ISRs are completed...                    */
         {
-            OS_ScheduleHighest();                   /* Determine the next high task to run.                        */
-            if(OS_nextTask != OS_currentTask)       /* No context switch if the current task is the highest.       */
+            if(0U == OS_LockSchedNesting)               /* ... and not locked                                          */
             {
-                OS_CPU_InterruptContexSwitch();     /* Perform a CPU specific code for interrupt context switch.   */
+                OS_ScheduleHighest();                   /* Determine the next high task to run.                        */
+                if(OS_nextTask != OS_currentTask)       /* No context switch if the current task is the highest.       */
+                {
+                    OS_CPU_InterruptContexSwitch();     /* Perform a CPU specific code for interrupt context switch.   */
+                }
             }
         }
 
