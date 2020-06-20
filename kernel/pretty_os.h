@@ -25,9 +25,16 @@ extern "C" {
 *                               Return Codes                                  *
 *******************************************************************************
 */
-#define OS_RET_OK                 (0U)
-#define OS_RET_ERROR              (1U)
-#define OS_RET_ERROR_PARAM        (2U)
+#define OS_RET_OK                                                         (0U)
+#define OS_RET_ERROR                                                      (1U)
+
+#define OS_ERR_PARAM                                                      (2U)
+
+#define OS_ERR_PRIO_EXIST                                                 (3U)
+#define OS_ERR_PRIO                                                       (4U)
+#define OS_ERR_PRIO_INVALID                                               (5U)
+
+#define OS_ERR_TASK_CREATE_ISR                                            (6U)
 
 /*
 *******************************************************************************
@@ -77,7 +84,7 @@ typedef struct os_task_tcb
  *          priority              is the task stack size.
  *
  * Returns: OS_RET_OK               if successful operation is done.
- *          OS_RET_ERROR_PARAM      Invalid supplied parameter.
+ *          OS_ERR_PARAM            Invalid supplied parameter.
  */
 extern OS_tRet OS_Init(OS_tCPU_DATA* pStackBaseIdleTask,
                        OS_tCPU_DATA  stackSizeIdleTask);
@@ -98,14 +105,32 @@ extern OS_tRet OS_Init(OS_tCPU_DATA* pStackBaseIdleTask,
  *                                      - OS_LOWEST_PRIO_LEVEL(0) < Allowed value <= OS_HIGHEST_PRIO_LEVEL
  *
  *
- * Returns: OS_RET_OK               if successful operation is done.
- *          OS_RET_ERROR_PARAM      Invalid supplied parameter.
+ * Returns: OS_RET_OK                       if successful operation is done.
+ *          OS_ERR_PARAM                    Invalid supplied parameter.
+ *          OS_RET_ERROR_TASK_CREATE_ISR    If a task is created inside an ISR.
  */
 extern OS_tRet OS_CreateTask(void (*TASK_Handler)(void* params),
                              void *params,
                              OS_tCPU_DATA* pStackBase,
                              OS_tCPU_DATA  stackSize,
                              OS_tCPU_DATA priority);
+
+/*
+ * Function:  OS_ChangeTaskPriority
+ * --------------------
+ * Change the priority of a task dynamically.
+ *
+ * Arguments    : oldPrio     is the old priority
+ *
+ *                newPrio     is the new priority
+ *
+ * Returns      : OS_RET_OK                 If successful operation is done.
+ *                OS_ERR_PRIO_INVALID       The priority number is not in the accepted range.
+ *                OS_ERR_PRIO_EXIST         The new priority is already exist.
+ */
+extern OS_tRet OS_ChangeTaskPriority(OS_tCPU_DATA oldPrio,
+                                     OS_tCPU_DATA newPrio);
+
 /*
  * Function:  OS_Run
  * --------------------

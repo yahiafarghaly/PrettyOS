@@ -99,7 +99,7 @@ OS_IdleTask(void* args)
  *          priority              is the task stack size.
  *
  * Returns: OS_RET_OK               if successful operation is done.
- *          OS_RET_ERROR_PARAM      Invalid supplied parameter.
+ *          OS_ERR_PARAM            Invalid supplied parameter.
  */
 OS_tRet
 OS_Init(OS_tCPU_DATA* pStackBaseIdleTask,
@@ -274,8 +274,9 @@ OS_SchedUnlock(void)
  *                                      - 0 => is reserved for the OS' Idle Task.
  *                                      - OS_LOWEST_PRIO_LEVEL(0) < Allowed value <= OS_HIGHEST_PRIO_LEVEL
  *
- * Returns: OS_RET_OK               if successful operation is done.
- *          OS_RET_ERROR_PARAM      Invalid supplied parameter.
+ * Returns: OS_RET_OK                       if successful operation is done.
+ *          OS_ERR_PARAM                    Invalid supplied parameter.
+ *          OS_RET_ERROR_TASK_CREATE_ISR    If a task is created inside an ISR.
  */
 OS_tRet
 OS_CreateTask(void (*TASK_Handler)(void* params),
@@ -291,10 +292,15 @@ OS_CreateTask(void (*TASK_Handler)(void* params),
     if(TASK_Handler == OS_NULL || pStackBase == OS_NULL ||
             stackSize == 0U )
     {
-        return (OS_RET_ERROR_PARAM);
+        return (OS_ERR_PARAM);
     }
 
     OS_CRTICAL_BEGIN();
+    if(OS_IntNestingLvl > 0U)       /* Don't Create a task from an ISR.  */
+    {
+        OS_CRTICAL_END();
+        return (OS_ERR_TASK_CREATE_ISR);
+    }
 
     /* Call the low level function to initialize the stack frame of the task. */
     stack_top = OS_CPU_TaskInit(TASK_Handler, params, pStackBase, stackSize);
@@ -310,6 +316,47 @@ OS_CreateTask(void (*TASK_Handler)(void* params),
     OS_CRTICAL_END();
 
     return (ret);
+}
+
+OS_tRet
+OS_ChangeTaskPriority(OS_tCPU_DATA oldPrio, OS_tCPU_DATA newPrio)
+{
+    if(oldPrio == newPrio)                          /* Don't waste more cycles.                     */
+    {
+        return (OS_ERR_PRIO_EXIST);
+    }
+
+    if(OS_IDLE_TASK_PRIO_LEVEL == oldPrio)          /* Don't Change IdleTask priority.              */
+    {
+        return (OS_ERR_PRIO_INVALID);
+    }
+
+    if(OS_IDLE_TASK_PRIO_LEVEL == newPrio)          /* Don't Change to the IdleTask priority.       */
+    {
+        return (OS_ERR_PRIO_EXIST);
+    }
+
+    if(OS_IS_VALID_PRIO(newPrio))                   /* Priority within our acceptable range.        */
+    {
+        OS_CRTICAL_BEGIN();
+        if((OS_TASK_TCB)0U != OS_TblTask[newPrio])  /* New priority must not be exist.              */
+        {
+            OS_CRTICAL_END();
+            return OS_ERR_PRIO_EXIST;
+        }
+
+        OS_RemoveReady(oldPrio);
+        OS_TblTask[newPrio].TASK_SP         = OS_TblTask[oldPrio].TASK_SP;
+        OS_TblTask[newPrio].TASK_Ticks      = OS_TblTask[oldPrio].TASK_Ticks;
+        OS_TblTask[newPrio].TASK_priority   = newPrio;
+        /* NOT COMPLETE IMPLEMENATION   */
+
+        OS_CRTICAL_END();
+    }
+    else
+    {
+        return (OS_ERR_PRIO_INVALID);
+    }
 }
 
 /*
@@ -628,7 +675,7 @@ OS_TCB_RegisterTask(OS_tptr* stackTop,OS_tCPU_DATA priority)
 
     if(OS_NULL == stackTop)
     {
-        return (OS_RET_ERROR_PARAM);
+        return (OS_ERR_PARAM);
     }
 
     if(OS_CPU_likely(OS_IS_VALID_PRIO(priority)))
@@ -641,7 +688,7 @@ OS_TCB_RegisterTask(OS_tptr* stackTop,OS_tCPU_DATA priority)
     }
     else
     {
-        ret = OS_RET_ERROR_PARAM;
+        ret = OS_ERR_PRIO_INVALID;
     }
 
     return (ret);
