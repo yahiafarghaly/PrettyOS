@@ -13,10 +13,8 @@
 *                               Compiler Specific                             *
 *******************************************************************************
 */
-#define OS_CPU_CountLeadZeros              __builtin_clz
-#define OS_CPU_likely(x)                   __builtin_expect(!!(x), 1)
-#define OS_CPU_unlikely(x)                 __builtin_expect(!!(x), 0)
-#define OS_CPU_WORD_SIZE_IN_BITS            (32U)
+#define CPU_CountLeadZeros          __builtin_clz   /* If no CPU clz instruction is not supported, implement it in C */
+#define CPU_NumberOfBitsPerWord            (32U)    /* Until I found a magical way to calculate it automatically.    */
 
 /*
 *******************************************************************************
@@ -24,18 +22,18 @@
 *******************************************************************************
 */
 
-typedef unsigned char  OS_t8U;                    /* Unsigned  8 bit quantity */
-typedef signed   char  OS_t8S;                    /* Signed    8 bit quantity */
-typedef unsigned short OS_t16U;                   /* Unsigned 16 bit quantity */
-typedef signed   short OS_t16S;                   /* Signed   16 bit quantity */
-typedef unsigned int   OS_t32U;                   /* Unsigned 32 bit quantity */
-typedef signed   int   OS_t32S;                   /* Signed   32 bit quantity */
+typedef unsigned char  CPU_t08U;                    /* Unsigned  8 bit quantity                             */
+typedef signed   char  CPU_t08S;                    /* Signed    8 bit quantity                             */
+typedef unsigned short CPU_t16U;                    /* Unsigned 16 bit quantity                             */
+typedef signed   short CPU_t16S;                    /* Signed   16 bit quantity                             */
+typedef unsigned int   CPU_t32U;                    /* Unsigned 32 bit quantity                             */
+typedef signed   int   CPU_t32S;                    /* Signed   32 bit quantity                             */
 
-typedef void*          OS_tptr;                   /* Pointer Type */
-typedef unsigned int   OS_tCPU_DATA;              /* Define size of CPU word size (In ARM-CM4 = 32 bits) */
-typedef unsigned int   OS_tCPU_SR;                /* Define size of CPU status register (PSR = 32 bits) */
+typedef void*          CPU_tPtr;                    /* Pointer Type                                         */
+typedef unsigned int   CPU_tWORD;                   /* Define size of CPU word size (In ARM-CM4 = 32 bits)  */
+typedef unsigned int   CPU_tPSR;                    /* Define size of CPU status register (PSR = 32 bits)   */
 
-typedef OS_tCPU_DATA   OS_tRet;                   /* Fit to the easiest type of memory for CPU  */
+
 
 /*
 *******************************************************************************
@@ -106,9 +104,9 @@ void OS_CPU_PendSVHandler(void);
  *
  * Notes:   Be aware of how the CPU stacking happens in the memory space.
  */
-OS_tCPU_DATA* OS_CPU_TaskInit(void (*TASK_Handler)(void* params),
+CPU_tWORD* OS_CPU_TaskInit(void (*TASK_Handler)(void* params),
                              void *params,
-                             OS_tCPU_DATA* pStackBase,
-                             OS_tCPU_DATA  stackSize);
+                             CPU_tWORD* pStackBase,
+                             CPU_tWORD  stackSize);
 
 #endif /* __PRETTY_ARCH_H_ */

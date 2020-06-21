@@ -44,11 +44,20 @@ extern "C" {
 #define OS_NULL                         ((void*)0U)
 #define OS_TRUE                         (1U)
 #define OS_FAlSE                        (0U)
-#define OS_MAX_NUMBER_TASKS             (OS_CPU_WORD_SIZE_IN_BITS*OS_CONFIG_PRIORTY_ENTRY_COUNT)
+#define OS_MAX_NUMBER_TASKS             (CPU_NumberOfBitsPerWord*OS_MAX_PRIO_ENTRIES)
 #define OS_HIGHEST_PRIO_LEVEL           (OS_MAX_NUMBER_TASKS - 1U)
 #define OS_LOWEST_PRIO_LEVEL            (0U)
 #define OS_IDLE_TASK_PRIO_LEVEL         (OS_LOWEST_PRIO_LEVEL)
 #define OS_IS_VALID_PRIO(_prio)         ((_prio >= OS_LOWEST_PRIO_LEVEL) && (_prio <= OS_HIGHEST_PRIO_LEVEL))
+
+/*
+*******************************************************************************
+*                             OS Task Status                                  *
+*******************************************************************************
+*/
+#define OS_TASK_STAT_READY          (0x00U) /* Ready.                        */
+#define OS_TASK_STAT_DELAY          (0x01U) /* Delayed or Timeout.           */
+#define OS_TASK_STAT_SUSPENDED      (0x02U) /* Suspended.                    */
 
 /*
 *******************************************************************************
@@ -59,12 +68,14 @@ extern "C" {
 /******************************* OS Task TCB *********************************/
 typedef struct os_task_tcb
 {
-    /* Current Thread's Stack Pointer */
-    OS_tptr TASK_SP;
-    /* Current Thread's Time out */
-    OS_t32U TASK_Ticks;
-    /* Task Priority */
-    OS_t32U TASK_priority;
+
+    CPU_tPtr    TASK_SP;        /* Current Thread's Stack Pointer */
+
+    OS_TICK     TASK_Ticks;     /* Current Thread's Time out */
+
+    OS_PRIO     TASK_priority;  /* Task Priority */
+
+    OS_STATUS   TASK_Stat;      /* Task Status */
 
 }OS_TASK_TCB;
 
@@ -86,8 +97,8 @@ typedef struct os_task_tcb
  * Returns: OS_RET_OK               if successful operation is done.
  *          OS_ERR_PARAM            Invalid supplied parameter.
  */
-extern OS_tRet OS_Init(OS_tCPU_DATA* pStackBaseIdleTask,
-                       OS_tCPU_DATA  stackSizeIdleTask);
+extern OS_tRet OS_Init(CPU_tWORD* pStackBaseIdleTask,
+                       CPU_tWORD  stackSizeIdleTask);
 
 /*
  * Function:  OS_CreateTask
@@ -111,9 +122,9 @@ extern OS_tRet OS_Init(OS_tCPU_DATA* pStackBaseIdleTask,
  */
 extern OS_tRet OS_CreateTask(void (*TASK_Handler)(void* params),
                              void *params,
-                             OS_tCPU_DATA* pStackBase,
-                             OS_tCPU_DATA  stackSize,
-                             OS_tCPU_DATA priority);
+                             CPU_tWORD* pStackBase,
+                             CPU_tWORD  stackSize,
+                             OS_PRIO    priority);
 
 /*
  * Function:  OS_ChangeTaskPriority
@@ -128,8 +139,8 @@ extern OS_tRet OS_CreateTask(void (*TASK_Handler)(void* params),
  *                OS_ERR_PRIO_INVALID       The priority number is not in the accepted range.
  *                OS_ERR_PRIO_EXIST         The new priority is already exist.
  */
-extern OS_tRet OS_ChangeTaskPriority(OS_tCPU_DATA oldPrio,
-                                     OS_tCPU_DATA newPrio);
+extern OS_tRet OS_ChangeTaskPriority(OS_PRIO oldPrio,
+                                     OS_PRIO newPrio);
 
 /*
  * Function:  OS_Run
@@ -154,7 +165,7 @@ extern void OS_Run(void);
  *
  * Note(s)      : 1) This function is called only from task level code.
  */
-extern void OS_DelayTicks (OS_t32U ticks);
+extern void OS_DelayTicks (OS_TICK ticks);
 
 /*
  * Function:  OS_TimerTick
@@ -265,11 +276,11 @@ extern void OS_onIdle(void);
 *******************************************************************************
 */
 
-#ifndef OS_CONFIG_PRIORTY_ENTRY_COUNT
-#error  "pretty_config.h, Missing OS_CONFIG_PRIORTY_ENTRY_COUNT: Max number of levels of priority level count."
+#ifndef OS_MAX_PRIO_ENTRIES
+#error  "pretty_config.h, Missing OS_MAX_PRIO_ENTRIES: Max number of entries of priority level count."
 #else
-    #if     OS_CONFIG_PRIORTY_ENTRY_COUNT < 1U
-    #error  "pretty_config.h, OS_CONFIG_PRIORTY_ENTRY_COUNT must be >= 1"
+    #if     OS_MAX_PRIO_ENTRIES < 1U
+    #error  "pretty_config.h, OS_MAX_PRIO_ENTRIES must be >= 1"
     #endif
 #endif
 

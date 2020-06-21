@@ -15,9 +15,9 @@
 *******************************************************************************
 */
 
-OS_tCPU_DATA stack_GreenBlink [40];
-OS_tCPU_DATA stack_BlueBlink  [40];
-OS_tCPU_DATA stack_idleTask   [40];
+CPU_tWORD stack_GreenBlink [40];
+CPU_tWORD stack_BlueBlink  [40];
+CPU_tWORD stack_idleTask   [40];
 
 static unsigned long GBlink_count,BBlink_count;
 

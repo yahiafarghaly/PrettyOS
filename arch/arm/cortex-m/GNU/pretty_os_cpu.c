@@ -26,27 +26,27 @@
  *
  * Notes:   ARM Cortex-M stack grows from high to low memory address.
  */
-OS_tCPU_DATA*
+CPU_tWORD*
 OS_CPU_TaskInit(void (*TASK_Handler)(void* params),
                              void *params,
-                             OS_tCPU_DATA* pStackBase,
-                             OS_tCPU_DATA  stackSize)
+                             CPU_tWORD* pStackBase,
+                             CPU_tWORD  stackSize)
 {
-    OS_tCPU_DATA* sp;
+    CPU_tWORD* sp;
     /*
      * Move to the top of the task stack and round down it 8-bytes to
      * be Aligned.
      * */
-    sp = (OS_tCPU_DATA*)(((OS_tCPU_DATA)pStackBase + stackSize) & 0xFFFFFFF8U);
+    sp = (CPU_tWORD*)(((CPU_tWORD)pStackBase + stackSize) & 0xFFFFFFF8U);
     /* Stacking the registers as auto saved at exception entrance. */
     *(--sp) = (1U << 24);  /* xPSR ( Thumb State ) */
-    *(--sp) = (OS_tCPU_DATA)TASK_Handler;   /* PC (Task Entry Point) */
+    *(--sp) = (CPU_tWORD)TASK_Handler;   /* PC (Task Entry Point) */
     *(--sp) = 0x0000000EU;                  /* LR  */
     *(--sp) = 0x0000000CU;                  /* R12 */
     *(--sp) = 0x00000003U;                  /* R3  */
     *(--sp) = 0x00000002U;                  /* R2  */
     *(--sp) = 0x00000001U;                  /* R1  */
-    *(--sp) = (OS_tCPU_DATA)params;         /* R0: Argument  */
+    *(--sp) = (CPU_tWORD)params;         /* R0: Argument  */
     /* Additionally, fake registers R4-R11 */
     *(--sp) = 0x0000000BU;                  /* R11 */
     *(--sp) = 0x0000000AU;                  /* R10 */

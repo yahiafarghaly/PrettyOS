@@ -25,22 +25,22 @@
 *******************************************************************************
 */
 /* State of the OS. */
-OS_tCPU_DATA volatile  OS_Running;
+CPU_tWORD volatile  OS_Running;
 /* pointer to the current task. */
 OS_TASK_TCB * volatile OS_currentTask;
 /* pointer to the next task to run. */
 OS_TASK_TCB * volatile OS_nextTask;
 /* Interrupt nesting level. */
-OS_t8U  OS_IntNestingLvl;
+CPU_t08U  OS_IntNestingLvl;
 /* Scheduler nesting lock level. */
-OS_t8U  OS_LockSchedNesting;
+CPU_t08U  OS_LockSchedNesting;
 
 /* Array of TCBs, Each Containing the task internal data. */
 static OS_TASK_TCB OS_TblTask[OS_MAX_NUMBER_TASKS] = { 0U };
 /* Array of bit-mask of tasks that are ready to run. */
-static OS_tCPU_DATA OS_TblReady[OS_CONFIG_PRIORTY_ENTRY_COUNT] = { 0U };
+static CPU_tWORD OS_TblReady[OS_MAX_PRIO_ENTRIES] = { 0U };
 /* Array of bit-mask of tasks that blocked. */
-static OS_tCPU_DATA OS_TblBlocked[OS_CONFIG_PRIORTY_ENTRY_COUNT] = { 0U };
+static CPU_tWORD OS_TblBlocked[OS_MAX_PRIO_ENTRIES] = { 0U };
 
 /*
 *******************************************************************************
@@ -49,13 +49,13 @@ static OS_tCPU_DATA OS_TblBlocked[OS_CONFIG_PRIORTY_ENTRY_COUNT] = { 0U };
 */
 static void OS_ScheduleHighest(void);
 static void OS_Sched(void);
-static OS_tRet OS_TCB_RegisterTask(OS_tptr* stackTop,OS_tCPU_DATA priority);
-static OS_tCPU_DATA OS_PriorityHighestGet(void);
-static void OS_SetReady(OS_t32U prio);
-static void OS_RemoveReady(OS_t32U prio);
-static void OS_BlockTask(OS_t32U prio);
-static void OS_UnBlockTask(OS_t32U prio);
-static inline OS_tCPU_DATA OS_Log2(const OS_tCPU_DATA x);
+static OS_tRet OS_TCB_RegisterTask(CPU_tPtr* stackTop,OS_PRIO priority);
+static OS_PRIO OS_PriorityHighestGet(void);
+static void OS_SetReady(OS_PRIO prio);
+static void OS_RemoveReady(OS_PRIO prio);
+static void OS_BlockTask(OS_PRIO prio);
+static void OS_UnBlockTask(OS_PRIO prio);
+static inline CPU_tWORD OS_Log2(const CPU_tWORD x);
 
 
 /*
@@ -102,8 +102,8 @@ OS_IdleTask(void* args)
  *          OS_ERR_PARAM            Invalid supplied parameter.
  */
 OS_tRet
-OS_Init(OS_tCPU_DATA* pStackBaseIdleTask,
-                       OS_tCPU_DATA  stackSizeIdleTask)
+OS_Init(CPU_tWORD* pStackBaseIdleTask,
+                       CPU_tWORD  stackSizeIdleTask)
 {
 
     OS_tRet ret;
@@ -281,12 +281,12 @@ OS_SchedUnlock(void)
 OS_tRet
 OS_CreateTask(void (*TASK_Handler)(void* params),
                              void *params,
-                             OS_tCPU_DATA* pStackBase,
-                             OS_tCPU_DATA  stackSize,
-                             OS_tCPU_DATA priority)
+                             CPU_tWORD* pStackBase,
+                             CPU_tWORD  stackSize,
+                             OS_PRIO priority)
 
 {
-    OS_tCPU_DATA* stack_top;
+    CPU_tWORD* stack_top;
     OS_tRet ret;
 
     if(TASK_Handler == OS_NULL || pStackBase == OS_NULL ||
@@ -304,7 +304,7 @@ OS_CreateTask(void (*TASK_Handler)(void* params),
 
     /* Call the low level function to initialize the stack frame of the task. */
     stack_top = OS_CPU_TaskInit(TASK_Handler, params, pStackBase, stackSize);
-    ret = OS_TCB_RegisterTask((OS_tptr*)stack_top,priority);
+    ret = OS_TCB_RegisterTask((CPU_tPtr*)stack_top,priority);
     if(OS_RET_OK == ret)
     {
         if(OS_TRUE == OS_Running)
@@ -319,7 +319,7 @@ OS_CreateTask(void (*TASK_Handler)(void* params),
 }
 
 OS_tRet
-OS_ChangeTaskPriority(OS_tCPU_DATA oldPrio, OS_tCPU_DATA newPrio)
+OS_ChangeTaskPriority(OS_PRIO oldPrio, OS_PRIO newPrio)
 {
     if(oldPrio == newPrio)                          /* Don't waste more cycles.                     */
     {
@@ -339,11 +339,11 @@ OS_ChangeTaskPriority(OS_tCPU_DATA oldPrio, OS_tCPU_DATA newPrio)
     if(OS_IS_VALID_PRIO(newPrio))                   /* Priority within our acceptable range.        */
     {
         OS_CRTICAL_BEGIN();
-        if((OS_TASK_TCB)0U != OS_TblTask[newPrio])  /* New priority must not be exist.              */
-        {
-            OS_CRTICAL_END();
-            return OS_ERR_PRIO_EXIST;
-        }
+//        if((OS_TASK_TCB)0U != OS_TblTask[newPrio])  /* New priority must not be exist.              */
+//        {
+//            OS_CRTICAL_END();
+//            return OS_ERR_PRIO_EXIST;
+//        }
 
         OS_RemoveReady(oldPrio);
         OS_TblTask[newPrio].TASK_SP         = OS_TblTask[oldPrio].TASK_SP;
@@ -409,7 +409,7 @@ OS_Sched(void)
 void
 OS_ScheduleHighest(void)
 {
-    OS_tCPU_DATA OS_HighPrio =  OS_PriorityHighestGet();
+    OS_PRIO OS_HighPrio =  OS_PriorityHighestGet();
 
     if(OS_IDLE_TASK_PRIO_LEVEL == OS_HighPrio)
     {
@@ -467,8 +467,8 @@ OS_Run(void)
 void
 OS_TimerTick (void)
 {
-    OS_tCPU_DATA i = 0;
-    OS_tCPU_DATA workingSet;
+    CPU_tWORD i = 0;
+    CPU_tWORD workingSet;
 
     if(OS_Running == OS_FAlSE)
     {
@@ -477,23 +477,23 @@ OS_TimerTick (void)
 
     OS_CRTICAL_BEGIN();
 
-    for(i = 0; i < OS_CONFIG_PRIORTY_ENTRY_COUNT; i++)
+    for(i = 0; i < OS_MAX_PRIO_ENTRIES; i++)
     {
         if(OS_TblBlocked[i] != 0U)
         {
             workingSet = OS_TblBlocked[i];
             while(workingSet != 0U)
             {
-                OS_tCPU_DATA task_pos = ((OS_CPU_WORD_SIZE_IN_BITS - (OS_tCPU_DATA)OS_CPU_CountLeadZeros(workingSet)) - 1U);
-                OS_TASK_TCB* t = &OS_TblTask[task_pos + (i * OS_CPU_WORD_SIZE_IN_BITS) ];
+                CPU_tWORD task_pos = ((CPU_NumberOfBitsPerWord - (CPU_tWORD)CPU_CountLeadZeros(workingSet)) - 1U);
+                OS_TASK_TCB* t = &OS_TblTask[task_pos + (i * CPU_NumberOfBitsPerWord) ];
                 --(t->TASK_Ticks);
                 if(0U == t->TASK_Ticks)
                 {
+                    t->TASK_Stat = OS_TASK_STAT_READY;
                     /* Remove the task from the unblock table. */
                     OS_UnBlockTask(t->TASK_priority);
                     /*Add the current task to the ready table to be scheduled. */
                     OS_SetReady(t->TASK_priority);
-
                 }
                 /* Remove this processed bit and go to the next priority
                  * task in the same entry level. */
@@ -518,7 +518,7 @@ OS_TimerTick (void)
  * Note(s)      : 1) This function is called only from task level code.
  */
 void
-OS_DelayTicks (OS_t32U ticks)
+OS_DelayTicks (OS_TICK ticks)
 {
     OS_CRTICAL_BEGIN();
 
@@ -531,6 +531,7 @@ OS_DelayTicks (OS_t32U ticks)
     if(OS_currentTask != &OS_TblTask[OS_IDLE_TASK_PRIO_LEVEL])
     {
         OS_currentTask->TASK_Ticks = ticks;
+        OS_currentTask->TASK_Stat  = OS_TASK_STAT_DELAY;
         /* Make the current task to be not scheduled. */
         OS_RemoveReady(OS_currentTask->TASK_priority);
         /* Put the current thread into a blocking state. */
@@ -559,22 +560,22 @@ OS_DelayTicks (OS_t32U ticks)
  *
  * Returns: The highest priority number.
  */
-OS_tCPU_DATA inline
+OS_PRIO inline
 OS_PriorityHighestGet(void)
 {
-    OS_tCPU_DATA   *r_tbl;
-    OS_tCPU_DATA    prio;
+    CPU_tWORD   *r_tbl;
+    OS_PRIO      prio;
 
-    prio  = (OS_CPU_WORD_SIZE_IN_BITS*OS_CONFIG_PRIORTY_ENTRY_COUNT);
-    r_tbl = &OS_TblReady[OS_CONFIG_PRIORTY_ENTRY_COUNT - 1U];
+    prio  = (CPU_NumberOfBitsPerWord*OS_MAX_PRIO_ENTRIES);
+    r_tbl = &OS_TblReady[OS_MAX_PRIO_ENTRIES - 1U];
     /* Loop Through Entries until find a non empty entry */
-    while (*r_tbl == (OS_tCPU_DATA)0) {
+    while (*r_tbl == (CPU_tWORD)0) {
         /* Go Back by a Complete Entry */
-        prio -= OS_CPU_WORD_SIZE_IN_BITS;
+        prio -= CPU_NumberOfBitsPerWord;
         r_tbl = r_tbl - 1;
     }
-    prio -= OS_CPU_WORD_SIZE_IN_BITS;
-    prio += ((OS_CPU_WORD_SIZE_IN_BITS - (OS_tCPU_DATA)OS_CPU_CountLeadZeros(*r_tbl)) - 1U);
+    prio -= CPU_NumberOfBitsPerWord;
+    prio += ((CPU_NumberOfBitsPerWord - (CPU_tWORD)CPU_CountLeadZeros(*r_tbl)) - 1U);
     return (prio);
 }
 
@@ -589,10 +590,10 @@ OS_PriorityHighestGet(void)
  * Returns: None
  */
 void inline
-OS_SetReady(OS_t32U prio)
+OS_SetReady(OS_PRIO prio)
 {
-    OS_tCPU_DATA bit_pos = prio & (OS_CPU_WORD_SIZE_IN_BITS - 1);
-    OS_tCPU_DATA entry_pos = prio >> OS_Log2(OS_CPU_WORD_SIZE_IN_BITS);
+    CPU_tWORD bit_pos = prio & (CPU_NumberOfBitsPerWord - 1);
+    CPU_tWORD entry_pos = prio >> OS_Log2(CPU_NumberOfBitsPerWord);
     OS_TblReady[entry_pos] |= (1U << bit_pos);
 }
 
@@ -607,10 +608,10 @@ OS_SetReady(OS_t32U prio)
  * Returns: None
  */
 void inline
-OS_RemoveReady(OS_t32U prio)
+OS_RemoveReady(OS_PRIO prio)
 {
-    OS_tCPU_DATA bit_pos = prio & (OS_CPU_WORD_SIZE_IN_BITS - 1);
-    OS_tCPU_DATA entry_pos = prio >> OS_Log2(OS_CPU_WORD_SIZE_IN_BITS);
+    CPU_tWORD bit_pos = prio & (CPU_NumberOfBitsPerWord - 1);
+    CPU_tWORD entry_pos = prio >> OS_Log2(CPU_NumberOfBitsPerWord);
     OS_TblReady[entry_pos] &= ~(1U << bit_pos);
 }
 
@@ -625,10 +626,10 @@ OS_RemoveReady(OS_t32U prio)
  * Returns: None
  */
 void inline
-OS_BlockTask(OS_t32U prio)
+OS_BlockTask(OS_PRIO prio)
 {
-    OS_tCPU_DATA bit_pos = prio & (OS_CPU_WORD_SIZE_IN_BITS - 1);
-    OS_tCPU_DATA entry_pos = prio >> OS_Log2(OS_CPU_WORD_SIZE_IN_BITS);
+    CPU_tWORD bit_pos = prio & (CPU_NumberOfBitsPerWord - 1);
+    CPU_tWORD entry_pos = prio >> OS_Log2(CPU_NumberOfBitsPerWord);
     OS_TblBlocked[entry_pos] |= (1U << bit_pos);
 }
 
@@ -643,10 +644,10 @@ OS_BlockTask(OS_t32U prio)
  * Returns: None
  */
 void inline
-OS_UnBlockTask(OS_t32U prio)
+OS_UnBlockTask(OS_PRIO prio)
 {
-    OS_tCPU_DATA bit_pos = prio & (OS_CPU_WORD_SIZE_IN_BITS - 1);
-    OS_tCPU_DATA entry_pos = prio >> OS_Log2(OS_CPU_WORD_SIZE_IN_BITS);
+    CPU_tWORD bit_pos = prio & (CPU_NumberOfBitsPerWord - 1);
+    CPU_tWORD entry_pos = prio >> OS_Log2(CPU_NumberOfBitsPerWord);
     OS_TblBlocked[entry_pos] &= ~(1U << bit_pos);
 }
 
@@ -668,7 +669,7 @@ OS_UnBlockTask(OS_t32U prio)
  *          OS_RET_ERROR_PARAM      Invalid supplied parameter.
  */
 OS_tRet
-OS_TCB_RegisterTask(OS_tptr* stackTop,OS_tCPU_DATA priority)
+OS_TCB_RegisterTask(CPU_tPtr* stackTop,OS_PRIO priority)
 {
     OS_tRet ret;
     OS_TASK_TCB*  thisTask;
@@ -678,11 +679,12 @@ OS_TCB_RegisterTask(OS_tptr* stackTop,OS_tCPU_DATA priority)
         return (OS_ERR_PARAM);
     }
 
-    if(OS_CPU_likely(OS_IS_VALID_PRIO(priority)))
+    if(OS_IS_VALID_PRIO(priority))
     {
         thisTask = &OS_TblTask[priority];
         thisTask->TASK_SP = stackTop;
         thisTask->TASK_priority = priority;
+        thisTask->TASK_Stat = OS_TASK_STAT_READY;
         OS_SetReady(priority);
         ret = OS_RET_OK;
     }
@@ -705,8 +707,8 @@ OS_TCB_RegisterTask(OS_tptr* stackTop,OS_tCPU_DATA priority)
  *
  * Returns: The raised number. (i.e: k)
  */
-static inline OS_tCPU_DATA
-OS_Log2(const OS_tCPU_DATA x)
+static inline CPU_tWORD
+OS_Log2(const CPU_tWORD x)
 {
     switch(x)
     {
