@@ -51,11 +51,12 @@ static void OS_ScheduleHighest(void);
 static void OS_Sched(void);
 static OS_tRet OS_TCB_RegisterTask(CPU_tPtr* stackTop,OS_PRIO priority);
 static OS_PRIO OS_PriorityHighestGet(void);
-static void OS_SetReady(OS_PRIO prio);
-static void OS_RemoveReady(OS_PRIO prio);
 static void OS_BlockTask(OS_PRIO prio);
 static void OS_UnBlockTask(OS_PRIO prio);
 static inline CPU_tWORD OS_Log2(const CPU_tWORD x);
+
+extern void OS_SetReady(OS_PRIO prio);
+extern void OS_RemoveReady(OS_PRIO prio);
 
 
 /*

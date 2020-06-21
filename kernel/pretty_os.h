@@ -58,6 +58,15 @@ extern "C" {
 #define OS_TASK_STAT_READY          (0x00U) /* Ready.                        */
 #define OS_TASK_STAT_DELAY          (0x01U) /* Delayed or Timeout.           */
 #define OS_TASK_STAT_SUSPENDED      (0x02U) /* Suspended.                    */
+#define OS_TASK_STATE_PEND          (0x04U) /* Pended due to an event.       */
+
+/*
+*******************************************************************************
+*                             OS Events types                                 *
+*******************************************************************************
+*/
+#define  OS_EVENT_TYPE_UNUSED           (0U)
+#define  OS_EVENT_TYPE_SEM              (1U)
 
 /*
 *******************************************************************************
@@ -78,6 +87,14 @@ typedef struct os_task_tcb
     OS_STATUS   TASK_Stat;      /* Task Status */
 
 }OS_TASK_TCB;
+
+typedef struct os_task_event OS_EVENT;
+struct os_task_event
+{
+    CPU_t08U        eventType;
+    OS_EVENT*       nextEventPtr;
+    OS_TASK_TCB*    TCBPtr;
+};
 
 /*
 *******************************************************************************
