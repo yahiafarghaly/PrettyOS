@@ -27,14 +27,19 @@ extern "C" {
 */
 #define OS_RET_OK                                                         (0U)
 #define OS_RET_ERROR                                                      (1U)
+#define OS_RET_TASK_SUSPENDED                                             (2U)
 
-#define OS_ERR_PARAM                                                      (2U)
+#define OS_ERR_PARAM                                                      (10U)
 
-#define OS_ERR_PRIO_EXIST                                                 (3U)
-#define OS_ERR_PRIO                                                       (4U)
-#define OS_ERR_PRIO_INVALID                                               (5U)
+#define OS_ERR_PRIO_EXIST                                                 (11U)
+#define OS_ERR_PRIO                                                       (12U)
+#define OS_ERR_PRIO_INVALID                                               (13U)
 
-#define OS_ERR_TASK_CREATE_ISR                                            (6U)
+#define OS_ERR_TASK_CREATE_ISR                                            (14U)
+#define OS_ERR_TASK_SUSPEND_IDLE                                          (15U)
+#define OS_ERR_TASK_SUSPEND_PRIO                                          (16U)
+#define OS_ERR_TASK_CREATE_EXIST                                          (17U)
+#define OS_ERR_TASK_RESUME_PRIO                                           (18U)
 
 /*
 *******************************************************************************
@@ -59,6 +64,8 @@ extern "C" {
 #define OS_TASK_STAT_DELAY          (0x01U) /* Delayed or Timeout.           */
 #define OS_TASK_STAT_SUSPENDED      (0x02U) /* Suspended.                    */
 #define OS_TASK_STATE_PEND          (0x04U) /* Pended due to an event.       */
+
+#define OS_TASK_STAT_DELETED        (0xFFU) /* A deleted task or not created.*/
 
 /*
 *******************************************************************************
@@ -144,7 +151,7 @@ extern OS_tRet OS_CreateTask(void (*TASK_Handler)(void* params),
                              OS_PRIO    priority);
 
 /*
- * Function:  OS_ChangeTaskPriority
+ * Function:  OS_ChangeTaskPriority (NOT IMPLEMENTED YET)
  * --------------------
  * Change the priority of a task dynamically.
  *
@@ -158,6 +165,43 @@ extern OS_tRet OS_CreateTask(void (*TASK_Handler)(void* params),
  */
 extern OS_tRet OS_ChangeTaskPriority(OS_PRIO oldPrio,
                                      OS_PRIO newPrio);
+
+/*
+ * Function:  OS_SuspendTask
+ * --------------------
+ * Suspend a task given its priority.
+ * This function can suspend the calling task itself.
+ *
+ * Arguments    : prio  is the task priority.
+ *
+ * Returns      : OS_RET_OK, OS_ERR_TASK_SUSPEND_IDEL, OS_ERR_PRIO_INVALID, OS_ERR_TASK_SUSPEND_PRIO
+ */
+OS_tRet
+OS_SuspendTask(OS_PRIO prio);
+
+/*
+ * Function:  OS_ResumeTask
+ * --------------------
+ * Resume a suspended task given its priority.
+ *
+ * Arguments    : prio  is the task priority.
+ *
+ * Returns      : OS_RET_OK, OS_ERR_TASK_RESUME_PRIO, OS_ERR_PRIO_INVALID.
+ */
+OS_tRet
+OS_ResumeTask(OS_PRIO prio);
+
+/*
+ * Function:  OS_TaskStatus
+ * --------------------
+ * Return Task Status.
+ *
+ * Arguments    : prio  is the task priority.
+ *
+ * Returns      : OS_TASK_STAT_*
+ */
+OS_STATUS
+OS_TaskStatus(OS_PRIO prio);
 
 /*
  * Function:  OS_Run

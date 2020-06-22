@@ -108,15 +108,28 @@ OS_Init(CPU_tWORD* pStackBaseIdleTask,
 {
 
     OS_tRet ret;
+    CPU_t32U idx;
+
+
+
+    /* Initialize Common Pretty OS Global/static values.  */
+
+    OS_currentTask = OS_nextTask = (OS_TASK_TCB*)OS_NULL;
+    OS_IntNestingLvl = 0U;
+    OS_LockSchedNesting = 0U;
+    OS_Running = OS_FAlSE;
+
+    for(idx = 0; idx < OS_MAX_NUMBER_TASKS; ++idx)
+    {
+        OS_TblTask[idx].TASK_Stat = OS_TASK_STAT_DELETED;
+    }
+
     ret = OS_CreateTask(OS_IdleTask,
                         OS_NULL,
                         pStackBaseIdleTask,
                         stackSizeIdleTask,
                         OS_IDLE_TASK_PRIO_LEVEL);
-    OS_currentTask = OS_nextTask = (OS_TASK_TCB*)OS_NULL;
-    OS_IntNestingLvl = 0U;
-    OS_LockSchedNesting = 0U;
-    OS_Running = OS_FAlSE;
+
     return (ret);
 }
 
@@ -361,6 +374,150 @@ OS_ChangeTaskPriority(OS_PRIO oldPrio, OS_PRIO newPrio)
 }
 
 /*
+ * Function:  OS_SuspendTask
+ * --------------------
+ * Suspend a task given its priority.
+ * This function can suspend the calling task itself.
+ *
+ * Arguments    : prio  is the task priority.
+ *
+ * Returns      : OS_RET_OK, OS_RET_TASK_SUSPENDED, OS_ERR_TASK_SUSPEND_IDEL, OS_ERR_PRIO_INVALID, OS_ERR_TASK_SUSPEND_PRIO
+ *
+ * Notes        :
+ */
+OS_tRet
+OS_SuspendTask(OS_PRIO prio)
+{
+    CPU_tWORD       selfTask;
+    OS_TASK_TCB*    thisTask;
+
+    if(OS_IDLE_TASK_PRIO_LEVEL == prio)                     /* Don't suspend idle task                                                 */
+    {
+        return (OS_ERR_TASK_SUSPEND_IDLE);
+    }
+
+    if(OS_IS_VALID_PRIO(prio))
+    {
+        OS_CRTICAL_BEGIN();
+
+        if(prio == OS_currentTask->TASK_priority)           /* Is the caller task will be the suspended ?                              */
+        {
+            selfTask = OS_TRUE;
+        }
+        else
+        {
+            selfTask = OS_FAlSE;
+        }
+
+        thisTask = &OS_TblTask[prio];
+
+        if(thisTask->TASK_Stat == OS_TASK_STAT_DELETED)     /* Check that the suspended task is actually exist.                         */
+        {
+            OS_CRTICAL_END();
+            return (OS_ERR_TASK_SUSPEND_PRIO);
+        }
+
+        if(thisTask->TASK_Stat == OS_TASK_STAT_SUSPENDED)   /* If it's in a suspend state, why do extra work !                        */
+        {
+            OS_CRTICAL_END();
+            return (OS_RET_TASK_SUSPENDED);
+        }
+
+        thisTask->TASK_Stat |= OS_TASK_STAT_SUSPENDED;
+
+        OS_RemoveReady(prio);
+
+        OS_CRTICAL_END();
+
+        if(selfTask == OS_TRUE)                             /* Calls the scheduler only if the task being suspended is the calling task. */
+        {
+            OS_Sched();
+        }
+
+        return OS_RET_OK;
+    }
+
+    return (OS_ERR_PRIO_INVALID);
+}
+
+/*
+ * Function:  OS_ResumeTask
+ * --------------------
+ * Resume a suspended task given its priority.
+ *
+ * Arguments    : prio  is the task priority.
+ *
+ * Returns      : OS_RET_OK, OS_ERR_TASK_RESUME_PRIO, OS_ERR_PRIO_INVALID.
+ *
+ * Notes        :
+ */
+OS_tRet
+OS_ResumeTask(OS_PRIO prio)
+{
+    OS_TASK_TCB*    thisTask;
+
+    if(OS_IDLE_TASK_PRIO_LEVEL == prio)                                             /* Resume an suspended task !                                                 */
+    {
+        return (OS_ERR_PRIO_INVALID);
+    }
+
+    if(OS_IS_VALID_PRIO(prio))
+    {
+        OS_CRTICAL_BEGIN();
+
+        if(prio == OS_currentTask->TASK_priority)                                   /* Resume self !                                                              */
+        {
+            OS_CRTICAL_END();
+            return (OS_ERR_TASK_RESUME_PRIO);
+        }
+
+        thisTask = &OS_TblTask[prio];
+
+        if(thisTask->TASK_Stat == OS_TASK_STAT_DELETED)                             /* Check that the resumed task is actually exist.                             */
+        {
+            OS_CRTICAL_END();
+            return (OS_ERR_TASK_RESUME_PRIO);
+        }
+
+        if((thisTask->TASK_Stat & OS_TASK_STAT_SUSPENDED) != OS_TASK_STAT_READY)    /* Check it's already in suspend state and not in ready state.                */
+        {
+            thisTask->TASK_Stat &= ~(OS_TASK_STAT_SUSPENDED);                       /* Clear the suspend state.                                                   */
+                                                             /* TODO: Check here if the task is pended on an event object but this is not implemented yet in the kernel. */
+           if(thisTask->TASK_Ticks == 0U)                                           /* If it's not waiting a delay ...                                            */
+           {
+               OS_SetReady(prio);
+               OS_CRTICAL_END();
+               if(OS_TRUE == OS_Running)
+               {
+                   OS_Sched();                                                      /* Call the scheduler, it may be a higher priority task.                         */
+               }
+           }
+        }
+
+        OS_CRTICAL_END();
+
+        return (OS_RET_OK);
+    }
+
+    return (OS_ERR_PRIO_INVALID);
+}
+
+/*
+ * Function:  OS_TaskStatus
+ * --------------------
+ * Return Task Status.
+ *
+ * Arguments    : prio  is the task priority.
+ *
+ * Returns      : OS_TASK_STAT_*
+ */
+OS_STATUS
+OS_TaskStatus(OS_PRIO prio)
+{
+    return (OS_TblTask[prio].TASK_Stat);
+}
+
+/*
  * Function:  OS_Sched
  * --------------------
  * Determine the next highest priority task that is ready to run,
@@ -490,11 +647,14 @@ OS_TimerTick (void)
                 --(t->TASK_Ticks);
                 if(0U == t->TASK_Ticks)
                 {
-                    t->TASK_Stat = OS_TASK_STAT_READY;
+                    t->TASK_Stat &= ~(OS_TASK_STAT_DELAY);
                     /* Remove the task from the unblock table. */
                     OS_UnBlockTask(t->TASK_priority);
-                    /*Add the current task to the ready table to be scheduled. */
-                    OS_SetReady(t->TASK_priority);
+                    /*If it's not waiting on any events or suspension, Add the current task to the ready table to be scheduled. */
+                    if(t->TASK_Stat == OS_TASK_STAT_READY)
+                    {
+                        OS_SetReady(t->TASK_priority);
+                    }
                 }
                 /* Remove this processed bit and go to the next priority
                  * task in the same entry level. */
@@ -532,7 +692,7 @@ OS_DelayTicks (OS_TICK ticks)
     if(OS_currentTask != &OS_TblTask[OS_IDLE_TASK_PRIO_LEVEL])
     {
         OS_currentTask->TASK_Ticks = ticks;
-        OS_currentTask->TASK_Stat  = OS_TASK_STAT_DELAY;
+        OS_currentTask->TASK_Stat |= OS_TASK_STAT_DELAY;
         /* Make the current task to be not scheduled. */
         OS_RemoveReady(OS_currentTask->TASK_priority);
         /* Put the current thread into a blocking state. */
@@ -683,6 +843,12 @@ OS_TCB_RegisterTask(CPU_tPtr* stackTop,OS_PRIO priority)
     if(OS_IS_VALID_PRIO(priority))
     {
         thisTask = &OS_TblTask[priority];
+
+        if(thisTask->TASK_Stat != OS_TASK_STAT_DELETED)          /* Check that the task is actually available.                         */
+        {
+            return (OS_ERR_TASK_CREATE_EXIST);
+        }
+
         thisTask->TASK_SP = stackTop;
         thisTask->TASK_priority = priority;
         thisTask->TASK_Stat = OS_TASK_STAT_READY;
