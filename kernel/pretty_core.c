@@ -332,6 +332,20 @@ OS_CreateTask(void (*TASK_Handler)(void* params),
     return (ret);
 }
 
+/*
+ * Function:  OS_ChangeTaskPriority
+ * --------------------
+ * Change the priority of a task dynamically.
+ *
+ * Arguments    : oldPrio     is the old priority
+ *
+ *                newPrio     is the new priority
+ *
+ * Returns      : OS_RET_OK                 If successful operation is done.
+ *                OS_ERR_PRIO_INVALID       The priority number is not in the accepted range.
+ *                OS_ERR_PRIO_EXIST         The new priority is already exist.
+ *                OS_ERR_TASK_NOT_EXIST
+ */
 OS_tRet
 OS_ChangeTaskPriority(OS_PRIO oldPrio, OS_PRIO newPrio)
 {
@@ -350,27 +364,55 @@ OS_ChangeTaskPriority(OS_PRIO oldPrio, OS_PRIO newPrio)
         return (OS_ERR_PRIO_EXIST);
     }
 
-    if(OS_IS_VALID_PRIO(newPrio))                   /* Priority within our acceptable range.        */
+    if(OS_IS_VALID_PRIO(oldPrio) && OS_IS_VALID_PRIO(newPrio))                   /* Priority within our acceptable range.        */
     {
         OS_CRTICAL_BEGIN();
-//        if((OS_TASK_TCB)0U != OS_TblTask[newPrio])  /* New priority must not be exist.              */
-//        {
-//            OS_CRTICAL_END();
-//            return OS_ERR_PRIO_EXIST;
-//        }
+        if(OS_TblTask[oldPrio].TASK_Stat == OS_TASK_STAT_DELETED)  /* Check that the old task is exist.            */
+        {
+            OS_CRTICAL_END();
+            return OS_ERR_TASK_NOT_EXIST;
+        }
+        if(OS_TblTask[newPrio].TASK_Stat != OS_TASK_STAT_DELETED)  /* Check that the new priority is available.            */
+        {
+            OS_CRTICAL_END();
+            return OS_ERR_TASK_NOT_EXIST;
+        }
 
-        OS_RemoveReady(oldPrio);
         OS_TblTask[newPrio].TASK_SP         = OS_TblTask[oldPrio].TASK_SP;
         OS_TblTask[newPrio].TASK_Ticks      = OS_TblTask[oldPrio].TASK_Ticks;
         OS_TblTask[newPrio].TASK_priority   = newPrio;
-        /* NOT COMPLETE IMPLEMENATION   */
+        OS_TblTask[newPrio].TASK_Stat       = OS_TblTask[oldPrio].TASK_Stat;
+
+        if(OS_TblTask[oldPrio].TASK_Stat == OS_TASK_STAT_READY)
+        {
+            OS_RemoveReady(oldPrio);
+            OS_SetReady(newPrio);
+        }
+        else
+        {
+            if(OS_TblTask[oldPrio].TASK_Stat == OS_TASK_STAT_DELAY)
+            {
+                OS_UnBlockTask(oldPrio);
+                OS_BlockTask(newPrio);
+            }
+            /* Task is waiting for an event. */
+            /*TODO: Handle the event transfer if the task contains events.. */
+        }
+
+        OS_TblTask[oldPrio].TASK_SP         = 0U;
+        OS_TblTask[oldPrio].TASK_Ticks      = 0U;
+        OS_TblTask[oldPrio].TASK_priority   = 0U;
+        OS_TblTask[oldPrio].TASK_Stat       = OS_TASK_STAT_DELETED;
 
         OS_CRTICAL_END();
+        if(OS_TRUE == OS_Running)
+        {
+            OS_Sched();                                                      /* Call the scheduler, it may be a higher priority task.                         */
+        }
+        return (OS_RET_OK);
     }
-    else
-    {
-        return (OS_ERR_PRIO_INVALID);
-    }
+
+    return (OS_ERR_PRIO_INVALID);
 }
 
 /*

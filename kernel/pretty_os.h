@@ -40,6 +40,7 @@ extern "C" {
 #define OS_ERR_TASK_SUSPEND_PRIO                                          (16U)
 #define OS_ERR_TASK_CREATE_EXIST                                          (17U)
 #define OS_ERR_TASK_RESUME_PRIO                                           (18U)
+#define OS_ERR_TASK_NOT_EXIST                                             (19U)
 
 /*
 *******************************************************************************
@@ -151,7 +152,7 @@ extern OS_tRet OS_CreateTask(void (*TASK_Handler)(void* params),
                              OS_PRIO    priority);
 
 /*
- * Function:  OS_ChangeTaskPriority (NOT IMPLEMENTED YET)
+ * Function:  OS_ChangeTaskPriority
  * --------------------
  * Change the priority of a task dynamically.
  *
@@ -162,6 +163,7 @@ extern OS_tRet OS_CreateTask(void (*TASK_Handler)(void* params),
  * Returns      : OS_RET_OK                 If successful operation is done.
  *                OS_ERR_PRIO_INVALID       The priority number is not in the accepted range.
  *                OS_ERR_PRIO_EXIST         The new priority is already exist.
+ *                OS_ERR_TASK_NOT_EXIST
  */
 extern OS_tRet OS_ChangeTaskPriority(OS_PRIO oldPrio,
                                      OS_PRIO newPrio);
