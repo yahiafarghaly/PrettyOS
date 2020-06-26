@@ -47,16 +47,24 @@ static CPU_tWORD OS_TblBlocked[OS_MAX_PRIO_ENTRIES] = { 0U };
 *                     Internal Functions Prototypes                           *
 *******************************************************************************
 */
-static void OS_ScheduleHighest(void);
-static void OS_Sched(void);
-static OS_tRet OS_TCB_RegisterTask(CPU_tPtr* stackTop,OS_PRIO priority);
-static OS_PRIO OS_PriorityHighestGet(void);
-static void OS_BlockTask(OS_PRIO prio);
-static void OS_UnBlockTask(OS_PRIO prio);
-static inline CPU_tWORD OS_Log2(const CPU_tWORD x);
+static void         OS_ScheduleHighest(void);
 
-extern void OS_SetReady(OS_PRIO prio);
-extern void OS_RemoveReady(OS_PRIO prio);
+static OS_tRet      OS_TCB_RegisterTask(CPU_tPtr* stackTop,OS_PRIO priority);
+static OS_PRIO      OS_PriorityHighestGet(void);
+static CPU_tWORD    OS_Log2(const CPU_tWORD x);
+
+extern void         OS_SetReady(OS_PRIO prio);
+extern void         OS_RemoveReady(OS_PRIO prio);
+extern void         OS_BlockTask(OS_PRIO prio);
+extern void         OS_UnBlockTask(OS_PRIO prio);
+extern void         OS_Sched(void);
+
+/*
+*******************************************************************************
+*                                    Externs                                  *
+*******************************************************************************
+*/
+extern void         OS_Event_FreeListInit(void);
 
 
 /*
@@ -121,8 +129,13 @@ OS_Init(CPU_tWORD* pStackBaseIdleTask,
 
     for(idx = 0; idx < OS_MAX_NUMBER_TASKS; ++idx)
     {
-        OS_TblTask[idx].TASK_Stat = OS_TASK_STAT_DELETED;
+        OS_TblTask[idx].TASK_Stat   = OS_TASK_STAT_DELETED;
+        OS_TblTask[idx].OSEventPtr  = ((OS_EVENT*)0U);
+        OS_TblTask[idx].OSTCBPtr    = ((OS_TASK_TCB*)0U);
+        OS_TblTask[idx].TASK_Ticks  = 0U;
     }
+
+    OS_Event_FreeListInit();
 
     ret = OS_CreateTask(OS_IdleTask,
                         OS_NULL,
@@ -459,7 +472,7 @@ OS_SuspendTask(OS_PRIO prio)
             return (OS_ERR_TASK_SUSPEND_PRIO);
         }
 
-        if(thisTask->TASK_Stat == OS_TASK_STAT_SUSPENDED)   /* If it's in a suspend state, why do extra work !                        */
+        if(thisTask->TASK_Stat & OS_TASK_STAT_SUSPENDED)   /* If it's in a suspend state, why do extra work !                        */
         {
             OS_CRTICAL_END();
             return (OS_RET_TASK_SUSPENDED);
@@ -693,7 +706,15 @@ OS_TimerTick (void)
                     /* Remove the task from the unblock table. */
                     OS_UnBlockTask(t->TASK_priority);
                     /*If it's not waiting on any events or suspension, Add the current task to the ready table to be scheduled. */
-                    if(t->TASK_Stat == OS_TASK_STAT_READY)
+                    if(t->TASK_Stat & OS_TASK_STATE_PEND_ANY)
+                    {
+                        t->TASK_PendStat |= OS_STAT_PEND_TIMEOUT;
+                    }
+                    else if(t->TASK_Stat & OS_TASK_STAT_SUSPENDED)
+                    {
+                        /* No thing to do */
+                    }
+                    else
                     {
                         OS_SetReady(t->TASK_priority);
                     }

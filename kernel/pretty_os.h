@@ -42,6 +42,13 @@ extern "C" {
 #define OS_ERR_TASK_RESUME_PRIO                                           (18U)
 #define OS_ERR_TASK_NOT_EXIST                                             (19U)
 
+#define OS_ERR_EVENT_PEVENT_NULL                                          (26U)
+#define OS_ERR_EVENT_TYPE                                                 (27U)
+#define OS_ERR_EVENT_PEND_ISR                                             (28U)
+#define OS_ERR_EVENT_PEND_LOCKED                                          (29U)
+#define OS_ERR_EVENT_PEND_ABORT                                           (30U)
+#define OS_ERR_EVENT_TIMEOUT                                              (31U)
+
 /*
 *******************************************************************************
 *                               OS Macros                                     *
@@ -58,15 +65,27 @@ extern "C" {
 
 /*
 *******************************************************************************
-*                             OS Task Status                                  *
+*              OS Task Status (Status codes for TASK_Stat)                    *
 *******************************************************************************
 */
-#define OS_TASK_STAT_READY          (0x00U) /* Ready.                        */
-#define OS_TASK_STAT_DELAY          (0x01U) /* Delayed or Timeout.           */
-#define OS_TASK_STAT_SUSPENDED      (0x02U) /* Suspended.                    */
-#define OS_TASK_STATE_PEND          (0x04U) /* Pended due to an event.       */
+#define OS_TASK_STAT_READY          (0x00U)                      /* Ready.                        */
+#define OS_TASK_STAT_DELAY          (0x01U)                      /* Delayed or Timeout.           */
+#define OS_TASK_STAT_SUSPENDED      (0x02U)                      /* Suspended.                    */
+#define OS_TASK_STATE_PEND_SEM      (0x04U)                      /* Pend on semaphore.            */
+#define OS_TASK_STATE_PEND_MUX      (0x08U)                      /* Pend on mutex.                */
+
+#define OS_TASK_STATE_PEND_ANY      (OS_TASK_STATE_PEND_SEM | OS_TASK_STATE_PEND_MUX )
 
 #define OS_TASK_STAT_DELETED        (0xFFU) /* A deleted task or not created.*/
+
+/*
+*******************************************************************************
+*             TASK PEND STATUS (Status codes for TASK_PendStat)               *
+*******************************************************************************
+*/
+#define  OS_STAT_PEND_OK            (0U)  /* Pending status OK, not pending, or pending complete     */
+#define  OS_STAT_PEND_TIMEOUT       (1U)  /* Pending timed out                                       */
+#define  OS_STAT_PEND_ABORT         (2U)  /* Pending aborted                                         */
 
 /*
 *******************************************************************************
@@ -83,9 +102,11 @@ extern "C" {
 */
 
 /******************************* OS Task TCB *********************************/
-typedef struct os_task_tcb
-{
+typedef struct os_task_event OS_EVENT;
+typedef struct os_task_tcb OS_TASK_TCB;
 
+struct os_task_tcb
+{
     CPU_tPtr    TASK_SP;        /* Current Thread's Stack Pointer */
 
     OS_TICK     TASK_Ticks;     /* Current Thread's Time out */
@@ -94,14 +115,23 @@ typedef struct os_task_tcb
 
     OS_STATUS   TASK_Stat;      /* Task Status */
 
-}OS_TASK_TCB;
+    OS_STATUS   TASK_PendStat;  /* Task pend status */
 
-typedef struct os_task_event OS_EVENT;
+    OS_EVENT*   OSEventPtr;     /* Pointer to this TCB event */
+
+    OS_TASK_TCB* OSTCBPtr;      /* Pointer to a TCB (In case of multiple events on the same event object). */
+};
+
 struct os_task_event
 {
-    CPU_t08U        eventType;
-    OS_EVENT*       nextEventPtr;
-    OS_TASK_TCB*    TCBPtr;
+    CPU_t08U        OSEventType;       /* Event type                                       */
+
+    union{
+        OS_EVENT*       OSEventPtr;         /* Ptr to queue structure of Events or message */
+        OS_SEM_COUNT    OSEventCount;       /* Count (when event is a semaphore)           */
+    };
+
+    OS_TASK_TCB**    OSEventTCBs;      /* List of waited TCBs depending on this event.     */
 };
 
 /*
@@ -315,6 +345,20 @@ extern void OS_SchedLock(void);
  */
 extern void OS_SchedUnlock(void);
 
+/*
+*******************************************************************************
+*                   OS Semaphore function Prototypes                          *
+*******************************************************************************
+*/
+
+OS_EVENT*
+OS_SemCreate (OS_SEM_COUNT cnt);
+
+OS_tRet
+OS_SemPend (OS_EVENT* pevent, OS_TICK timeout);
+
+OS_tRet
+OS_SemPost (OS_EVENT* pevent);
 /*
 *******************************************************************************
 *                           OS Functions Prototypes                           *
