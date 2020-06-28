@@ -395,6 +395,7 @@ OS_ChangeTaskPriority(OS_PRIO oldPrio, OS_PRIO newPrio)
         OS_TblTask[newPrio].TASK_Ticks      = OS_TblTask[oldPrio].TASK_Ticks;
         OS_TblTask[newPrio].TASK_priority   = newPrio;
         OS_TblTask[newPrio].TASK_Stat       = OS_TblTask[oldPrio].TASK_Stat;
+        OS_TblTask[newPrio].TASK_PendStat   = OS_TblTask[oldPrio].TASK_PendStat;
 
         if(OS_TblTask[oldPrio].TASK_Stat == OS_TASK_STAT_READY)
         {
@@ -408,8 +409,12 @@ OS_ChangeTaskPriority(OS_PRIO oldPrio, OS_PRIO newPrio)
                 OS_UnBlockTask(oldPrio);
                 OS_BlockTask(newPrio);
             }
-            /* Task is waiting for an event. */
-            /*TODO: Handle the event transfer if the task contains events.. */
+
+            if(OS_TblTask[oldPrio].OSEventPtr != ((OS_EVENT*)0U))       /* If old task is waiting for an event. */
+            {
+                /* Task is waiting for an event. */
+                /*TODO: Handle the event transfer if the task contains events.. */
+            }
         }
 
         OS_TblTask[oldPrio].TASK_SP         = 0U;
@@ -708,13 +713,10 @@ OS_TimerTick (void)
                     /*If it's not waiting on any events or suspension, Add the current task to the ready table to be scheduled. */
                     if(t->TASK_Stat & OS_TASK_STATE_PEND_ANY)
                     {
-                        t->TASK_PendStat |= OS_STAT_PEND_TIMEOUT;
+                        t->TASK_PendStat = OS_STAT_PEND_TIMEOUT;
                     }
-                    else if(t->TASK_Stat & OS_TASK_STAT_SUSPENDED)
-                    {
-                        /* No thing to do */
-                    }
-                    else
+
+                    if((t->TASK_Stat & OS_TASK_STAT_SUSPENDED) == OS_TASK_STAT_READY)
                     {
                         OS_SetReady(t->TASK_priority);
                     }

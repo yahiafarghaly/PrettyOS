@@ -16,7 +16,7 @@
 
 #define OS_MAX_PRIO_ENTRIES  (3U)           /* Number of priority entries (levels), minimum value = 1 */
 
-#define OS_MAX_EVENTS        (10U)          /* Number of used events                                  */
+#define OS_MAX_EVENTS        (3U)          /* Number of used events                                  */
 
 /*
 *******************************************************************************

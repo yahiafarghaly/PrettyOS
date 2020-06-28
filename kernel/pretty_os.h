@@ -104,6 +104,7 @@ extern "C" {
 /******************************* OS Task TCB *********************************/
 typedef struct os_task_event OS_EVENT;
 typedef struct os_task_tcb OS_TASK_TCB;
+typedef OS_EVENT OS_SEM;
 
 struct os_task_tcb
 {
@@ -126,12 +127,11 @@ struct os_task_event
 {
     CPU_t08U        OSEventType;       /* Event type                                       */
 
-    union{
-        OS_EVENT*       OSEventPtr;         /* Ptr to queue structure of Events or message */
-        OS_SEM_COUNT    OSEventCount;       /* Count (when event is a semaphore)           */
-    };
+    OS_EVENT*       OSEventPtr;         /* Ptr to queue structure of Events or message */
 
-    OS_TASK_TCB**    OSEventTCBs;      /* List of waited TCBs depending on this event.     */
+    OS_SEM_COUNT    OSEventCount;       /* Count (when event is a semaphore)           */
+
+    OS_TASK_TCB*    OSEventsTCBHead;     /* Pointer to the List of waited TCBs depending on this event.     */
 };
 
 /*
@@ -350,10 +350,41 @@ extern void OS_SchedUnlock(void);
 *                   OS Semaphore function Prototypes                          *
 *******************************************************************************
 */
-
+/*
+ * Function:  OS_SemCreate
+ * --------------------
+ * Creates a semaphore.
+ *
+ * Arguments    : cnt    is the initial value for the semaphore.  If the value is 0, no resource is
+ *                       available (or no event has occurred).
+ *                       You initialize the semaphore to a non-zero value to specify how many
+ *                       resources are available.
+ *
+ * Returns      : An 'OS_EVENT' object pointer of type semaphore (OS_EVENT_TYPE_SEM) to be used with
+ *                 other semaphore functions.
+ *
+ * Notes        :   1) This function must used only from Task code level and not an ISR.
+ */
 OS_EVENT*
 OS_SemCreate (OS_SEM_COUNT cnt);
 
+/*
+ * Function:  OS_SemPend
+ * --------------------
+ * Waits for a semaphore.
+ *
+ * Arguments    : pevent      is a pointer to the OS_EVENT object associated with the semaphore.
+ *
+ *                 timeout    is an optional timeout period (in clock ticks).  If non-zero, your task will
+ *                            wait for the resource up to the amount of time specified by this argument.
+ *                            If you specify 0, however, your task will wait forever at the specified
+ *                            semaphore or, until the resource becomes available (or the event occurs).
+ *
+ * Returns      : An 'OS_EVENT' object pointer of type semaphore (OS_EVENT_TYPE_SEM) to be used with
+ *                 other semaphore functions.
+ *
+ * Notes        :   1) This function must used only from Task code level and not an ISR.
+ */
 OS_tRet
 OS_SemPend (OS_EVENT* pevent, OS_TICK timeout);
 
