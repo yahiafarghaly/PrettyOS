@@ -24,8 +24,8 @@ extern void OS_Event_TaskPend (OS_EVENT* pevent);
 OS_PRIO OS_Event_TaskMakeReady(OS_EVENT* pevent,void* pmsg, OS_STATUS TASK_StatEventMask, OS_STATUS TASK_PendStat);
 extern void OS_Event_TaskRemove (OS_TASK_TCB* ptcb, OS_EVENT *pevent);
 extern void OS_Sched (void);
-extern void OS_BlockTask (OS_PRIO prio);
-extern void OS_UnBlockTask (OS_PRIO prio);
+extern void OS_BlockTime (OS_PRIO prio);
+extern void OS_UnBlockTime (OS_PRIO prio);
 
 
 /*
@@ -126,7 +126,7 @@ OS_tRet OS_SemPend (OS_EVENT* pevent, OS_TICK timeout)
     OS_currentTask->TASK_Ticks = timeout;
     if(timeout > 0U)
     {
-        OS_BlockTask(OS_currentTask->TASK_priority);
+        OS_BlockTime(OS_currentTask->TASK_priority);
         OS_currentTask->TASK_Stat |= OS_TASK_STAT_DELAY;
     }
 

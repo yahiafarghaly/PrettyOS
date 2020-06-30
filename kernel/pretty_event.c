@@ -30,7 +30,7 @@ extern OS_TASK_TCB* volatile OS_currentTask;
 
 extern void OS_SetReady(OS_PRIO prio);
 extern void OS_RemoveReady(OS_PRIO prio);
-extern void OS_UnBlockTask(OS_PRIO prio);
+extern void OS_UnBlockTime(OS_PRIO prio);
 
 /*
  * Function:  OS_Event_FreeListInit
@@ -261,7 +261,7 @@ OS_Event_TaskMakeReady(OS_EVENT* pevent,void* pmsg,
     pHighTCB = pevent->OSEventsTCBHead;                     /* Highest Priority Task waiting for an event.                      */
 
     pHighTCB->TASK_Ticks = 0U;                              /* The task is not waiting for event anymore So, let                */
-    OS_UnBlockTask(pHighTCB->TASK_priority);                /* make sure that OS_TimerTick will not try to make it ready.       */
+    OS_UnBlockTime(pHighTCB->TASK_priority);                /* make sure that OS_TimerTick will not try to make it ready.       */
 
     pmsg = pmsg;                                            /* TODO: Using this argument is not implemented yet for mailboxes.  */
 

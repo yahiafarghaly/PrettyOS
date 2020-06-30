@@ -40,7 +40,7 @@ static OS_TASK_TCB OS_TblTask[OS_MAX_NUMBER_TASKS] = { 0U };
 /* Array of bit-mask of tasks that are ready to run. */
 static CPU_tWORD OS_TblReady[OS_MAX_PRIO_ENTRIES] = { 0U };
 /* Array of bit-mask of tasks that blocked. */
-static CPU_tWORD OS_TblBlocked[OS_MAX_PRIO_ENTRIES] = { 0U };
+static CPU_tWORD OS_TblTimeBlocked[OS_MAX_PRIO_ENTRIES] = { 0U };
 
 /*
 *******************************************************************************
@@ -55,8 +55,8 @@ static CPU_tWORD    OS_Log2(const CPU_tWORD x);
 
 extern void         OS_SetReady(OS_PRIO prio);
 extern void         OS_RemoveReady(OS_PRIO prio);
-extern void         OS_BlockTask(OS_PRIO prio);
-extern void         OS_UnBlockTask(OS_PRIO prio);
+extern void         OS_BlockTime(OS_PRIO prio);
+extern void         OS_UnBlockTime(OS_PRIO prio);
 extern void         OS_Sched(void);
 
 /*
@@ -408,8 +408,8 @@ OS_ChangeTaskPriority(OS_PRIO oldPrio, OS_PRIO newPrio)
         {
             if(OS_TblTask[oldPrio].TASK_Stat == OS_TASK_STAT_DELAY)
             {
-                OS_UnBlockTask(oldPrio);
-                OS_BlockTask(newPrio);
+                OS_UnBlockTime(oldPrio);
+                OS_BlockTime(newPrio);
             }
 
             if(OS_TblTask[oldPrio].OSEventPtr != ((OS_EVENT*)0U))       /* If old task is waiting for an event. */
@@ -702,9 +702,9 @@ OS_TimerTick (void)
 
     for(i = 0; i < OS_MAX_PRIO_ENTRIES; i++)
     {
-        if(OS_TblBlocked[i] != 0U)
+        if(OS_TblTimeBlocked[i] != 0U)
         {
-            workingSet = OS_TblBlocked[i];
+            workingSet = OS_TblTimeBlocked[i];
             while(workingSet != 0U)
             {
                 CPU_tWORD task_pos = ((CPU_NumberOfBitsPerWord - (CPU_tWORD)CPU_CountLeadZeros(workingSet)) - 1U);
@@ -714,7 +714,7 @@ OS_TimerTick (void)
                 {
                     t->TASK_Stat &= ~(OS_TASK_STAT_DELAY);
                     /* Remove the task from the unblock table. */
-                    OS_UnBlockTask(t->TASK_priority);
+                    OS_UnBlockTime(t->TASK_priority);
                     /*If it's not waiting on any events or suspension, Add the current task to the ready table to be scheduled. */
                     if(t->TASK_Stat & OS_TASK_STATE_PEND_ANY)
                     {
@@ -766,7 +766,7 @@ OS_DelayTicks (OS_TICK ticks)
         /* Make the current task to be not scheduled. */
         OS_RemoveReady(OS_currentTask->TASK_priority);
         /* Put the current thread into a blocking state. */
-        OS_BlockTask(OS_currentTask->TASK_priority);
+        OS_BlockTime(OS_currentTask->TASK_priority);
         /* Preempt Another Task. */
         OS_Sched();
     }
@@ -857,11 +857,11 @@ OS_RemoveReady(OS_PRIO prio)
  * Returns: None
  */
 void inline
-OS_BlockTask(OS_PRIO prio)
+OS_BlockTime(OS_PRIO prio)
 {
     CPU_tWORD bit_pos = prio & (CPU_NumberOfBitsPerWord - 1);
     CPU_tWORD entry_pos = prio >> OS_Log2(CPU_NumberOfBitsPerWord);
-    OS_TblBlocked[entry_pos] |= (1U << bit_pos);
+    OS_TblTimeBlocked[entry_pos] |= (1U << bit_pos);
 }
 
 /*
@@ -875,11 +875,11 @@ OS_BlockTask(OS_PRIO prio)
  * Returns: None
  */
 void inline
-OS_UnBlockTask(OS_PRIO prio)
+OS_UnBlockTime(OS_PRIO prio)
 {
     CPU_tWORD bit_pos = prio & (CPU_NumberOfBitsPerWord - 1);
     CPU_tWORD entry_pos = prio >> OS_Log2(CPU_NumberOfBitsPerWord);
-    OS_TblBlocked[entry_pos] &= ~(1U << bit_pos);
+    OS_TblTimeBlocked[entry_pos] &= ~(1U << bit_pos);
 }
 
 
