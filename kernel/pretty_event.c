@@ -113,6 +113,52 @@ OS_EVENT_free(OS_EVENT* pevent)
 }
 
 /*
+ * Function:  OS_Event_TaskInsert
+ * --------------------
+ * Insert a task to an event's wait list according to its priority.
+ *
+ * Arguments    : ptcb    is a pointer to TCB object where `pevent` will be stored into
+ *                pevent  is a pointer to an allocated OS_EVENT object.
+ *
+ * Returns      : None.
+ *
+ * Notes        :   1) This function for internal use.
+ *                  2) Interrupts must be disabled at this call.
+ */
+void
+OS_Event_TaskInsert(OS_TASK_TCB* ptcb, OS_EVENT *pevent)
+{
+    OS_PRIO prio;
+    OS_TASK_TCB* currentTCBPtr;
+
+    ptcb->OSEventPtr = pevent;                                      /* Store the event pointer inside the current TCB.              */
+    prio          = ptcb->TASK_priority;
+
+    currentTCBPtr = pevent->OSEventsTCBHead;
+
+    if(currentTCBPtr == ((OS_TASK_TCB*)0U))
+    {
+        ptcb->OSTCBPtr = ((OS_TASK_TCB*)0U);                        /* Place at the head.                                           */
+        pevent->OSEventsTCBHead  = ptcb;
+    }
+    else if(currentTCBPtr->TASK_priority <= prio)
+    {
+        ptcb->OSTCBPtr = currentTCBPtr;
+        pevent->OSEventsTCBHead  = ptcb;
+    }
+    else
+    {
+        while (currentTCBPtr->OSTCBPtr != ((OS_TASK_TCB*)0U)        /* Walk-Through the list to place the TCB in the correct order. */
+                && currentTCBPtr->OSTCBPtr->TASK_priority > prio)
+        {
+            currentTCBPtr = currentTCBPtr->OSTCBPtr;
+        }
+        ptcb->OSTCBPtr = currentTCBPtr->OSTCBPtr;
+        currentTCBPtr->OSTCBPtr = ptcb;
+    }
+}
+
+/*
  * Function:  OS_Event_TaskPend
  * --------------------
  * Insert the current running TCB into a wait list and remove it from the ready list.
@@ -130,36 +176,8 @@ OS_EVENT_free(OS_EVENT* pevent)
 void
 OS_Event_TaskPend (OS_EVENT *pevent)
 {
-    OS_PRIO prio;
-    OS_TASK_TCB* currentTCBPtr;
-
-    OS_currentTask->OSEventPtr = pevent;                            /* Store the event pointer inside the current TCB.              */
-    prio          = OS_currentTask->TASK_priority;
-
-    currentTCBPtr = pevent->OSEventsTCBHead;
-
-    if(currentTCBPtr == ((OS_TASK_TCB*)0U))
-    {
-        OS_currentTask->OSTCBPtr = ((OS_TASK_TCB*)0U);              /* Place at the head.                                           */
-        pevent->OSEventsTCBHead  = OS_currentTask;
-    }
-    else if(currentTCBPtr->TASK_priority <= prio)
-    {
-        OS_currentTask->OSTCBPtr = currentTCBPtr;
-        pevent->OSEventsTCBHead  = OS_currentTask;
-    }
-    else
-    {
-        while (currentTCBPtr->OSTCBPtr != ((OS_TASK_TCB*)0U)        /* Walk-Through the list to place the TCB in the correct order. */
-                && currentTCBPtr->OSTCBPtr->TASK_priority > prio)
-        {
-            currentTCBPtr = currentTCBPtr->OSTCBPtr;
-        }
-        OS_currentTask->OSTCBPtr = currentTCBPtr->OSTCBPtr;
-        currentTCBPtr->OSTCBPtr = OS_currentTask;
-    }
-
-    OS_RemoveReady(prio);                                           /* Remove from the ready list.                                  */
+    OS_Event_TaskInsert(OS_currentTask, pevent);     /* Insert the current running test into the waiting list        */
+    OS_RemoveReady(OS_currentTask->TASK_priority);   /* Remove from the ready list.                                  */
 }
 
 /*
@@ -230,7 +248,8 @@ OS_Event_TaskRemove (OS_TASK_TCB* ptcb, OS_EVENT *pevent)
  *
  *
  * Notes        :   1) This function for internal use.
- *                  2) Interrupts must be disabled at this call.
+ *                  2) This function should be called by the post functions(e.g, semaphore,.. etc)
+ *                  3) Interrupts must be disabled at this call.
  */
 OS_PRIO
 OS_Event_TaskMakeReady(OS_EVENT* pevent,void* pmsg,

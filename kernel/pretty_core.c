@@ -66,6 +66,8 @@ extern void         OS_Sched(void);
 */
 extern void         OS_Event_FreeListInit(void);
 
+extern void OS_Event_TaskInsert(OS_TASK_TCB* ptcb, OS_EVENT *pevent);
+extern void OS_Event_TaskRemove(OS_TASK_TCB* ptcb, OS_EVENT *pevent);
 
 /*
 *******************************************************************************
@@ -412,8 +414,8 @@ OS_ChangeTaskPriority(OS_PRIO oldPrio, OS_PRIO newPrio)
 
             if(OS_TblTask[oldPrio].OSEventPtr != ((OS_EVENT*)0U))       /* If old task is waiting for an event. */
             {
-                /* Task is waiting for an event. */
-                /*TODO: Handle the event transfer if the task contains events.. */
+                OS_Event_TaskRemove(&OS_TblTask[oldPrio], OS_TblTask[oldPrio].OSEventPtr);
+                OS_Event_TaskInsert(&OS_TblTask[newPrio], OS_TblTask[oldPrio].OSEventPtr);
             }
         }
 
@@ -421,6 +423,9 @@ OS_ChangeTaskPriority(OS_PRIO oldPrio, OS_PRIO newPrio)
         OS_TblTask[oldPrio].TASK_Ticks      = 0U;
         OS_TblTask[oldPrio].TASK_priority   = 0U;
         OS_TblTask[oldPrio].TASK_Stat       = OS_TASK_STAT_DELETED;
+        OS_TblTask[oldPrio].TASK_PendStat   = OS_STAT_PEND_OK;
+        OS_TblTask[oldPrio].OSTCBPtr        = ((OS_TASK_TCB*)0U);
+        OS_TblTask[oldPrio].OSEventPtr      = ((OS_EVENT*)0U);
 
         OS_CRTICAL_END();
         if(OS_TRUE == OS_Running)
