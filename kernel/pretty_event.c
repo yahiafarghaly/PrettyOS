@@ -12,18 +12,30 @@
 */
 #include "pretty_os.h"
 
-OS_EVENT     OS_EVENT_tbl[OS_EVENT_TBL_SIZE];
-OS_EVENT     *pEventFreeList;
-OS_EVENT     **pEvents;
+/*
+*******************************************************************************
+*                               Global Variables                              *
+*******************************************************************************
+*/
+OS_EVENT     OSEventsMemoryPool[OS_MAX_EVENTS];
+OS_EVENT* volatile pEventFreeList;
+
+/*
+*******************************************************************************
+*                                    Externs                                  *
+*******************************************************************************
+*/
+
+extern OS_TASK_TCB* volatile OS_currentTask;
 
 extern void OS_SetReady(OS_PRIO prio);
 extern void OS_RemoveReady(OS_PRIO prio);
-
+extern void OS_UnBlockTask(OS_PRIO prio);
 
 /*
- * Function:  OS_EventTaskWait
+ * Function:  OS_Event_FreeListInit
  * --------------------
- * Initialize the wait list.
+ * Initialize the memory pool of a free list of available events.
  *
  * Arguments    : None.
  *
@@ -34,127 +46,215 @@ extern void OS_RemoveReady(OS_PRIO prio);
 void
 OS_Event_FreeListInit(void)
 {
-    CPU_t16U i;
+    CPU_t32U i;
 
-    for(i = 0; i < (OS_EVENT_TBL_SIZE - 1U);i++)
+//    TCB_NULL = &dummyTCB;
+
+    for(i = 0; i < (OS_MAX_EVENTS - 1U);i++)
     {
-        OS_EVENT_tbl[i].nextEventPtr    =   &OS_EVENT_tbl[i+1];
-        OS_EVENT_tbl[i].eventType       =   OS_EVENT_TYPE_UNUSED;
-        OS_EVENT_tbl[i].TCBPtr          =   ((OS_TASK_TCB*)0U);
+        OSEventsMemoryPool[i].OSEventPtr      = &OSEventsMemoryPool[i+1];
+        OSEventsMemoryPool[i].OSEventType     = OS_EVENT_TYPE_UNUSED;
+        OSEventsMemoryPool[i].OSEventsTCBHead = ((OS_TASK_TCB*)0U);
     }
 
-    OS_EVENT_tbl[OS_EVENT_TBL_SIZE - 1U].nextEventPtr    =   ((OS_EVENT*)0U);
-    OS_EVENT_tbl[OS_EVENT_TBL_SIZE - 1U].eventType       =   OS_EVENT_TYPE_UNUSED;
-    OS_EVENT_tbl[OS_EVENT_TBL_SIZE - 1U].TCBPtr          =   ((OS_TASK_TCB*)0U);
+    OSEventsMemoryPool[OS_MAX_EVENTS - 1U].OSEventPtr       = ((OS_EVENT*)0U);
+    OSEventsMemoryPool[OS_MAX_EVENTS - 1U].OSEventType      = OS_EVENT_TYPE_UNUSED;
+    OSEventsMemoryPool[OS_MAX_EVENTS - 1U].OSEventsTCBHead  = ((OS_TASK_TCB*)0U);
 
-    pEventFreeList = &OS_EVENT_tbl[0];                                              /* Make it point to the first element.                                  */
-    pEvents        = ((OS_EVENT**)0U);
+    pEventFreeList = &OSEventsMemoryPool[0];
 }
 
 /*
- * Function:  OS_EVENT_GetBlock
+ * Function:  OS_EVENT_allocate
  * --------------------
- * Get a free OS_EVENT object.
+ * Get an allocated OS_EVENT object.
  *
  * Arguments    :   pevent   is a pointer to the allocated OS_EVENT object.
  *
- * Returns      :  `pevent` as a form of return by reference.
+ * Returns      :  `pevent` as a form of return by reference ( pointer to the allocated object).
+ *                  ((OS_EVENT*)0U) in case there is no event blocks available.
  *
  * Notes        :   1) This function for internal use.
  */
-void inline
-OS_EVENT_GetBlock(OS_EVENT* pevent)
+void
+OS_EVENT_allocate(OS_EVENT** pevent)
 {
     if(((OS_EVENT*)0U) == pEventFreeList)
     {
-        pevent = ((OS_EVENT*)0U);
+        *pevent = ((OS_EVENT*)0U);
         return;
     }
 
-    pevent = pEventFreeList;
-    pEventFreeList = pEventFreeList->nextEventPtr;
+    *pevent = pEventFreeList;
+    pEventFreeList = pEventFreeList->OSEventPtr;
 }
 
 /*
- * Function:  OS_EVENT_ReturnBlock
+ * Function:  OS_EVENT_free
  * --------------------
  * Return an allocated OS_EVENT object to the free list of OS_EVENT objects.
  *
- * Arguments    : pevent   is a pointer to a previous the allocated OS_EVENT object.
+ * Arguments    : pevent   is a pointer to a previous allocated OS_EVENT object.
  *
  * Returns      : None.
  *
  * Notes        :   1) This function for internal use.
  *                  2) `pevent` become an invalid pointer after this call.
  */
-void inline
-OS_EVENT_ReturnBlock(OS_EVENT* pevent)
+void
+OS_EVENT_free(OS_EVENT* pevent)
 {
-    pevent->eventType       = OS_EVENT_TYPE_UNUSED;
-    pevent->TCBPtr          =  ((OS_TASK_TCB*)0U);
-    pevent->nextEventPtr    = pEventFreeList;
+    pevent->OSEventType     = OS_EVENT_TYPE_UNUSED;
+    pevent->OSEventsTCBHead = ((OS_TASK_TCB*)0U);
+    pevent->OSEventCount    = (0U);
+    pevent->OSEventPtr      = pEventFreeList;
     pEventFreeList          = pevent;
     pevent                  = ((OS_EVENT*)0U);
 }
 
 /*
- * Function:  OS_EventTaskWait
+ * Function:  OS_Event_TaskPend
  * --------------------
- * Remove a task pointed by `pevent` from the ready list and place in a wait list.
+ * Insert the current running TCB into a wait list and remove it from the ready list.
+ * The function is working by placing the TCBs that wait for a certain event (pointed by `pevent`)
+ * in a sorted linked-list in increasing order of TCBs' priority.
  *
- * Arguments    : pevent   is a pointer to an OS_EVENT object for which the task will be waiting for.
+ * Arguments    : pevent   is a pointer to an allocated OS_EVENT object.
  *
  * Returns      : None.
  *
  * Notes        :   1) This function for internal use.
+ *                  2) This function should be called by the pend functions(e.g, semaphore,.. etc)
+ *                  3) Interrupts must be disabled at this call.
  */
 void
-OS_EventTaskWait(OS_EVENT* pevent)
+OS_Event_TaskPend (OS_EVENT *pevent)
 {
-    OS_EVENT** pEventsHead  = pEvents;
-    OS_PRIO prio            = pevent->TCBPtr->TASK_priority;
+    OS_PRIO prio;
+    OS_TASK_TCB* currentTCBPtr;
 
-    OS_RemoveReady(prio);                                                       /* Remove task from the ready list                                              */
+    OS_currentTask->OSEventPtr = pevent;                            /* Store the event pointer inside the current TCB.              */
+    prio          = OS_currentTask->TASK_priority;
 
-                                                                                /* Place the task in the wait list                                              */
-    if(pEvents == ((OS_EVENT**)0U))                                             /* First waited event to insert ?                                               */
+    currentTCBPtr = pevent->OSEventsTCBHead;
+
+    if(currentTCBPtr == ((OS_TASK_TCB*)0U))
     {
-        *pEvents = pevent;
-        (*pEvents)->nextEventPtr = ((OS_EVENT*)0U);
+        OS_currentTask->OSTCBPtr = ((OS_TASK_TCB*)0U);              /* Place at the head.                                           */
+        pevent->OSEventsTCBHead  = OS_currentTask;
+    }
+    else if(currentTCBPtr->TASK_priority <= prio)
+    {
+        OS_currentTask->OSTCBPtr = currentTCBPtr;
+        pevent->OSEventsTCBHead  = OS_currentTask;
     }
     else
     {
-        if(prio > (*pEvents)->TCBPtr->TASK_priority)                            /* Insert the highest priority waited task at beginning                         */
+        while (currentTCBPtr->OSTCBPtr != ((OS_TASK_TCB*)0U)        /* Walk-Through the list to place the TCB in the correct order. */
+                && currentTCBPtr->OSTCBPtr->TASK_priority > prio)
         {
-            pevent->nextEventPtr = *pEvents;
-            *pEvents = pevent;
+            currentTCBPtr = currentTCBPtr->OSTCBPtr;
         }
-        else if((*pEvents)->nextEventPtr == ((OS_EVENT*)0U))                    /* Keep the highest priority waited task at beginning                           */
+        OS_currentTask->OSTCBPtr = currentTCBPtr->OSTCBPtr;
+        currentTCBPtr->OSTCBPtr = OS_currentTask;
+    }
+
+    OS_RemoveReady(prio);                                           /* Remove from the ready list.                                  */
+}
+
+/*
+ * Function:  OS_Event_TaskRemove
+ * --------------------
+ * Remove a task from an event's wait list.
+ *
+ * Arguments    : ptcb    is a pointer to TCB object where it has event pointed by `pevent`
+ *                pevent  is a pointer to an allocated OS_EVENT object.
+ *
+ * Returns      : None.
+ *
+ * Notes        :   1) This function for internal use.
+ *                  2) Interrupts must be disabled at this call.
+ */
+void
+OS_Event_TaskRemove (OS_TASK_TCB* ptcb, OS_EVENT *pevent)
+{
+    OS_PRIO  prio;
+    OS_TASK_TCB* currentTCBPtr;
+
+    prio = ptcb->TASK_priority;
+    currentTCBPtr = pevent->OSEventsTCBHead;
+
+    if (currentTCBPtr == ((OS_TASK_TCB*)0U))                /* Empty List                       */
+    {
+        return;
+    }
+    else if(currentTCBPtr->OSTCBPtr == ((OS_TASK_TCB*)0U))  /* One element in the list          */
+    {
+        if(prio == currentTCBPtr->TASK_priority)
         {
-            (*pEvents)->nextEventPtr = pevent;
-            pevent->nextEventPtr = ((OS_EVENT*)0U);
+            pevent->OSEventsTCBHead = ((OS_TASK_TCB*)0U);
         }
         else
         {
-            while((*pEvents)->nextEventPtr
-                    && prio < (*pEvents)->nextEventPtr->TCBPtr->TASK_priority)   /* Walk-Through the list until the next event has a less priority than `prio` */
-            {
-                *pEvents = (*pEvents)->nextEventPtr;
-            }
-
-            if((*pEvents)->nextEventPtr)                                         /* Between two events                                                         */
-            {
-                pevent->nextEventPtr = (*pEvents)->nextEventPtr;
-                (*pEvents)->nextEventPtr = pevent;
-            }
-            else                                                                /* Insert at the tail                                                          */
-            {
-                (*pEvents)->nextEventPtr = pevent;
-                pevent->nextEventPtr = ((OS_EVENT*)0U);
-            }
-            pEvents = pEventsHead;                                              /* Reset pEvents position                                                       */
+            return;
         }
     }
+    else
+    {
+        while (currentTCBPtr->OSTCBPtr != ((OS_TASK_TCB*)0U)
+                && currentTCBPtr->OSTCBPtr->TASK_priority != prio)
+        {
+            currentTCBPtr = currentTCBPtr->OSTCBPtr;
+        }
+        currentTCBPtr->OSTCBPtr = currentTCBPtr->OSTCBPtr->OSTCBPtr;
+    }
+
+    ptcb->OSEventPtr = ((OS_EVENT*)0U);                      /* Unlink OS_EVENT from TCB         */
 }
 
+/*
+ * Function:  OS_Event_TaskMakeReady
+ * --------------------
+ * Make a task that was waiting for an event to occur be ready.
+ *
+ * Arguments    : pevent                is a pointer to an allocated OS_EVENT object.
+ *                pmsg                  is a pointer to a message which is used by mailboxes. (Not implemented yet).
+ *                TASK_StatEventMask    is a mask that is used to clear the TASK_Stat member of TCB structure of the
+ *                                      called post event function. For example, OS_SemPost() will pass OS_TASK_STATE_PEND_SEM.
+ *
+ *                TASK_PendStat         is used indicate the pend status of the task which was waiting for an event.
+ *                                      OS_STAT_PEND_OK     => Task ready due to a post (or delete event object).
+ *                                      OS_STAT_PEND_ABORT  => Task ready due to an abort.
+ *
+ * Returns      : The highest priority of the ready task that was waiting for an event.
+ *
+ *
+ * Notes        :   1) This function for internal use.
+ *                  2) Interrupts must be disabled at this call.
+ */
+OS_PRIO
+OS_Event_TaskMakeReady(OS_EVENT* pevent,void* pmsg,
+                       OS_STATUS TASK_StatEventMask,
+                       OS_STATUS TASK_PendStat)
+{
+    OS_TASK_TCB* pHighTCB;
 
+    pHighTCB = pevent->OSEventsTCBHead;                     /* Highest Priority Task waiting for an event.                      */
+
+    pHighTCB->TASK_Ticks = 0U;                              /* The task is not waiting for event anymore So, let                */
+    OS_UnBlockTask(pHighTCB->TASK_priority);                /* make sure that OS_TimerTick will not try to make it ready.       */
+
+    pmsg = pmsg;                                            /* TODO: Using this argument is not implemented yet for mailboxes.  */
+
+    pHighTCB->TASK_Stat &= ~(TASK_StatEventMask);           /* Clear the event type bit.                                        */
+    pHighTCB->TASK_PendStat = TASK_PendStat;                /* pend status due to a post or abort operation.                    */
+    if((pHighTCB->TASK_Stat & OS_TASK_STAT_SUSPENDED)       /* Make task ready if it's not suspended.                           */
+            == OS_TASK_STAT_READY)
+    {
+        OS_SetReady(pHighTCB->TASK_priority);
+    }
+
+    OS_Event_TaskRemove(pHighTCB,pevent);                   /* Remove TCB from the wait list.                                   */
+
+    return (pHighTCB->TASK_priority);                       /* Return ready task priority                                       */
+}
