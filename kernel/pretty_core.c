@@ -547,14 +547,16 @@ OS_ResumeTask(OS_PRIO prio)
         if((thisTask->TASK_Stat & OS_TASK_STAT_SUSPENDED) != OS_TASK_STAT_READY)    /* Check it's already in suspend state and not in ready state.                */
         {
             thisTask->TASK_Stat &= ~(OS_TASK_STAT_SUSPENDED);                       /* Clear the suspend state.                                                   */
-                                                             /* TODO: Check here if the task is pended on an event object but this is not implemented yet in the kernel. */
-           if(thisTask->TASK_Ticks == 0U)                                           /* If it's not waiting a delay ...                                            */
+           if((thisTask->TASK_Stat & OS_TASK_STATE_PEND_ANY) == OS_TASK_STAT_READY) /* If it's not pending on any events ... */
            {
-               OS_SetReady(prio);
-               OS_CRTICAL_END();
-               if(OS_TRUE == OS_Running)
+               if(thisTask->TASK_Ticks == 0U)                                       /* If it's not waiting a delay ...                                            */
                {
-                   OS_Sched();                                                      /* Call the scheduler, it may be a higher priority task.                         */
+                   OS_SetReady(prio);
+                   OS_CRTICAL_END();
+                   if(OS_TRUE == OS_Running)
+                   {
+                       OS_Sched();                                                  /* Call the scheduler, it may be a higher priority task.                         */
+                   }
                }
            }
         }
