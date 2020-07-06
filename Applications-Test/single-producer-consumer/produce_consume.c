@@ -155,7 +155,7 @@ void producer(void* args) {
     }
 }
 
-void OS_onIdle(void)
+void OS_Hook_onIdle(void)
 {
     BSP_WaitForInterrupt();
 }

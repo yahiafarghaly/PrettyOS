@@ -68,7 +68,7 @@ main_BlueBlinky(void* args) {
     }
 }
 
-void OS_onIdle(void)
+void OS_Hook_onIdle(void)
 {
     App_printStat();
     BSP_ledGreenOff();

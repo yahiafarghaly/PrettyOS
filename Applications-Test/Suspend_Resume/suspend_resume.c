@@ -87,7 +87,7 @@ main_BlueBlinky(void* args) {
     }
 }
 
-void OS_onIdle(void)
+void OS_Hook_onIdle(void)
 {
     if(BBlink_count == 10)
     {

@@ -54,11 +54,24 @@ void
 main_GreenBlinky(void* args) {
     green_count = 0;
     uint32_t volatile i;
+    OS_tRet ret;
     while (1) {
         if(green_count == 5U)
         {
             printf("\nPend on sem\n");
-            OS_SemPend(sem, 0);
+            ret = OS_SemPend(sem, 500*3);
+            switch(ret)
+            {
+            case OS_RET_OK:
+                printf("\nResume Green Blinky\n");
+                break;
+            case OS_ERR_EVENT_TIMEOUT:
+                printf("\nResume Green Blinky, Timeout\n");
+                break;
+            default:
+                printf("\nResume Green Blinky, Undefined return\n");
+                break;
+            }
         }
 
         ++green_count;
@@ -106,7 +119,7 @@ main_RedBlinky(void* args) {
     }
 }
 
-void OS_onIdle(void)
+void OS_Hook_onIdle(void)
 {
     BSP_ledGreenOff();
     BSP_ledBlueOff();

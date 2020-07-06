@@ -38,12 +38,11 @@ extern CPU_t08U     OS_LockSchedNesting;
 extern void OS_EVENT_allocate (OS_EVENT** pevent);
 extern void OS_EVENT_free (OS_EVENT* pevent);
 extern void OS_Event_TaskPend (OS_EVENT* pevent);
-OS_PRIO OS_Event_TaskMakeReady(OS_EVENT* pevent,void* pmsg, OS_STATUS TASK_StatEventMask, OS_STATUS TASK_PendStat);
 extern void OS_Event_TaskRemove (OS_TASK_TCB* ptcb, OS_EVENT *pevent);
 extern void OS_Sched (void);
 extern void OS_BlockTime (OS_PRIO prio);
 extern void OS_UnBlockTime (OS_PRIO prio);
-
+extern OS_PRIO OS_Event_TaskMakeReady(OS_EVENT* pevent,void* pmsg, OS_STATUS TASK_StatEventMask, OS_STATUS TASK_PendStat);
 
 /*
 *******************************************************************************
@@ -70,13 +69,13 @@ OS_EVENT* OS_SemCreate (OS_SEM_COUNT cnt)
 {
     OS_EVENT* pevent = (OS_EVENT*)0U;
 
-    if(OS_IntNestingLvl > 0U)                       /* Create only from task level.                      */
+    if(OS_IntNestingLvl > 0U)                           /* Create only from task level.                      */
     {
         return ((OS_EVENT *)0U);
     }
 
     OS_CRTICAL_BEGIN();
-    OS_EVENT_allocate(&pevent);                      /* Allocate an event object.                         */
+    OS_EVENT_allocate(&pevent);                         /* Allocate an event object.                         */
     OS_CRTICAL_END();
 
     if(pevent == ((OS_EVENT*)0U))
@@ -97,15 +96,15 @@ OS_EVENT* OS_SemCreate (OS_SEM_COUNT cnt)
  * --------------------
  * Waits for a semaphore.
  *
- * Arguments    : pevent      is a pointer to the OS_EVENT object associated with the semaphore.
+ * Arguments    :   pevent      is a pointer to the OS_EVENT object associated with the semaphore.
  *
- *                 timeout    is an optional timeout period (in clock ticks).  If non-zero, your task will
- *                            wait for the resource up to the amount of time specified by this argument.
- *                            If you specify 0, however, your task will wait forever at the specified
- *                            semaphore or, until the resource becomes available (or the event occurs).
+ *                  timeout     is an optional timeout period (in clock ticks).  If non-zero, your task will
+ *                              wait for the resource up to the amount of time specified by this argument.
+ *                              If you specify 0, however, your task will wait forever at the specified
+ *                              semaphore or, until the resource becomes available (or the event occurs).
  *
- * Returns      : An 'OS_EVENT' object pointer of type semaphore (OS_EVENT_TYPE_SEM) to be used with
- *                 other semaphore functions.
+ * Returns      :   An 'OS_EVENT' object pointer of type semaphore (OS_EVENT_TYPE_SEM) to be used with
+ *                  other semaphore functions.
  *
  * Notes        :   1) This function must used only from Task code level and not an ISR.
  */
@@ -180,6 +179,17 @@ OS_tRet OS_SemPend (OS_EVENT* pevent, OS_TICK timeout)
     return (ret);
 }
 
+/*
+ * Function:  OS_SemPost
+ * --------------------
+ * Signal a semaphore.
+ *
+ * Arguments    :   pevent      is a pointer to the OS_EVENT object associated with the semaphore.
+ *
+ * Returns      :   OS_ERR_EVENT_PEVENT_NULL, OS_ERR_EVENT_TYPE, OS_RET_OK
+ *
+ * Notes        :   1) This function can be called from a task code or an ISR.
+ */
 OS_tRet OS_SemPost (OS_EVENT* pevent)
 {
     if (pevent == (OS_EVENT*)0U) {                          /* Validate 'pevent'                                         */

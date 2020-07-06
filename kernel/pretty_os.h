@@ -42,29 +42,27 @@ extern "C" {
 *                               Return Codes                                  *
 *******************************************************************************
 */
-#define OS_RET_OK                                                         (0U)
-#define OS_RET_ERROR                                                      (1U)
-#define OS_RET_TASK_SUSPENDED                                             (2U)
+#define OS_RET_OK                              (00U) /* Successful Operation.                           */
+#define OS_RET_TASK_SUSPENDED                  (01U) /* Task is already suspended.                      */
 
-#define OS_ERR_PARAM                                                      (10U)
+#define OS_ERR_PARAM                           (10U) /* Invalid Supplied Parameter.                     */
 
-#define OS_ERR_PRIO_EXIST                                                 (11U)
-#define OS_ERR_PRIO                                                       (12U)
-#define OS_ERR_PRIO_INVALID                                               (13U)
+#define OS_ERR_PRIO_EXIST                      (11U) /* The priority is already assigned to a task.     */
+#define OS_ERR_PRIO_INVALID                    (13U) /* The priority is not valid number to OS.         */
 
-#define OS_ERR_TASK_CREATE_ISR                                            (14U)
-#define OS_ERR_TASK_SUSPEND_IDLE                                          (15U)
-#define OS_ERR_TASK_SUSPEND_PRIO                                          (16U)
-#define OS_ERR_TASK_CREATE_EXIST                                          (17U)
-#define OS_ERR_TASK_RESUME_PRIO                                           (18U)
-#define OS_ERR_TASK_NOT_EXIST                                             (19U)
+#define OS_ERR_TASK_CREATE_ISR                 (14U) /* Cannot create a task inside an ISR.             */
+#define OS_ERR_TASK_SUSPEND_IDLE               (15U) /* Cannot suspend an Idle task.                    */
+#define OS_ERR_TASK_SUSPEND_PRIO               (16U) /* Invalid priority task to suspend.               */
+#define OS_ERR_TASK_CREATE_EXIST               (17U) /* Cannot re-create an exist task.                 */
+#define OS_ERR_TASK_RESUME_PRIO                (18U) /* Invalid priority task to resume.                */
+#define OS_ERR_TASK_NOT_EXIST                  (19U) /* The task is not valid/exist.                    */
 
-#define OS_ERR_EVENT_PEVENT_NULL                                          (26U)
-#define OS_ERR_EVENT_TYPE                                                 (27U)
-#define OS_ERR_EVENT_PEND_ISR                                             (28U)
-#define OS_ERR_EVENT_PEND_LOCKED                                          (29U)
-#define OS_ERR_EVENT_PEND_ABORT                                           (30U)
-#define OS_ERR_EVENT_TIMEOUT                                              (31U)
+#define OS_ERR_EVENT_PEVENT_NULL               (26U) /* OS_EVENT NULL pointer.                          */
+#define OS_ERR_EVENT_TYPE                      (27U) /* Invalid event type.                             */
+#define OS_ERR_EVENT_PEND_ISR                  (28U) /* Cannot pend an event inside an ISR.             */
+#define OS_ERR_EVENT_PEND_LOCKED               (29U) /* Cannot pend an event while scheduler is locked. */
+#define OS_ERR_EVENT_PEND_ABORT                (30U) /* Cannot pend an aborted event.                   */
+#define OS_ERR_EVENT_TIMEOUT                   (31U) /* Event is not occurred within event timeout.     */
 
 /*
 *******************************************************************************
@@ -121,6 +119,7 @@ extern "C" {
 /******************************* OS Task TCB *********************************/
 typedef struct os_task_event OS_EVENT;
 typedef struct os_task_tcb OS_TASK_TCB;
+
 typedef OS_EVENT OS_SEM;
 
 struct os_task_tcb
@@ -153,127 +152,43 @@ struct os_task_event
 
 /*
 *******************************************************************************
-*                           OS Functions Prototypes                           *
+*                             OS Core Functions                               *
 *******************************************************************************
 */
 
 /*
  * Function:  OS_Init
  * --------------------
- * Initialize the pretty-OS services.
+ * Initialize the prettyOS services.
  *
- * Arguments:
- *          pStackBaseIdleTask    is a pointer the bottom of the Idle stack.
- *          priority              is the task stack size.
+ * Arguments    :  pStackBaseIdleTask    is a pointer to the bottom of the Idle task stack.(i.e stack[0] of the task).
+ *                 priority              is the task stack size.
  *
- * Returns: OS_RET_OK               if successful operation is done.
- *          OS_ERR_PARAM            Invalid supplied parameter.
+ * Returns      :  OS_RET_OK, OS_ERR_PARAM
  */
-extern OS_tRet OS_Init(CPU_tWORD* pStackBaseIdleTask,
-                       CPU_tWORD  stackSizeIdleTask);
-
-/*
- * Function:  OS_CreateTask
- * --------------------
- * Normal Task Creation.
- *
- * Arguments:
- *          TASK_Handler            is a function pointer to the task code.
- *          params                  is a pointer to the user supplied data which is passed to the task.
- *          pStackBase              is a pointer to the bottom of the task stack.
- *          stackSize               is the task stack size.
- *          priority                is the task priority. ( A unique priority must be assigned to each task )
- *                                      - A greater number means a higher priority
- *                                      - 0 => is reserved for the OS' Idle Task.
- *                                      - OS_LOWEST_PRIO_LEVEL(0) < Allowed value <= OS_HIGHEST_PRIO_LEVEL
- *
- *
- * Returns: OS_RET_OK                       if successful operation is done.
- *          OS_ERR_PARAM                    Invalid supplied parameter.
- *          OS_RET_ERROR_TASK_CREATE_ISR    If a task is created inside an ISR.
- */
-extern OS_tRet OS_CreateTask(void (*TASK_Handler)(void* params),
-                             void *params,
-                             CPU_tWORD* pStackBase,
-                             CPU_tWORD  stackSize,
-                             OS_PRIO    priority);
-
-/*
- * Function:  OS_ChangeTaskPriority
- * --------------------
- * Change the priority of a task dynamically.
- *
- * Arguments    : oldPrio     is the old priority
- *
- *                newPrio     is the new priority
- *
- * Returns      : OS_RET_OK                 If successful operation is done.
- *                OS_ERR_PRIO_INVALID       The priority number is not in the accepted range.
- *                OS_ERR_PRIO_EXIST         The new priority is already exist.
- *                OS_ERR_TASK_NOT_EXIST
- */
-extern OS_tRet OS_ChangeTaskPriority(OS_PRIO oldPrio,
-                                     OS_PRIO newPrio);
-
-/*
- * Function:  OS_SuspendTask
- * --------------------
- * Suspend a task given its priority.
- * This function can suspend the calling task itself.
- *
- * Arguments    : prio  is the task priority.
- *
- * Returns      : OS_RET_OK, OS_ERR_TASK_SUSPEND_IDEL, OS_ERR_PRIO_INVALID, OS_ERR_TASK_SUSPEND_PRIO
- */
-OS_tRet
-OS_SuspendTask(OS_PRIO prio);
-
-/*
- * Function:  OS_ResumeTask
- * --------------------
- * Resume a suspended task given its priority.
- *
- * Arguments    : prio  is the task priority.
- *
- * Returns      : OS_RET_OK, OS_ERR_TASK_RESUME_PRIO, OS_ERR_PRIO_INVALID.
- */
-OS_tRet
-OS_ResumeTask(OS_PRIO prio);
-
-/*
- * Function:  OS_TaskStatus
- * --------------------
- * Return Task Status.
- *
- * Arguments    : prio  is the task priority.
- *
- * Returns      : OS_TASK_STAT_*
- */
-OS_STATUS
-OS_TaskStatus(OS_PRIO prio);
+extern OS_tRet OS_Init (CPU_tWORD* pStackBaseIdleTask, CPU_tWORD  stackSizeIdleTask);
 
 /*
  * Function:  OS_Run
  * --------------------
- * Start running and transfer the control to the Pretty OS to run the tasks.
+ * Start running and transfer the control to the PrettyOS to run the tasks.
  *
- * Arguments: None.
+ * Arguments    : None.
  *
- * Returns: None.
+ * Returns      : None.
  */
-extern void OS_Run(void);
+extern void OS_Run (void);
 
 /*
  * Function:  OS_DelayTicks
  * --------------------
  * Block the current task execution for number of system ticks.
  *
- * Arguments    :
- *                ticks : is the number of ticks for the task to be blocked.
+ * Arguments    :   ticks   is the number of ticks for the task to be blocked.
  *
- * Returns      : None.
+ * Returns      :   None.
  *
- * Note(s)      : 1) This function is called only from task level code.
+ * Note(s)      :   1) This function is called only from task level code.
  */
 extern void OS_DelayTicks (OS_TICK ticks);
 
@@ -308,7 +223,7 @@ extern void OS_TimerTick (void);
  *                      at the end of the ISR.
  *                  3) Nested interrupts are allowed up to 255 interrupts.
  */
-extern void OS_IntEnter(void);
+extern void OS_IntEnter (void);
 
 /*
  * Function:  OS_IntExit
@@ -324,7 +239,7 @@ extern void OS_IntEnter(void);
  *                      For every call of OS_IntEnter() at the ISR beginning, you have to call OS_IntExit()
  *                      at the end of the ISR.
  */
-extern void OS_IntExit(void);
+extern void OS_IntExit (void);
 
 /*
  * Function:  OS_SchedLock
@@ -344,7 +259,7 @@ extern void OS_IntExit(void);
  *                     of the current task since this may lead to system lock-up.
  *                  4) Nested lock are up to 255 locks.
  */
-extern void OS_SchedLock(void);
+extern void OS_SchedLock (void);
 
 /*
  * Function:  OS_SchedUnlock
@@ -360,7 +275,7 @@ extern void OS_SchedLock(void);
  *                     because the current task could have made higher priority tasks ready to run
  *                     while scheduling was locked.
  */
-extern void OS_SchedUnlock(void);
+extern void OS_SchedUnlock (void);
 
 /*
 *******************************************************************************
@@ -390,12 +305,12 @@ OS_SemCreate (OS_SEM_COUNT cnt);
  * --------------------
  * Waits for a semaphore.
  *
- * Arguments    : pevent      is a pointer to the OS_EVENT object associated with the semaphore.
+ * Arguments    :   pevent      is a pointer to the OS_EVENT object associated with the semaphore.
  *
- *                 timeout    is an optional timeout period (in clock ticks).  If non-zero, your task will
- *                            wait for the resource up to the amount of time specified by this argument.
- *                            If you specify 0, however, your task will wait forever at the specified
- *                            semaphore or, until the resource becomes available (or the event occurs).
+ *                  timeout     is an optional timeout period (in clock ticks).  If non-zero, your task will
+ *                              wait for the resource up to the amount of time specified by this argument.
+ *                              If you specify 0, however, your task will wait forever at the specified
+ *                              semaphore or, until the resource becomes available (or the event occurs).
  *
  * Returns      : An 'OS_EVENT' object pointer of type semaphore (OS_EVENT_TYPE_SEM) to be used with
  *                 other semaphore functions.
@@ -405,25 +320,118 @@ OS_SemCreate (OS_SEM_COUNT cnt);
 OS_tRet
 OS_SemPend (OS_EVENT* pevent, OS_TICK timeout);
 
+/*
+ * Function:  OS_SemPost
+ * --------------------
+ * Signal a semaphore.
+ *
+ * Arguments    :   pevent      is a pointer to the OS_EVENT object associated with the semaphore.
+ *
+ * Returns      :   OS_ERR_EVENT_PEVENT_NULL, OS_ERR_EVENT_TYPE, OS_RET_OK
+ *
+ * Notes        :   1) This function can be called from a task code or an ISR.
+ */
 OS_tRet
 OS_SemPost (OS_EVENT* pevent);
+
 /*
 *******************************************************************************
-*                           OS Functions Prototypes                           *
-*                 REQUIRED: User Implement these functions.                   *
+*                         PrettyOS Task functions                             *
 *******************************************************************************
 */
 
 /*
- * Function:  OS_onIdle
+ * Function:  OS_CreateTask
+ * --------------------
+ * Normal Task Creation.
+ *
+ *
+ * Arguments    :   TASK_Handler            is a function pointer to the task code.
+ *                  params                  is a pointer to the user supplied data which is passed to the task.
+ *                  pStackBase              is a pointer to the bottom of the task stack.
+ *                  stackSize               is the task stack size.
+ *                  priority                is the task priority. ( A unique priority must be assigned to each task )
+ *                                              - A greater number means a higher priority
+ *                                              - 0 => is reserved for the OS'Idle Task.
+ *                                              - OS_LOWEST_PRIO_LEVEL(0) < Allowed value <= OS_HIGHEST_PRIO_LEVEL
+ *
+ * Returns      :   OS_RET_OK, OS_ERR_PARAM, OS_RET_ERROR_TASK_CREATE_ISR
+ */
+extern OS_tRet OS_CreateTask (void (*TASK_Handler)(void* params),
+                             void *params,
+                             CPU_tWORD* pStackBase,
+                             CPU_tWORD  stackSize,
+                             OS_PRIO    priority);
+
+/*
+ * Function:  OS_ChangeTaskPriority
+ * --------------------
+ * Change the priority of a task dynamically.
+ *
+ * Arguments    :   oldPrio     is the old priority
+ *                  newPrio     is the new priority
+ *
+ * Returns      :   OS_RET_OK, OS_ERR_PRIO_INVALID, OS_ERR_PRIO_EXIST, OS_ERR_TASK_NOT_EXIST
+ */
+extern OS_tRet OS_ChangeTaskPriority (OS_PRIO oldPrio, OS_PRIO newPrio);
+
+/*
+ * Function:  OS_SuspendTask
+ * -------------------------
+ * Suspend a task given its priority.
+ * This function can suspend the calling task itself.
+ *
+ * Arguments    :   prio    is the task priority.
+ *
+ * Returns      :   OS_RET_OK, OS_RET_TASK_SUSPENDED, OS_ERR_TASK_SUSPEND_IDEL, OS_ERR_PRIO_INVALID, OS_ERR_TASK_SUSPEND_PRIO
+ */
+OS_tRet
+OS_SuspendTask (OS_PRIO prio);
+
+/*
+ * Function:  OS_ResumeTask
+ * ------------------------
+ * Resume a suspended task given its priority.
+ *
+ * Arguments    :   prio  is the task priority.
+ *
+ * Returns      :   OS_RET_OK, OS_ERR_TASK_RESUME_PRIO, OS_ERR_PRIO_INVALID.
+ */
+OS_tRet
+OS_ResumeTask (OS_PRIO prio);
+
+/*
+ * Function:  OS_TaskStatus
+ * --------------------
+ * Return Task Status.
+ *
+ * Arguments    :   prio  is the task priority.
+ *
+ * Returns      :   OS_STATUS
+ */
+OS_STATUS
+OS_TaskStatus (OS_PRIO prio);
+
+
+/*
+*******************************************************************************
+*                                                                             *
+*                         PrettyOS Hook Functions                             *
+*                 REQUIRED: User Implement these functions                    *
+*                                                                             *
+*******************************************************************************
+*/
+
+/*
+ * Function:  OS_Hook_onIdle
  * --------------------
  * This function runs in the Idle state of OS.
  *
- * Arguments: None.
+ * Arguments    : None.
  *
- * Returns: None.
+ * Returns      : None.
  */
-extern void OS_onIdle(void);
+extern void OS_Hook_onIdle(void);
 
 /*
 *******************************************************************************
@@ -436,6 +444,22 @@ extern void OS_onIdle(void);
 #else
     #if     OS_MAX_PRIO_ENTRIES < 1U
     #error  "pretty_config.h, OS_MAX_PRIO_ENTRIES must be >= 1"
+    #endif
+#endif
+
+#ifndef OS_MAX_EVENTS
+#error  "pretty_config.h, Missing OS_MAX_EVENTS: Max number of configured OS Event objects."
+#else
+    #if     OS_MAX_EVENTS < 1U
+    #error  "pretty_config.h, OS_MAX_EVENTS must be >= 1"
+    #endif
+#endif
+
+#ifndef OS_MAX_NUMBER_TASKS
+#error  "pretty_os.h, Missing OS_MAX_NUMBER_TASKS: Max number of supported tasks."
+#else
+    #if     OS_MAX_NUMBER_TASKS < 1U
+    #error  "pretty_os.h, OS_MAX_NUMBER_TASKS must be >= 8"
     #endif
 #endif
 
