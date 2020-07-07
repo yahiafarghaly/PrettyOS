@@ -1,8 +1,11 @@
-# PrettyOS
----------
-A Preemptive dynamic priority based real hard time kernel for embedded devices.
+<p align="center">
+  <img src="logo.png">
+</p>
+<p align="center">
+  <b>A Preemptive dynamic priority based hard real time kernel for embedded devices</b>.
+</p>
 
-### List of supported Features
+#### ☑ List of supported Features
 
 | Features      | Status        |
 | ------------- |:-------------:|
@@ -20,7 +23,7 @@ A Preemptive dynamic priority based real hard time kernel for embedded devices.
 | User definable hook functions | No |
 | Message mailboxes | No |
 
-### List of PrettyOS Public APIs
+#### 📜 List of PrettyOS Public APIs
 | Core          | Task managment		| Semaphore 	| Time			| Hook Functions |
 | ------------- |:---------------------:|:-------------:|:-------------:|:--------------:|
 |OS_Init		|OS_TaskCreate			|OS_SemCreate	|OS_DelayTicks	|OS_Hook_onIdle  |
@@ -30,7 +33,11 @@ A Preemptive dynamic priority based real hard time kernel for embedded devices.
 |OS_SchedLock	|OS_TaskResume			|				|				| 				 |
 |OS_SchedUnlock	|OS_TaskStatus			|				|				|				 |
 
-### Porting availability
+#### 💻 Porting availability
 | System      | BSP        | Hardware layer|
 | ------------- |:-------------:|:-------------:|
 | TI stellaris LM4F120 | Done | Done |
+
+#### 📝 License
+Copyright © 2020-present, Yahia Farghaly Ashour
+This is project is [MIT](https://github.com/yahiafarghaly/PrettyOS/blob/master/LICENSE) License.
