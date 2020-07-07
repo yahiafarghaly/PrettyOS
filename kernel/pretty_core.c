@@ -154,7 +154,7 @@ OS_Init (CPU_tWORD* pStackBaseIdleTask, CPU_tWORD  stackSizeIdleTask)
 
     OS_Event_FreeListInit();
 
-    ret = OS_CreateTask(OS_IdleTask,
+    ret = OS_TaskCreate(OS_IdleTask,
                         OS_NULL,
                         pStackBaseIdleTask,
                         stackSizeIdleTask,
@@ -678,7 +678,7 @@ OS_DelayTicks (OS_TICK ticks)
 */
 
 /*
- * Function:  OS_CreateTask
+ * Function:  OS_TaskCreate
  * --------------------
  * Normal Task Creation.
  *
@@ -695,7 +695,7 @@ OS_DelayTicks (OS_TICK ticks)
  * Returns      :   OS_RET_OK, OS_ERR_PARAM, OS_RET_ERROR_TASK_CREATE_ISR
  */
 OS_tRet
-OS_CreateTask (void (*TASK_Handler)(void* params),
+OS_TaskCreate (void (*TASK_Handler)(void* params),
                              void *params,
                              CPU_tWORD* pStackBase,
                              CPU_tWORD  stackSize,
@@ -736,7 +736,7 @@ OS_CreateTask (void (*TASK_Handler)(void* params),
 }
 
 /*
- * Function:  OS_ChangeTaskPriority
+ * Function:  OS_TaskChangePriority
  * --------------------
  * Change the priority of a task dynamically.
  *
@@ -746,7 +746,7 @@ OS_CreateTask (void (*TASK_Handler)(void* params),
  * Returns      :   OS_RET_OK, OS_ERR_PRIO_INVALID, OS_ERR_PRIO_EXIST, OS_ERR_TASK_NOT_EXIST
  */
 OS_tRet
-OS_ChangeTaskPriority (OS_PRIO oldPrio, OS_PRIO newPrio)
+OS_TaskChangePriority (OS_PRIO oldPrio, OS_PRIO newPrio)
 {
     if(oldPrio == newPrio)                                                       /* Don't waste more cycles.                     */
     {
@@ -823,7 +823,7 @@ OS_ChangeTaskPriority (OS_PRIO oldPrio, OS_PRIO newPrio)
 }
 
 /*
- * Function:  OS_SuspendTask
+ * Function:  OS_TaskSuspend
  * -------------------------
  * Suspend a task given its priority.
  * This function can suspend the calling task itself.
@@ -833,7 +833,7 @@ OS_ChangeTaskPriority (OS_PRIO oldPrio, OS_PRIO newPrio)
  * Returns      :   OS_RET_OK, OS_RET_TASK_SUSPENDED, OS_ERR_TASK_SUSPEND_IDEL, OS_ERR_PRIO_INVALID, OS_ERR_TASK_SUSPEND_PRIO
  */
 OS_tRet
-OS_SuspendTask (OS_PRIO prio)
+OS_TaskSuspend (OS_PRIO prio)
 {
     CPU_tWORD       selfTask;
     OS_TASK_TCB*    thisTask;
@@ -888,7 +888,7 @@ OS_SuspendTask (OS_PRIO prio)
 }
 
 /*
- * Function:  OS_ResumeTask
+ * Function:  OS_TaskResume
  * ------------------------
  * Resume a suspended task given its priority.
  *
@@ -897,7 +897,7 @@ OS_SuspendTask (OS_PRIO prio)
  * Returns      :   OS_RET_OK, OS_ERR_TASK_RESUME_PRIO, OS_ERR_PRIO_INVALID.
  */
 OS_tRet
-OS_ResumeTask (OS_PRIO prio)
+OS_TaskResume (OS_PRIO prio)
 {
     OS_TASK_TCB*    thisTask;
 

@@ -341,7 +341,7 @@ OS_SemPost (OS_EVENT* pevent);
 */
 
 /*
- * Function:  OS_CreateTask
+ * Function:  OS_TaskCreate
  * --------------------
  * Normal Task Creation.
  *
@@ -357,14 +357,14 @@ OS_SemPost (OS_EVENT* pevent);
  *
  * Returns      :   OS_RET_OK, OS_ERR_PARAM, OS_RET_ERROR_TASK_CREATE_ISR
  */
-extern OS_tRet OS_CreateTask (void (*TASK_Handler)(void* params),
+extern OS_tRet OS_TaskCreate (void (*TASK_Handler)(void* params),
                              void *params,
                              CPU_tWORD* pStackBase,
                              CPU_tWORD  stackSize,
                              OS_PRIO    priority);
 
 /*
- * Function:  OS_ChangeTaskPriority
+ * Function:  OS_TaskChangePriority
  * --------------------
  * Change the priority of a task dynamically.
  *
@@ -373,10 +373,10 @@ extern OS_tRet OS_CreateTask (void (*TASK_Handler)(void* params),
  *
  * Returns      :   OS_RET_OK, OS_ERR_PRIO_INVALID, OS_ERR_PRIO_EXIST, OS_ERR_TASK_NOT_EXIST
  */
-extern OS_tRet OS_ChangeTaskPriority (OS_PRIO oldPrio, OS_PRIO newPrio);
+extern OS_tRet OS_TaskChangePriority (OS_PRIO oldPrio, OS_PRIO newPrio);
 
 /*
- * Function:  OS_SuspendTask
+ * Function:  OS_TaskSuspend
  * -------------------------
  * Suspend a task given its priority.
  * This function can suspend the calling task itself.
@@ -386,10 +386,10 @@ extern OS_tRet OS_ChangeTaskPriority (OS_PRIO oldPrio, OS_PRIO newPrio);
  * Returns      :   OS_RET_OK, OS_RET_TASK_SUSPENDED, OS_ERR_TASK_SUSPEND_IDEL, OS_ERR_PRIO_INVALID, OS_ERR_TASK_SUSPEND_PRIO
  */
 OS_tRet
-OS_SuspendTask (OS_PRIO prio);
+OS_TaskSuspend (OS_PRIO prio);
 
 /*
- * Function:  OS_ResumeTask
+ * Function:  OS_TaskResume
  * ------------------------
  * Resume a suspended task given its priority.
  *
@@ -398,7 +398,7 @@ OS_SuspendTask (OS_PRIO prio);
  * Returns      :   OS_RET_OK, OS_ERR_TASK_RESUME_PRIO, OS_ERR_PRIO_INVALID.
  */
 OS_tRet
-OS_ResumeTask (OS_PRIO prio);
+OS_TaskResume (OS_PRIO prio);
 
 /*
  * Function:  OS_TaskStatus

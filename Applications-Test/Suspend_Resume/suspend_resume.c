@@ -107,9 +107,9 @@ int main() {
 
     OS_Init(stack_idleTask, sizeof(stack_idleTask));
 
-    OS_CreateTask(&main_GreenBlinky, OS_NULL, stack_GreenBlink, sizeof(stack_GreenBlink), GREEN_TASK_PRIO);
+    OS_TaskCreate(&main_GreenBlinky, OS_NULL, stack_GreenBlink, sizeof(stack_GreenBlink), GREEN_TASK_PRIO);
 
-    OS_CreateTask(&main_BlueBlinky, OS_NULL, stack_BlueBlink, sizeof(stack_BlueBlink), BLUE_TASK_PRIO);
+    OS_TaskCreate(&main_BlueBlinky, OS_NULL, stack_BlueBlink, sizeof(stack_BlueBlink), BLUE_TASK_PRIO);
 
 
     App_minicom_SendClearScreen();

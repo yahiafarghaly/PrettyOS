@@ -72,24 +72,24 @@ int main() {
 
     OS_Init(task_stacks[0], sizeof(task_stacks[0]));
 
-    OS_CreateTask(&consumer,
+    OS_TaskCreate(&consumer,
                         OS_NULL,
                         task_stacks[1],
                         sizeof(task_stacks[1]),
                         CONSUMER_TASK_PRIO);
 
-    OS_CreateTask(&producer,
+    OS_TaskCreate(&producer,
                         OS_NULL,
                         task_stacks[2],
                         sizeof(task_stacks[2]),
                         PRODUCER_TASK_PRIO);
 
-    OS_CreateTask(&dummy1,
+    OS_TaskCreate(&dummy1,
                         OS_NULL,
                         task_stacks[3],
                         sizeof(task_stacks[3]),
                         DUMMY_TASK_1_PRIO);
-    OS_CreateTask(&dummy2,
+    OS_TaskCreate(&dummy2,
                         OS_NULL,
                         task_stacks[4],
                         sizeof(task_stacks[4]),

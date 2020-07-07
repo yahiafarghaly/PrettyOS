@@ -150,7 +150,7 @@ int main() {
         loopFail();
     }
 
-    ret = OS_CreateTask(&main_GreenBlinky,
+    ret = OS_TaskCreate(&main_GreenBlinky,
                         OS_NULL,
                         stack_GreenBlink,
                         sizeof(stack_GreenBlink),
@@ -164,7 +164,7 @@ int main() {
         loopFail();
     }
 
-    ret = OS_CreateTask(&main_RedBlinky,
+    ret = OS_TaskCreate(&main_RedBlinky,
                         OS_NULL,
                         stack_REDBlink,
                         sizeof(stack_REDBlink),
