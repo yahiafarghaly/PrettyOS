@@ -22,7 +22,19 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ******************************************************************************/
 
+/*
+*******************************************************************************
+*                               Includes Files                                *
+*******************************************************************************
+*/
 #include "pretty_arch.h"
+
+/*
+*******************************************************************************
+*                               Global/External Data                          *
+*******************************************************************************
+*/
+extern void OS_TaskReturn (void);
 
 /*
  * Function:  OS_CPU_TaskInit
@@ -57,13 +69,13 @@ OS_CPU_TaskInit(void (*TASK_Handler)(void* params),
     sp = (CPU_tWORD*)(((CPU_tWORD)pStackBase + stackSize) & 0xFFFFFFF8U);
     /* Stacking the registers as auto saved at exception entrance. */
     *(--sp) = (1U << 24);  /* xPSR ( Thumb State ) */
-    *(--sp) = (CPU_tWORD)TASK_Handler;   /* PC (Task Entry Point) */
-    *(--sp) = 0x0000000EU;                  /* LR  */
+    *(--sp) = (CPU_tWORD)TASK_Handler;      /* PC (Task Entry Point) */
+    *(--sp) = (CPU_tWORD)OS_TaskReturn;     /* LR (Task End Point)   */
     *(--sp) = 0x0000000CU;                  /* R12 */
     *(--sp) = 0x00000003U;                  /* R3  */
     *(--sp) = 0x00000002U;                  /* R2  */
     *(--sp) = 0x00000001U;                  /* R1  */
-    *(--sp) = (CPU_tWORD)params;         /* R0: Argument  */
+    *(--sp) = (CPU_tWORD)params;            /* R0: Argument  */
     /* Additionally, fake registers R4-R11 */
     *(--sp) = 0x0000000BU;                  /* R11 */
     *(--sp) = 0x0000000AU;                  /* R10 */

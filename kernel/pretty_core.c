@@ -736,6 +736,71 @@ OS_TaskCreate (void (*TASK_Handler)(void* params),
 }
 
 /*
+ * Function:  OS_TaskDelete
+ * -------------------------
+ * Delete a task given its priority. It can delete the calling task itself.
+ * The deleted task is moved to a dormant state and can be re-activated again by creating the deleted task.
+ *
+ * Arguments    :   prio    is the task priority.
+ *
+ * Returns      :   OS_RET_OK, OS_ERR_TASK_DELETE_ISR, OS_ERR_TASK_DELETE_IDLE, OS_ERR_PRIO_INVALID, OS_ERR_TASK_NOT_EXIST.
+ */
+OS_tRet
+OS_TaskDelete (OS_PRIO prio)
+{
+    OS_TASK_TCB* ptcb;
+
+    if(OS_IntNestingLvl > 0U)                                                      /* Don't delete from an ISR.                 */
+    {
+        return (OS_ERR_TASK_DELETE_ISR);
+    }
+    if(prio == OS_IDLE_TASK_PRIO_LEVEL)                                            /* Don't delete the Idle task.               */
+    {
+        return (OS_ERR_TASK_DELETE_IDLE);
+    }
+    if(!OS_IS_VALID_PRIO(prio))                                                    /* Valid priority ?                          */
+    {
+        return (OS_ERR_PRIO_INVALID);
+    }
+
+    OS_CRTICAL_BEGIN();
+
+    ptcb = &OS_TblTask[prio];
+
+    if(ptcb->TASK_Stat == OS_TASK_STAT_DELETED)                                    /* Task must exist.                          */
+    {
+        OS_CRTICAL_END();
+        return (OS_ERR_TASK_NOT_EXIST);
+    }
+
+    OS_RemoveReady(prio);                                                         /* Remove the task from ready state.          */
+
+    if(ptcb->OSEventPtr != ((OS_EVENT*)0U))                                       /* If it is waiting for any event...          */
+    {
+        OS_Event_TaskRemove(ptcb, ptcb->OSEventPtr);                              /* ... unlink it.                             */
+    }
+
+    if(ptcb->TASK_Stat & OS_TASK_STAT_DELAY)                                      /* If it's waiting due to a delay             */
+    {
+        OS_UnBlockTime(prio);                                                     /* Remove from the time blocked state.        */
+    }
+
+    ptcb->TASK_Ticks    = 0U;                                                     /* Remove any remaining ticks.                */
+    ptcb->TASK_PendStat = OS_STAT_PEND_OK;                                        /* Remove any pend state.                     */
+    ptcb->TASK_Stat     = OS_TASK_STAT_DELETED;                                   /* Make the task be Dormant.                  */
+
+    /* At this point, the task is prevented from resuming or made ready from another higher task or an ISR.                     */
+    if(OS_TRUE == OS_Running)
+    {
+        OS_Sched();                                                               /* Schedule a new higher priority task.       */
+    }
+
+    OS_CRTICAL_END();
+
+    return (OS_RET_OK);
+}
+
+/*
  * Function:  OS_TaskChangePriority
  * --------------------
  * Change the priority of a task dynamically.
@@ -962,4 +1027,26 @@ OS_STATUS inline
 OS_TaskStatus (OS_PRIO prio)
 {
     return (OS_TblTask[prio].TASK_Stat);
+}
+
+/*
+ * Function:  OS_TaskReturn
+ * --------------------
+ * This function should be called if a task is accidentally returns without deleting itself.
+ * The address of the function should be set at the task stack register of the return address.
+ *
+ * Arguments    :   None.
+ *
+ * Returns      :   None.
+ *
+ * Note(s)      :   1) This function is for internal use and the application should never called it.
+ */
+void
+OS_TaskReturn (void)
+{
+    OS_TaskDelete(OS_currentTask->TASK_priority);       /* Delete a task.            */
+    for(;;)                                             /* If deletion fails.        */
+    {
+        OS_DelayTicks(OS_TICKS_PER_SEC);
+    }
 }

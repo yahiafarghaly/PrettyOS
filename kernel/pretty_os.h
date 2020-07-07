@@ -56,6 +56,8 @@ extern "C" {
 #define OS_ERR_TASK_CREATE_EXIST               (17U) /* Cannot re-create an exist task.                 */
 #define OS_ERR_TASK_RESUME_PRIO                (18U) /* Invalid priority task to resume.                */
 #define OS_ERR_TASK_NOT_EXIST                  (19U) /* The task is not valid/exist.                    */
+#define OS_ERR_TASK_DELETE_ISR                 (20U) /* Cannot delete a task from an ISR.               */
+#define OS_ERR_TASK_DELETE_IDLE                (21U) /* Cannot delete the Idle task.                    */
 
 #define OS_ERR_EVENT_PEVENT_NULL               (26U) /* OS_EVENT NULL pointer.                          */
 #define OS_ERR_EVENT_TYPE                      (27U) /* Invalid event type.                             */
@@ -297,8 +299,7 @@ extern void OS_SchedUnlock (void);
  *
  * Notes        :   1) This function must used only from Task code level and not an ISR.
  */
-OS_EVENT*
-OS_SemCreate (OS_SEM_COUNT cnt);
+OS_EVENT* OS_SemCreate (OS_SEM_COUNT cnt);
 
 /*
  * Function:  OS_SemPend
@@ -317,8 +318,7 @@ OS_SemCreate (OS_SEM_COUNT cnt);
  *
  * Notes        :   1) This function must used only from Task code level and not an ISR.
  */
-OS_tRet
-OS_SemPend (OS_EVENT* pevent, OS_TICK timeout);
+OS_tRet OS_SemPend (OS_EVENT* pevent, OS_TICK timeout);
 
 /*
  * Function:  OS_SemPost
@@ -331,8 +331,7 @@ OS_SemPend (OS_EVENT* pevent, OS_TICK timeout);
  *
  * Notes        :   1) This function can be called from a task code or an ISR.
  */
-OS_tRet
-OS_SemPost (OS_EVENT* pevent);
+OS_tRet OS_SemPost (OS_EVENT* pevent);
 
 /*
 *******************************************************************************
@@ -357,11 +356,22 @@ OS_SemPost (OS_EVENT* pevent);
  *
  * Returns      :   OS_RET_OK, OS_ERR_PARAM, OS_RET_ERROR_TASK_CREATE_ISR
  */
-extern OS_tRet OS_TaskCreate (void (*TASK_Handler)(void* params),
+OS_tRet OS_TaskCreate (void (*TASK_Handler)(void* params),
                              void *params,
                              CPU_tWORD* pStackBase,
                              CPU_tWORD  stackSize,
                              OS_PRIO    priority);
+/*
+ * Function:  OS_TaskDelete
+ * -------------------------
+ * Delete a task given its priority. It can delete the calling task itself.
+ * The deleted task is moved to a dormant state and can be re-activated again by creating the deleted task.
+ *
+ * Arguments    :   prio    is the task priority.
+ *
+ * Returns      :   OS_RET_OK, OS_ERR_TASK_DELETE_ISR, OS_ERR_TASK_DELETE_IDLE, OS_ERR_PRIO_INVALID, OS_ERR_TASK_NOT_EXIST.
+ */
+OS_tRet OS_TaskDelete (OS_PRIO prio);
 
 /*
  * Function:  OS_TaskChangePriority
@@ -373,7 +383,7 @@ extern OS_tRet OS_TaskCreate (void (*TASK_Handler)(void* params),
  *
  * Returns      :   OS_RET_OK, OS_ERR_PRIO_INVALID, OS_ERR_PRIO_EXIST, OS_ERR_TASK_NOT_EXIST
  */
-extern OS_tRet OS_TaskChangePriority (OS_PRIO oldPrio, OS_PRIO newPrio);
+OS_tRet OS_TaskChangePriority (OS_PRIO oldPrio, OS_PRIO newPrio);
 
 /*
  * Function:  OS_TaskSuspend
@@ -385,8 +395,7 @@ extern OS_tRet OS_TaskChangePriority (OS_PRIO oldPrio, OS_PRIO newPrio);
  *
  * Returns      :   OS_RET_OK, OS_RET_TASK_SUSPENDED, OS_ERR_TASK_SUSPEND_IDEL, OS_ERR_PRIO_INVALID, OS_ERR_TASK_SUSPEND_PRIO
  */
-OS_tRet
-OS_TaskSuspend (OS_PRIO prio);
+OS_tRet OS_TaskSuspend (OS_PRIO prio);
 
 /*
  * Function:  OS_TaskResume
@@ -397,8 +406,7 @@ OS_TaskSuspend (OS_PRIO prio);
  *
  * Returns      :   OS_RET_OK, OS_ERR_TASK_RESUME_PRIO, OS_ERR_PRIO_INVALID.
  */
-OS_tRet
-OS_TaskResume (OS_PRIO prio);
+OS_tRet OS_TaskResume (OS_PRIO prio);
 
 /*
  * Function:  OS_TaskStatus
@@ -409,8 +417,7 @@ OS_TaskResume (OS_PRIO prio);
  *
  * Returns      :   OS_STATUS
  */
-OS_STATUS
-OS_TaskStatus (OS_PRIO prio);
+OS_STATUS OS_TaskStatus (OS_PRIO prio);
 
 
 /*
@@ -453,6 +460,10 @@ extern void OS_Hook_onIdle(void);
     #if     OS_MAX_EVENTS < 1U
     #error  "pretty_config.h, OS_MAX_EVENTS must be >= 1"
     #endif
+#endif
+
+#ifndef OS_TICKS_PER_SEC
+#error  "pretty_config.h, Missing OS_TICKS_PER_SEC: Number of ticks per second."
 #endif
 
 #ifndef OS_MAX_NUMBER_TASKS

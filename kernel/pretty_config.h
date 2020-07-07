@@ -31,6 +31,8 @@ SOFTWARE.
 *******************************************************************************
 */
 
+#define OS_TICKS_PER_SEC     (100U)        /* Number of ticks per second.                            */
+
 #define OS_MAX_PRIO_ENTRIES  (3U)          /* Number of priority entries (levels), minimum value = 1 */
 
 #define OS_MAX_EVENTS        (3U)          /* Number of used events                                  */
