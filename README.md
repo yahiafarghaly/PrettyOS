@@ -28,7 +28,7 @@
 | ------------- |:---------------------:|:-------------:|:-------------:|:--------------:|
 |OS_Init		|OS_TaskCreate			|OS_SemCreate	|OS_DelayTicks	|OS_Hook_onIdle  |
 |OS_Run			|OS_TaskDelete			|OS_SemPend		|OS_TimerTick	| 				 |
-|OS_IntEnter    |OS_TaskChangePriority	|OS_SemPost		|				| 				 |
+|OS_IntEnter    |OS_TaskChangePriority	|OS_SemPost		|OS_DelayTime	| 				 |
 |OS_IntExit		|OS_TaskSuspend			|				|				| 				 |
 |OS_SchedLock	|OS_TaskResume			|				|				| 				 |
 |OS_SchedUnlock	|OS_TaskStatus			|				|				|				 |
@@ -39,5 +39,5 @@
 | TI stellaris LM4F120 | Done | Done |
 
 #### 📝 License
-Copyright © 2020-present, Yahia Farghaly Ashour
-This is project is [MIT](https://github.com/yahiafarghaly/PrettyOS/blob/master/LICENSE) License.
+Copyright © 2020 - present, Yahia Farghaly Ashour.<br>
+This project is [MIT](https://github.com/yahiafarghaly/PrettyOS/blob/master/LICENSE) Licensed.

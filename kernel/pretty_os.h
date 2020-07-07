@@ -119,8 +119,9 @@ extern "C" {
 */
 
 /******************************* OS Task TCB *********************************/
-typedef struct os_task_event OS_EVENT;
-typedef struct os_task_tcb OS_TASK_TCB;
+typedef struct os_task_event    OS_EVENT;
+typedef struct os_task_tcb      OS_TASK_TCB;
+typedef struct os_task_time     OS_TIME;
 
 typedef OS_EVENT OS_SEM;
 
@@ -152,6 +153,14 @@ struct os_task_event
     OS_TASK_TCB*    OSEventsTCBHead;     /* Pointer to the List of waited TCBs depending on this event.     */
 };
 
+struct os_task_time
+{
+    CPU_t08U hours;
+    CPU_t08U minutes;
+    CPU_t08U seconds;
+    CPU_t16U milliseconds;
+};
+
 /*
 *******************************************************************************
 *                             OS Core Functions                               *
@@ -180,19 +189,6 @@ extern OS_tRet OS_Init (CPU_tWORD* pStackBaseIdleTask, CPU_tWORD  stackSizeIdleT
  * Returns      : None.
  */
 extern void OS_Run (void);
-
-/*
- * Function:  OS_DelayTicks
- * --------------------
- * Block the current task execution for number of system ticks.
- *
- * Arguments    :   ticks   is the number of ticks for the task to be blocked.
- *
- * Returns      :   None.
- *
- * Note(s)      :   1) This function is called only from task level code.
- */
-extern void OS_DelayTicks (OS_TICK ticks);
 
 /*
  * Function:  OS_TimerTick
@@ -278,6 +274,40 @@ extern void OS_SchedLock (void);
  *                     while scheduling was locked.
  */
 extern void OS_SchedUnlock (void);
+
+/*
+*******************************************************************************
+*                       PrettyOS Time functions                               *
+*******************************************************************************
+*/
+
+/*
+ * Function:  OS_DelayTicks
+ * --------------------
+ * Block the current task execution for number of system ticks.
+ *
+ * Arguments    :   ticks   is the number of ticks for the task to be blocked.
+ *
+ * Returns      :   None.
+ *
+ * Note(s)      :   1) This function is called only from task level code.
+ */
+extern void OS_DelayTicks (OS_TICK ticks);
+
+/*
+ * Function:  OS_DelayTime
+ * --------------------
+ * Block the current task execution for a time specified in the OS_TIME structure.
+ *
+ * Arguments    :   ptime   is a pointer to an OS_TIME structure where time is specified ( Hours, Minutes, seconds and milliseconds.)
+ *
+ * Returns      :   None.
+ *
+ * Note(s)      :   1) This function is called only from task level code.
+ *                  2) A non valid value of any member of the internal structure of the OS_TIME object results in an immediate return.
+ *                  3) This call can be expensive for some MCUs.
+ */
+extern void OS_DelayTime(OS_TIME* ptime);
 
 /*
 *******************************************************************************

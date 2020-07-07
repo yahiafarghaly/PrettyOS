@@ -647,6 +647,13 @@ OS_TimerTick (void)
 void
 OS_DelayTicks (OS_TICK ticks)
 {
+    if (OS_IntNestingLvl > 0U) {                                /* Don't call from an ISR.                      */
+        return;
+    }
+    if (OS_LockSchedNesting > 0U) {                             /* Don't delay while the scheduler is locked.   */
+        return;
+    }
+
     OS_CRTICAL_BEGIN();
 
     if(ticks == 0U)
@@ -667,6 +674,50 @@ OS_DelayTicks (OS_TICK ticks)
     }
 
     OS_CRTICAL_END();
+}
+
+/*
+ * Function:  OS_DelayTime
+ * --------------------
+ * Block the current task execution for a time specified in the OS_TIME structure.
+ *
+ * Arguments    :   ptime   is a pointer to an OS_TIME structure where time is specified ( Hours, Minutes, seconds and milliseconds.)
+ *
+ * Returns      :   None.
+ *
+ * Note(s)      :   1) This function is called only from task level code.
+ *                  2) A non valid value of any member of the internal structure of the OS_TIME object results in an immediate return.
+ *                  3) This call can be expensive for some MCUs.
+ */
+void
+OS_DelayTime(OS_TIME* ptime)
+{
+    OS_TICK ticks;
+
+    if(ptime == (OS_TIME*)0U)
+    {
+        return;
+    }
+
+    if(ptime->minutes > 59U)
+    {
+        return;
+    }
+
+    if(ptime->seconds > 59U)
+    {
+        return;
+    }
+
+    if(ptime->milliseconds > 999U)
+    {
+        return;
+    }
+
+    ticks = (OS_TICKS_PER_SEC * ( (CPU_t32U)(ptime->seconds) + (CPU_t32U)(ptime->minutes)*60U  + (CPU_t32U)(ptime->hours)*3600U ))
+            + ((OS_TICKS_PER_SEC * ( (CPU_t32U)(ptime->milliseconds) + (500U / OS_TICKS_PER_SEC) )) / 1000U);                       /* Rounded to the nearest tick. */
+
+    OS_DelayTicks(ticks);
 }
 
 /*
@@ -855,7 +906,7 @@ OS_TaskChangePriority (OS_PRIO oldPrio, OS_PRIO newPrio)
         }
         else
         {
-            if(OS_TblTask[oldPrio].TASK_Stat == OS_TASK_STAT_DELAY)
+            if(OS_TblTask[oldPrio].TASK_Stat & OS_TASK_STAT_DELAY)
             {
                 OS_UnBlockTime(oldPrio);
                 OS_BlockTime(newPrio);
