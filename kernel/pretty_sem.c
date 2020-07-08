@@ -65,7 +65,8 @@ extern OS_PRIO OS_Event_TaskMakeReady(OS_EVENT* pevent,void* pmsg, OS_STATUS TAS
  *
  * Notes        :   1) This function must used only from Task code level and not an ISR.
  */
-OS_EVENT* OS_SemCreate (OS_SEM_COUNT cnt)
+OS_EVENT*
+OS_SemCreate (OS_SEM_COUNT cnt)
 {
     OS_EVENT* pevent = (OS_EVENT*)0U;
 
@@ -103,12 +104,13 @@ OS_EVENT* OS_SemCreate (OS_SEM_COUNT cnt)
  *                              If you specify 0, however, your task will wait forever at the specified
  *                              semaphore or, until the resource becomes available (or the event occurs).
  *
- * Returns      :   An 'OS_EVENT' object pointer of type semaphore (OS_EVENT_TYPE_SEM) to be used with
- *                  other semaphore functions.
+ * Returns      :   OS_ERR_EVENT_PEVENT_NULL, OS_ERR_EVENT_PEND_ISR, OS_ERR_EVENT_PEND_LOCKED
+ *                  OS_ERR_EVENT_PEND_ABORT, OS_STAT_PEND_TIMEOUT and OS_RET_OK
  *
  * Notes        :   1) This function must used only from Task code level and not an ISR.
  */
-OS_tRet OS_SemPend (OS_EVENT* pevent, OS_TICK timeout)
+OS_tRet
+OS_SemPend (OS_EVENT* pevent, OS_TICK timeout)
 {
     OS_tRet ret;
 
@@ -190,7 +192,8 @@ OS_tRet OS_SemPend (OS_EVENT* pevent, OS_TICK timeout)
  *
  * Notes        :   1) This function can be called from a task code or an ISR.
  */
-OS_tRet OS_SemPost (OS_EVENT* pevent)
+OS_tRet
+OS_SemPost (OS_EVENT* pevent)
 {
     if (pevent == (OS_EVENT*)0U) {                          /* Validate 'pevent'                                         */
          return (OS_ERR_EVENT_PEVENT_NULL);
@@ -211,7 +214,7 @@ OS_tRet OS_SemPost (OS_EVENT* pevent)
          * preempted to the highest priority waiting task which takes the resource (decrement it again).
          * Also, this prevent other tasks (preempted to others than the one who waiting for the event) from
          * owning the resource.
-         * On the other side, the pend() function is not performing any decrement operation. */
+         * On the other side, the pend() function is not performing any decrement operation if it is pended. */
         OS_Sched();                                         /* Call the scheduler, it may be the highest.                */
         return (OS_RET_OK);
     }
@@ -219,6 +222,125 @@ OS_tRet OS_SemPost (OS_EVENT* pevent)
     (pevent->OSEventCount)++;                               /*TODO: Set a way of checking semaphore overflow             */
 
     OS_CRTICAL_END();
+
+    return (OS_RET_OK);
+}
+
+/*
+ * Function:  OS_SemPendNonBlocking
+ * --------------------
+ * Check if the resource is available or not. If it's available, the caller will get a resource.
+ * If not available, the caller is not suspended unlike OS_SemPend().
+ *
+ * Arguments    :   pevent      is a pointer to the OS_EVENT object associated with the semaphore.
+ *
+ * Returns      :   > 0         If the resource is available or the event didn't occur. As a result, the semaphore is decremented to obtain the resource.
+ *                  == 0        If the resource is not available or the event didn't occur.
+ *                              Or `pevent` is not a valid pointer or it's not a semaphore type.
+ *
+ * Note(s)      :   1) This function can be called from a task code or an ISR.
+ *              :   2) It's not recommended to be used within an ISR. An ISR is not supposed to obtain a semaphore.
+ *                     A good practice is to post a semaphore from an ISR.
+ */
+OS_SEM_COUNT
+OS_SemPendNonBlocking(OS_EVENT* pevent)
+{
+    OS_SEM_COUNT count;
+
+    if (pevent == (OS_EVENT*)0U) {                          /* Validate 'pevent'                                            */
+         return (0U);
+    }
+
+    if (pevent->OSEventType != OS_EVENT_TYPE_SEM) {         /* Validate event type                                          */
+        return (0U);
+    }
+
+    OS_CRTICAL_BEGIN();
+
+    count = pevent->OSEventCount;                           /* The available count.                                         */
+    if(count > 0U)
+    {
+        (pevent->OSEventCount)--;                           /* The calling Task/ISR owns a semaphore resource.              */
+    }
+
+    OS_CRTICAL_END();
+
+    return (count);
+}
+
+/*
+ * Function:  OS_SemPendAbort
+ * --------------------
+ * Aborts and makes ready for tasks that wait for a semaphore event.
+ * This function should not be treated as posting semaphore values unlike
+ * It lets waiting tasks to not wait any more for resource availability.
+ *
+ * Arguments    :   pevent              is a pointer to the OS_EVENT object associated with the semaphore.
+ *
+ *                  opt                 Determine the abort operation.
+ *                                      OS_SEM_ABORT_HPT (Default behavior) ==> Abort only higher priority waiting task.
+ *                                      OS_SEM_ABORT_ALL                    ==> Abort all waiting priority tasks.
+ *
+ *                 abortedTasksCount    is pointer to an object to hold the number of aborted waited tasks.
+ *
+ * Returns      :   OS_ERR_EVENT_PEVENT_NULL, OS_ERR_EVENT_TYPE, OS_ERR_EVENT_PEND_ABORT, OS_RET_OK
+ *
+ * Note(s)      :   1) This function can be called from a task code or an ISR.
+ */
+OS_tRet
+OS_SemPendAbort(OS_EVENT* pevent, CPU_t08U opt, OS_TASK_COUNT* abortedTasksCount)
+{
+    OS_TASK_COUNT nAbortedTasks;
+
+    if (pevent == (OS_EVENT*)0U) {                          /* Validate 'pevent'                                         */
+         return (OS_ERR_EVENT_PEVENT_NULL);
+    }
+
+    if (pevent->OSEventType != OS_EVENT_TYPE_SEM) {         /* Validate event type                                       */
+        return (OS_ERR_EVENT_TYPE);
+    }
+
+    OS_CRTICAL_BEGIN();
+
+    if (pevent->OSEventsTCBHead != ((OS_TASK_TCB*)0U)) {    /* See if any task waiting for semaphore.                    */
+        nAbortedTasks = 0U;
+        switch(opt)
+        {
+        case OS_SEM_ABORT_ALL:
+            while(pevent->OSEventsTCBHead != ((OS_TASK_TCB*)0U))
+            {
+                OS_Event_TaskMakeReady(pevent, (void *)0,
+                                    OS_TASK_STATE_PEND_SEM,
+                                    OS_STAT_PEND_ABORT);    /* OS_STAT_PEND_ABORT indicates abort operation.               */
+                ++nAbortedTasks;
+            }
+            break;
+        case OS_OPT_DEFAULT & OS_SEM_ABORT_HPT:
+        default:
+            OS_Event_TaskMakeReady(pevent, (void *)0,
+                                OS_TASK_STATE_PEND_SEM,
+                                OS_STAT_PEND_ABORT);
+            ++nAbortedTasks;
+            break;
+        }
+
+        OS_CRTICAL_END();
+
+        OS_Sched();                                         /* Preempt HPT that no longer wait for an event ?              */
+
+        if(abortedTasksCount != ((OS_TASK_COUNT*)0U))
+        {
+            *abortedTasksCount = nAbortedTasks;
+        }
+        return (OS_ERR_EVENT_PEND_ABORT);                   /* Indicate that we aborted.                                    */
+    }
+
+    OS_CRTICAL_END();
+
+    if(abortedTasksCount != ((OS_TASK_COUNT*)0U))          /* No waiting tasks to abort.                                    */
+    {
+        *abortedTasksCount = 0U;
+    }
 
     return (OS_RET_OK);
 }

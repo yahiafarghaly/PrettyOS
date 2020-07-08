@@ -63,7 +63,7 @@ extern "C" {
 #define OS_ERR_EVENT_TYPE                      (27U) /* Invalid event type.                             */
 #define OS_ERR_EVENT_PEND_ISR                  (28U) /* Cannot pend an event inside an ISR.             */
 #define OS_ERR_EVENT_PEND_LOCKED               (29U) /* Cannot pend an event while scheduler is locked. */
-#define OS_ERR_EVENT_PEND_ABORT                (30U) /* Cannot pend an aborted event.                   */
+#define OS_ERR_EVENT_PEND_ABORT                (30U) /* Waiting for an event is aborted.                */
 #define OS_ERR_EVENT_TIMEOUT                   (31U) /* Event is not occurred within event timeout.     */
 
 /*
@@ -111,6 +111,16 @@ extern "C" {
 */
 #define  OS_EVENT_TYPE_UNUSED           (0U)
 #define  OS_EVENT_TYPE_SEM              (1U)
+
+/*
+*******************************************************************************
+*                               OS options                                    *
+*******************************************************************************
+*/
+#define  OS_OPT_DEFAULT             (0U)                /* Default option of any services of PrettyOS opt        */
+/***************************** Semaphores opt *********************************/
+#define  OS_SEM_ABORT_HPT           (OS_OPT_DEFAULT)    /* Abort only higher priority waiting task.              */
+#define  OS_SEM_ABORT_ALL           (1U)                /* Abort all waiting priority tasks.                     */
 
 /*
 *******************************************************************************
@@ -343,8 +353,8 @@ OS_EVENT* OS_SemCreate (OS_SEM_COUNT cnt);
  *                              If you specify 0, however, your task will wait forever at the specified
  *                              semaphore or, until the resource becomes available (or the event occurs).
  *
- * Returns      : An 'OS_EVENT' object pointer of type semaphore (OS_EVENT_TYPE_SEM) to be used with
- *                 other semaphore functions.
+ * Returns      :   OS_ERR_EVENT_PEVENT_NULL, OS_ERR_EVENT_PEND_ISR, OS_ERR_EVENT_PEND_LOCKED
+ *                  OS_ERR_EVENT_PEND_ABORT, OS_STAT_PEND_TIMEOUT and OS_RET_OK
  *
  * Notes        :   1) This function must used only from Task code level and not an ISR.
  */
@@ -363,6 +373,44 @@ OS_tRet OS_SemPend (OS_EVENT* pevent, OS_TICK timeout);
  */
 OS_tRet OS_SemPost (OS_EVENT* pevent);
 
+/*
+ * Function:  OS_SemPendNonBlocking
+ * --------------------
+ * Check if the resource is available or not. If it's available, the caller will get a resource.
+ * If not available, the caller is not suspended unlike OS_SemPend().
+ *
+ * Arguments    :   pevent      is a pointer to the OS_EVENT object associated with the semaphore.
+ *
+ * Returns      :   > 0         If the resource is available or the event didn't occur. As a result, the semaphore is decremented to obtain the resource.
+ *                  == 0        If the resource is not available or the event didn't occur.
+ *                              Or `pevent` is not a valid pointer or it's not a semaphore type.
+ *
+ * Note(s)      :   1) This function can be called from a task code or an ISR.
+ *              :   2) It's not recommended to be used within an ISR. An ISR is not supposed to obtain a semaphore.
+ *                     A good practice is to post a semaphore from an ISR.
+ */
+OS_SEM_COUNT OS_SemPendNonBlocking(OS_EVENT* pevent);
+
+/*
+ * Function:  OS_SemPendAbort
+ * --------------------
+ * Aborts and makes ready for tasks that wait for a semaphore event.
+ * This function should not be treated as posting semaphore values unlike
+ * It lets waiting tasks to not wait any more for resource availability.
+ *
+ * Arguments    :   pevent              is a pointer to the OS_EVENT object associated with the semaphore.
+ *
+ *                  opt                 Determine the abort operation.
+ *                                      OS_SEM_ABORT_HPT (Default behavior) ==> Abort only higher priority waiting task.
+ *                                      OS_SEM_ABORT_ALL                    ==> Abort all waiting priority tasks.
+ *
+ *                 abortedTasksCount    is pointer to an object to hold the number of aborted waited tasks.
+ *
+ * Returns      :   OS_ERR_EVENT_PEVENT_NULL, OS_ERR_EVENT_TYPE, OS_ERR_EVENT_PEND_ABORT, OS_RET_OK
+ *
+ * Note(s)      :   1) This function can be called from a task code or an ISR.
+ */
+OS_tRet OS_SemPendAbort(OS_EVENT* pevent, CPU_t08U opt, OS_TASK_COUNT* abortedTasksCount);
 /*
 *******************************************************************************
 *                         PrettyOS Task functions                             *

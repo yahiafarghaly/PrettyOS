@@ -65,8 +65,6 @@ OS_Event_FreeListInit(void)
 {
     CPU_t32U i;
 
-//    TCB_NULL = &dummyTCB;
-
     for(i = 0; i < (OS_MAX_EVENTS - 1U);i++)
     {
         OSEventsMemoryPool[i].OSEventPtr      = &OSEventsMemoryPool[i+1];
@@ -86,10 +84,10 @@ OS_Event_FreeListInit(void)
  * --------------------
  * Get an allocated OS_EVENT object.
  *
- * Arguments    :   pevent   is a pointer to the allocated OS_EVENT object.
+ * Arguments    :   pevent   is a pointer to a pointer to the allocated OS_EVENT object.
  *
- * Returns      :  `pevent` as a form of return by reference ( pointer to the allocated object).
- *                  ((OS_EVENT*)0U) in case there is no event blocks available.
+ * Returns      :   => `pevent` as a form of return by reference ( pointer to the allocated object).
+ *                  => ((OS_EVENT*)0U) in case there is no more event blocks available.
  *
  * Notes        :   1) This function for internal use.
  */
@@ -103,7 +101,7 @@ OS_EVENT_allocate(OS_EVENT** pevent)
     }
 
     *pevent = pEventFreeList;
-    pEventFreeList = pEventFreeList->OSEventPtr;
+    pEventFreeList = pEventFreeList->OSEventPtr;    /* Go to the next free event object.    */
 }
 
 /*
@@ -124,7 +122,7 @@ OS_EVENT_free(OS_EVENT* pevent)
     pevent->OSEventType     = OS_EVENT_TYPE_UNUSED;
     pevent->OSEventsTCBHead = ((OS_TASK_TCB*)0U);
     pevent->OSEventCount    = (0U);
-    pevent->OSEventPtr      = pEventFreeList;
+    pevent->OSEventPtr      = pEventFreeList;       /* Return to the event free pool.       */
     pEventFreeList          = pevent;
     pevent                  = ((OS_EVENT*)0U);
 }
@@ -133,6 +131,8 @@ OS_EVENT_free(OS_EVENT* pevent)
  * Function:  OS_Event_TaskInsert
  * --------------------
  * Insert a task to an event's wait list according to its priority.
+ * The function works by placing the TCBs that wait for a certain event (pointed by `pevent`)
+ * in a sorted linked-list in descending order of TCBs' priority.
  *
  * Arguments    : ptcb    is a pointer to TCB object where `pevent` will be stored into
  *                pevent  is a pointer to an allocated OS_EVENT object.
@@ -179,8 +179,6 @@ OS_Event_TaskInsert(OS_TASK_TCB* ptcb, OS_EVENT *pevent)
  * Function:  OS_Event_TaskPend
  * --------------------
  * Insert the current running TCB into a wait list and remove it from the ready list.
- * The function is working by placing the TCBs that wait for a certain event (pointed by `pevent`)
- * in a sorted linked-list in increasing order of TCBs' priority.
  *
  * Arguments    : pevent   is a pointer to an allocated OS_EVENT object.
  *

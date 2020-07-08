@@ -51,7 +51,9 @@ typedef CPU_t08U        OS_PRIO;            /* Max task priority can hold       
 
 typedef CPU_t08U        OS_STATUS;          /* Task status                                 */
 
-typedef CPU_t16U        OS_SEM_COUNT;       /* Semaphore value                             */
+typedef CPU_t16U        OS_SEM_COUNT;       /* Define max number of semaphore count limit. */
+
+typedef CPU_t32U        OS_TASK_COUNT;      /* Define max number of tasks limit.           */
 
 
 #endif /* __PRETTY_CONFIG_H_ */

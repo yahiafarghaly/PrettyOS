@@ -24,19 +24,19 @@
 | Message mailboxes | No |
 
 #### 📜 List of PrettyOS Public APIs
-| Core          | Task managment		| Semaphore 	| Time			| Hook Functions |
-| ------------- |:---------------------:|:-------------:|:-------------:|:--------------:|
-|OS_Init		|OS_TaskCreate			|OS_SemCreate	|OS_DelayTicks	|OS_Hook_onIdle  |
-|OS_Run			|OS_TaskDelete			|OS_SemPend		|OS_TimerTick	| 				 |
-|OS_IntEnter    |OS_TaskChangePriority	|OS_SemPost		|OS_DelayTime	| 				 |
-|OS_IntExit		|OS_TaskSuspend			|				|				| 				 |
-|OS_SchedLock	|OS_TaskResume			|				|				| 				 |
-|OS_SchedUnlock	|OS_TaskStatus			|				|				|				 |
+| Core          | Task managment		| Semaphore 			| Time			| Hook Functions |
+| ------------- |:---------------------:|:---------------------:|:-------------:|:--------------:|
+|OS_Init		|OS_TaskCreate			|OS_SemCreate			|OS_DelayTicks	|OS_Hook_onIdle  |
+|OS_Run			|OS_TaskDelete			|OS_SemPend				|OS_TimerTick	| 				 |
+|OS_IntEnter    |OS_TaskChangePriority	|OS_SemPost				|OS_DelayTime	| 				 |
+|OS_IntExit		|OS_TaskSuspend			|OS_SemPendNonBlocking	|				| 				 |
+|OS_SchedLock	|OS_TaskResume			|OS_SemPendAbort		|				| 				 |
+|OS_SchedUnlock	|OS_TaskStatus			|						|				|				 |
 
 #### 💻 Porting availability
-| System      | BSP        | Hardware layer|
-| ------------- |:-------------:|:-------------:|
-| TI stellaris LM4F120 | Done | Done |
+| System      			| BSP        	| CPU port 		|
+| ----------------------|:-------------:|:-------------:|
+| TI stellaris LM4F120 	| Done 			| Done 			|
 
 #### 📝 License
 Copyright © 2020 - present, Yahia Farghaly Ashour.<br>
