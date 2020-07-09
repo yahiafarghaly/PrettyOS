@@ -33,7 +33,7 @@ SOFTWARE.
 
 #define OS_TICKS_PER_SEC     (100U)        /* Number of ticks per second.                            */
 
-#define OS_MAX_PRIO_ENTRIES  (3U)          /* Number of priority entries (levels), minimum value = 1 */
+#define OS_MAX_NUMBER_TASKS  (128U)        /* Number of used tasks  (Must be multiple of 8).         */
 
 #define OS_MAX_EVENTS        (3U)          /* Number of used events                                  */
 
@@ -42,18 +42,7 @@ SOFTWARE.
 *                             Data Types Sizes                                *
 *******************************************************************************
 */
-
-typedef CPU_tWORD       OS_tRet;            /* Fit to the easiest type of memory for CPU   */
-
-typedef CPU_t32U        OS_TICK;            /* Clock tick counter                          */
-
-typedef CPU_t08U        OS_PRIO;            /* Max task priority can hold                  */
-
-typedef CPU_t08U        OS_STATUS;          /* Task status                                 */
-
 typedef CPU_t16U        OS_SEM_COUNT;       /* Define max number of semaphore count limit. */
-
-typedef CPU_t32U        OS_TASK_COUNT;      /* Define max number of tasks limit.           */
 
 
 #endif /* __PRETTY_CONFIG_H_ */

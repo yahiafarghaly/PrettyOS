@@ -59,12 +59,13 @@ typedef enum {
     OS_ERR_TASK_DELETE_ISR			=(0x11U),     /* Cannot delete a task from an ISR.               */
     OS_ERR_TASK_DELETE_IDLE		    =(0x12U),     /* Cannot delete the Idle task.                    */
 
-    OS_ERR_EVENT_PEVENT_NULL		=(0x13U),     /* OS_EVENT NULL pointer.                          */
+    OS_ERR_EVENT_PEVENT_NULL		=(0x13U),     /* OS_EVENT* is a  NULL pointer.                   */
     OS_ERR_EVENT_TYPE				=(0x14U),     /* Invalid event type.                             */
     OS_ERR_EVENT_PEND_ISR			=(0x15U),     /* Cannot pend an event inside an ISR.             */
     OS_ERR_EVENT_PEND_LOCKED		=(0x16U),     /* Cannot pend an event while scheduler is locked. */
     OS_ERR_EVENT_PEND_ABORT			=(0x17U),     /* Waiting for an event is aborted.                */
-    OS_ERR_EVENT_TIMEOUT			=(0x18U)      /* Event is not occurred within event timeout.     */
+    OS_ERR_EVENT_TIMEOUT			=(0x18U),     /* Event is not occurred within event timeout.     */
+    OS_ERR_EVENT_POOL_EMPTY         =(0x19U)      /* No more space for the an OS_EVENT object.       */
 }OS_ERR;
 
 extern OS_ERR OS_ERRNO;                           /* Holds the last error code returned by the last executed prettyOS function. */
@@ -74,14 +75,17 @@ extern OS_ERR OS_ERRNO;                           /* Holds the last error code r
 *                               OS Macros                                     *
 *******************************************************************************
 */
-#define OS_NULL                         ((void*)0U)
+#define OS_NULL(T)                    ((T*)0U)
 #define OS_TRUE                         (1U)
 #define OS_FAlSE                        (0U)
-#define OS_MAX_NUMBER_TASKS             (CPU_NumberOfBitsPerWord*OS_MAX_PRIO_ENTRIES)
+
 #define OS_HIGHEST_PRIO_LEVEL           (OS_MAX_NUMBER_TASKS - 1U)
 #define OS_LOWEST_PRIO_LEVEL            (0U)
+
+/**************************** OS Reserved Priorities *************************/
+/********* Your Application should not assign any of these priorities ********/
 #define OS_IDLE_TASK_PRIO_LEVEL         (OS_LOWEST_PRIO_LEVEL)
-#define OS_IS_VALID_PRIO(_prio)         ((_prio >= OS_LOWEST_PRIO_LEVEL) && (_prio <= OS_HIGHEST_PRIO_LEVEL))
+#define OS_PRIO_RESERVED_MUTEX          (OS_HIGHEST_PRIO_LEVEL)
 
 /*
 *******************************************************************************
@@ -114,6 +118,9 @@ extern OS_ERR OS_ERRNO;                           /* Holds the last error code r
 */
 #define  OS_EVENT_TYPE_UNUSED           (0U)
 #define  OS_EVENT_TYPE_SEM              (1U)
+#define  OS_EVENT_TYPE_MUTEX            (2U)
+#define  OS_EVENT_TYPE_RESERVED         (3U)    /* Reserved to indicate a mutex event type + PCP is enabled. (0x02 | 0x01) */
+#define  OS_EVENT_TYPE_UNIMPLEMENTED    (4U)
 
 /*
 *******************************************************************************
@@ -121,23 +128,55 @@ extern OS_ERR OS_ERRNO;                           /* Holds the last error code r
 *******************************************************************************
 */
 #define  OS_OPT_DEFAULT             (0U)                /* Default option of any services of PrettyOS opt        */
+
 /***************************** Semaphores opt *********************************/
 #define  OS_SEM_ABORT_HPT           (OS_OPT_DEFAULT)    /* Abort only higher priority waiting task.              */
 #define  OS_SEM_ABORT_ALL           (1U)                /* Abort all waiting priority tasks.                     */
+
+/*******************   Mutual Exclusion Semaphore opt *************************/
+#define OS_MUTEX_PRIO_CEIL_DISABLE  (OS_OPT_DEFAULT)    /* Disable priority ceiling promotion for mutex.         */
+#define OS_MUTEX_PRIO_CEIL_ENABLE   (1U)                /* Enable priority ceiling promotion for mutex.          */
+
+
+/*
+*******************************************************************************
+*                                OS Typedefs                                  *
+*******************************************************************************
+*/
+
+#if (OS_MAX_NUMBER_TASKS - 1) <= (255U)                           /* Fit tasks priority to the correct data type. */
+    typedef CPU_t08U        OS_PRIO;
+#elif (OS_MAX_NUMBER_TASKS - 1) <= (65535U)
+    typedef CPU_t16U        OS_PRIO;
+#elif (OS_MAX_NUMBER_TASKS - 1) <= (4294967295U)
+    typedef CPU_t32U        OS_PRIO;
+#elif (OS_MAX_NUMBER_TASKS - 1) <= (18446744073709551615U)
+    typedef CPU_t64U        OS_PRIO;
+#endif
+
+typedef OS_PRIO                      OS_TASK_COUNT;              /* By analogy as #max priority level >= #tasks.  */
+
+typedef CPU_t08U                     OS_OPT;                     /* For options values.                           */
+typedef CPU_t08U                     OS_STATUS;                  /* For status values.                            */
+typedef CPU_t32U                     OS_TICK;                    /* Clock tick counter.                           */
+
+typedef CPU_tWORD                    OS_tRet;                    /* Fit to the easiest type of memory for CPU.    */
+
+                                                                 /* OS various structures.                        */
+typedef struct      os_task_event    OS_EVENT;
+typedef struct      os_task_tcb      OS_TASK_TCB;
+typedef struct      os_task_time     OS_TIME;
+                                                                 /* OS services based on OS_EVENT structure.      */
+typedef             OS_EVENT         OS_SEM;
+typedef             OS_EVENT         OS_MUTEX;
+
+
 
 /*
 *******************************************************************************
 *                           OS Structures Definition                          *
 *******************************************************************************
 */
-
-/******************************* OS Task TCB *********************************/
-typedef struct os_task_event    OS_EVENT;
-typedef struct os_task_tcb      OS_TASK_TCB;
-typedef struct os_task_time     OS_TIME;
-
-typedef OS_EVENT OS_SEM;
-
 struct os_task_tcb
 {
     CPU_tPtr    TASK_SP;        /* Current Thread's Stack Pointer */
@@ -157,13 +196,18 @@ struct os_task_tcb
 
 struct os_task_event
 {
-    CPU_t08U        OSEventType;       /* Event type                                       */
+    CPU_t08U        OSEventType;            /* Event type                                                         */
 
-    OS_EVENT*       OSEventPtr;         /* Ptr to queue structure of Events or message */
+    OS_EVENT*       OSEventPtr;             /* Ptr to queue structure of Events or message                        */
 
-    OS_SEM_COUNT    OSEventCount;       /* Count (when event is a semaphore)           */
-
-    OS_TASK_TCB*    OSEventsTCBHead;     /* Pointer to the List of waited TCBs depending on this event.     */
+    union{
+        OS_SEM_COUNT    OSEventCount;       /* Semaphore Count                                                    */
+        struct{
+            OS_PRIO    OSMutexPrio;         /* The priority task that owning the mutex or OS_PRIO_RESERVED_MUTEX if no task is owning the mutex.   */
+            OS_PRIO    OSMutexPrioCeilP;    /* The raised priority to reduce the priority inversion. */
+        };
+    };
+    OS_TASK_TCB*    OSEventsTCBHead;        /* Pointer to the List of waited TCBs depending on this event.        */
 };
 
 struct os_task_time
@@ -424,6 +468,13 @@ OS_SEM_COUNT OS_SemPendNonBlocking(OS_EVENT* pevent);
  * Note(s)      :   1) This function can be called from a task code or an ISR.
  */
 OS_tRet OS_SemPendAbort(OS_EVENT* pevent, CPU_t08U opt, OS_TASK_COUNT* abortedTasksCount);
+
+/*
+*******************************************************************************
+*                       OS Mutex function Prototypes                          *
+*******************************************************************************
+*/
+
 /*
 *******************************************************************************
 *                         PrettyOS Task functions                             *
@@ -537,16 +588,12 @@ extern void OS_Hook_onIdle(void);
 *******************************************************************************
 */
 
-#ifndef OS_MAX_PRIO_ENTRIES
-#error  "pretty_config.h, Missing OS_MAX_PRIO_ENTRIES: Max number of entries of priority level count."
-#else
-    #if     OS_MAX_PRIO_ENTRIES < 1U
-    #error  "pretty_config.h, OS_MAX_PRIO_ENTRIES must be >= 1"
-    #endif
+#ifndef OS_MAX_NUMBER_TASKS
+    #error  "pretty_config.h, Missing OS_MAX_NUMBER_TASKS: Max number of supported tasks."
 #endif
 
 #ifndef OS_MAX_EVENTS
-#error  "pretty_config.h, Missing OS_MAX_EVENTS: Max number of configured OS Event objects."
+    #error  "pretty_config.h, Missing OS_MAX_EVENTS: Max number of configured OS Event objects."
 #else
     #if     OS_MAX_EVENTS < 1U
     #error  "pretty_config.h, OS_MAX_EVENTS must be >= 1"
@@ -554,16 +601,9 @@ extern void OS_Hook_onIdle(void);
 #endif
 
 #ifndef OS_TICKS_PER_SEC
-#error  "pretty_config.h, Missing OS_TICKS_PER_SEC: Number of ticks per second."
+    #error  "pretty_config.h, Missing OS_TICKS_PER_SEC: Number of ticks per second."
 #endif
 
-#ifndef OS_MAX_NUMBER_TASKS
-#error  "pretty_os.h, Missing OS_MAX_NUMBER_TASKS: Max number of supported tasks."
-#else
-    #if     OS_MAX_NUMBER_TASKS < 1U
-    #error  "pretty_os.h, OS_MAX_NUMBER_TASKS must be >= 8"
-    #endif
-#endif
 
 #ifdef __cplusplus
 }

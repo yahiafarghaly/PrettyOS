@@ -31,10 +31,32 @@ SOFTWARE.
 
 /*
 *******************************************************************************
-*                                  Macros                                     *
+*                              OS Internal Macros                             *
 *******************************************************************************
 */
 
+#if ((OS_MAX_NUMBER_TASKS) & (OS_MAX_NUMBER_TASKS - 1U))
+    #error "OS_MAX_NUMBER_TASKS Must be multiple of power of 2. "
+#endif
+
+#if ((CPU_NumberOfBitsPerWord) & (CPU_NumberOfBitsPerWord - 1U))
+    #error "CPU_NumberOfBitsPerWord Must be multiple of power of 2. The minimum value is 8-bit for normal CPUs !"
+#endif
+
+#define OS_MAX_PRIO_ENTRIES      (OS_MAX_NUMBER_TASKS / CPU_NumberOfBitsPerWord) /* Number of priority entries (levels), minimum value = 1 */
+
+#if (OS_MAX_PRIO_ENTRIES == 0)
+    #warning "OS_MAX_NUMBER_TASKS is less than #bits of one entry of priority map."
+    #warning "OS_MAX_NUMBER_TASKS is re-defined to be equal to #bits of CPU_NumberOfBitsPerWord."
+    #undef  OS_MAX_PRIO_ENTRIES
+    #undef  OS_MAX_NUMBER_TASKS
+    #define OS_MAX_NUMBER_TASKS     CPU_NumberOfBitsPerWord
+    #define OS_MAX_PRIO_ENTRIES     (1U)
+#endif
+
+#define OS_IS_VALID_PRIO(_prio)     ((_prio >= OS_LOWEST_PRIO_LEVEL) && (_prio <= OS_HIGHEST_PRIO_LEVEL))
+
+#define OS_IS_RESERVED_PRIO(_prio)  ((_prio == OS_IDLE_TASK_PRIO_LEVEL) ||  (_prio == OS_PRIO_RESERVED_MUTEX))
 
 /*
 *******************************************************************************
@@ -132,8 +154,8 @@ OS_Init (CPU_tWORD* pStackBaseIdleTask, CPU_tWORD  stackSizeIdleTask)
     CPU_t32U idx;
 
     /* Initialize Common PrettyOS Global/static to default values.  */
-    OS_currentTask      = (OS_TASK_TCB*)OS_NULL;
-    OS_nextTask         = (OS_TASK_TCB*)OS_NULL;
+    OS_currentTask      = OS_NULL(OS_TASK_TCB);
+    OS_nextTask         = OS_NULL(OS_TASK_TCB);
     OS_IntNestingLvl    = 0U;
     OS_LockSchedNesting = 0U;
     OS_Running          = OS_FAlSE;
@@ -155,7 +177,7 @@ OS_Init (CPU_tWORD* pStackBaseIdleTask, CPU_tWORD  stackSizeIdleTask)
     OS_Event_FreeListInit();
 
     ret = OS_TaskCreate(OS_IdleTask,
-                        OS_NULL,
+                        OS_NULL(void),
                         pStackBaseIdleTask,
                         stackSizeIdleTask,
                         OS_IDLE_TASK_PRIO_LEVEL);
@@ -504,7 +526,7 @@ OS_TCB_RegisterTask (CPU_tPtr* stackTop, OS_PRIO priority)
 {
     OS_TASK_TCB*  thisTask;
 
-    if(OS_NULL == stackTop)
+    if(OS_NULL(CPU_tPtr) == stackTop)
     {
         return (OS_ERR_PARAM);
     }
@@ -756,7 +778,7 @@ OS_TaskCreate (void (*TASK_Handler)(void* params),
     CPU_tWORD* stack_top;
     OS_tRet ret;
 
-    if(TASK_Handler == OS_NULL || pStackBase == OS_NULL ||
+    if(TASK_Handler == OS_NULL(void) || pStackBase == OS_NULL(CPU_tWORD) ||
             stackSize == 0U )
     {
         return (OS_ERR_PARAM);
