@@ -524,7 +524,7 @@ OS_TCB_RegisterTask (CPU_tPtr* stackTop, OS_PRIO priority)
         thisTask->TASK_PendStat = OS_STAT_PEND_OK;
         OS_SetReady(priority);
 
-        return (OS_RET_OK);
+        return (OS_ERR_NONE);
     }
 
     return (OS_ERR_PRIO_INVALID);
@@ -773,7 +773,7 @@ OS_TaskCreate (void (*TASK_Handler)(void* params),
     stack_top = OS_CPU_TaskInit(TASK_Handler, params, pStackBase, stackSize);     /* Call low level function to Initialize the stack frame of the task.                      */
     ret = OS_TCB_RegisterTask((CPU_tPtr*)stack_top,priority);
 
-    if(OS_RET_OK == ret)
+    if(OS_ERR_NONE == ret)
     {
         if(OS_TRUE == OS_Running)
         {
@@ -848,7 +848,7 @@ OS_TaskDelete (OS_PRIO prio)
 
     OS_CRTICAL_END();
 
-    return (OS_RET_OK);
+    return (OS_ERR_NONE);
 }
 
 /*
@@ -932,7 +932,7 @@ OS_TaskChangePriority (OS_PRIO oldPrio, OS_PRIO newPrio)
         {
             OS_Sched();                                                      /* Call the scheduler, it may be a higher priority task.   */
         }
-        return (OS_RET_OK);
+        return (OS_ERR_NONE);
     }
 
     return (OS_ERR_PRIO_INVALID);
@@ -983,7 +983,7 @@ OS_TaskSuspend (OS_PRIO prio)
         if(thisTask->TASK_Stat & OS_TASK_STAT_SUSPENDED)   /* If it's in a suspend state, why do extra work !                           */
         {
             OS_CRTICAL_END();
-            return (OS_RET_TASK_SUSPENDED);
+            return (OS_ERR_TASK_SUSPENDED);
         }
 
         thisTask->TASK_Stat |= OS_TASK_STAT_SUSPENDED;
@@ -997,7 +997,7 @@ OS_TaskSuspend (OS_PRIO prio)
             OS_Sched();
         }
 
-        return OS_RET_OK;
+        return OS_ERR_NONE;
     }
 
     return (OS_ERR_PRIO_INVALID);
@@ -1059,7 +1059,7 @@ OS_TaskResume (OS_PRIO prio)
 
         OS_CRTICAL_END();
 
-        return (OS_RET_OK);
+        return (OS_ERR_NONE);
     }
 
     return (OS_ERR_PRIO_INVALID);

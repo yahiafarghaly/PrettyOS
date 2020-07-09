@@ -136,7 +136,7 @@ OS_SemPend (OS_EVENT* pevent, OS_TICK timeout)
     {
         (pevent->OSEventCount)--;                           /* ... decrement it ...                                      */
         OS_CRTICAL_END();
-        return (OS_RET_OK);                                 /* ... and return.                                           */
+        return (OS_ERR_NONE);                                 /* ... and return.                                           */
     }
 
     OS_currentTask->TASK_Stat |= OS_TASK_STATE_PEND_SEM;    /* Otherwise, pend on semaphore and wait for event to occur. */
@@ -158,7 +158,7 @@ OS_SemPend (OS_EVENT* pevent, OS_TICK timeout)
 
     switch (OS_currentTask->TASK_PendStat) {                /* ... See if it was timed-out or aborted.                   */
         case OS_STAT_PEND_OK:
-             ret  = OS_RET_OK;                              /* Indicate that the task owns the resource.                 */
+             ret  = OS_ERR_NONE;                              /* Indicate that the task owns the resource.                 */
              break;
 
         case OS_STAT_PEND_ABORT:
@@ -216,14 +216,14 @@ OS_SemPost (OS_EVENT* pevent)
          * owning the resource.
          * On the other side, the pend() function is not performing any decrement operation if it is pended. */
         OS_Sched();                                         /* Call the scheduler, it may be the highest.                */
-        return (OS_RET_OK);
+        return (OS_ERR_NONE);
     }
 
     (pevent->OSEventCount)++;                               /*TODO: Set a way of checking semaphore overflow             */
 
     OS_CRTICAL_END();
 
-    return (OS_RET_OK);
+    return (OS_ERR_NONE);
 }
 
 /*
@@ -342,5 +342,5 @@ OS_SemPendAbort(OS_EVENT* pevent, CPU_t08U opt, OS_TASK_COUNT* abortedTasksCount
         *abortedTasksCount = 0U;
     }
 
-    return (OS_RET_OK);
+    return (OS_ERR_NONE);
 }

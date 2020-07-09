@@ -42,29 +42,32 @@ extern "C" {
 *                               Return Codes                                  *
 *******************************************************************************
 */
-#define OS_RET_OK                              (00U) /* Successful Operation.                           */
-#define OS_RET_TASK_SUSPENDED                  (01U) /* Task is already suspended.                      */
+typedef enum {
+    OS_ERR_NONE 				    =(0x00U),     /* Successful Operation.                           */
+    OS_ERR_PARAM				    =(0x01U),     /* Invalid Supplied Parameter.                     */
 
-#define OS_ERR_PARAM                           (10U) /* Invalid Supplied Parameter.                     */
+    OS_ERR_PRIO_EXIST				=(0x02U),     /* The priority is already reserved.               */
+    OS_ERR_PRIO_INVALID				=(0x03U),     /* The priority is not valid number to OS.         */
 
-#define OS_ERR_PRIO_EXIST                      (11U) /* The priority is already assigned to a task.     */
-#define OS_ERR_PRIO_INVALID                    (13U) /* The priority is not valid number to OS.         */
+    OS_ERR_TASK_CREATE_ISR			=(0x04U),     /* Cannot create a task inside an ISR.             */
+    OS_ERR_TASK_SUSPEND_IDLE		=(0x05U),     /* Cannot suspend an Idle task.                    */
+    OS_ERR_TASK_SUSPEND_PRIO		=(0x06U),     /* Invalid priority task to suspend.               */
+    OS_ERR_TASK_SUSPENDED			=(0x07U),     /* Task is already suspended.                      */
+    OS_ERR_TASK_CREATE_EXIST		=(0x08U),     /* Cannot re-create an exist task.                 */
+    OS_ERR_TASK_RESUME_PRIO		    =(0x09U),     /* Invalid priority task to resume.                */
+    OS_ERR_TASK_NOT_EXIST			=(0x10U),     /* The task is not valid/exist.                    */
+    OS_ERR_TASK_DELETE_ISR			=(0x11U),     /* Cannot delete a task from an ISR.               */
+    OS_ERR_TASK_DELETE_IDLE		    =(0x12U),     /* Cannot delete the Idle task.                    */
 
-#define OS_ERR_TASK_CREATE_ISR                 (14U) /* Cannot create a task inside an ISR.             */
-#define OS_ERR_TASK_SUSPEND_IDLE               (15U) /* Cannot suspend an Idle task.                    */
-#define OS_ERR_TASK_SUSPEND_PRIO               (16U) /* Invalid priority task to suspend.               */
-#define OS_ERR_TASK_CREATE_EXIST               (17U) /* Cannot re-create an exist task.                 */
-#define OS_ERR_TASK_RESUME_PRIO                (18U) /* Invalid priority task to resume.                */
-#define OS_ERR_TASK_NOT_EXIST                  (19U) /* The task is not valid/exist.                    */
-#define OS_ERR_TASK_DELETE_ISR                 (20U) /* Cannot delete a task from an ISR.               */
-#define OS_ERR_TASK_DELETE_IDLE                (21U) /* Cannot delete the Idle task.                    */
+    OS_ERR_EVENT_PEVENT_NULL		=(0x13U),     /* OS_EVENT NULL pointer.                          */
+    OS_ERR_EVENT_TYPE				=(0x14U),     /* Invalid event type.                             */
+    OS_ERR_EVENT_PEND_ISR			=(0x15U),     /* Cannot pend an event inside an ISR.             */
+    OS_ERR_EVENT_PEND_LOCKED		=(0x16U),     /* Cannot pend an event while scheduler is locked. */
+    OS_ERR_EVENT_PEND_ABORT			=(0x17U),     /* Waiting for an event is aborted.                */
+    OS_ERR_EVENT_TIMEOUT			=(0x18U)      /* Event is not occurred within event timeout.     */
+}OS_ERR;
 
-#define OS_ERR_EVENT_PEVENT_NULL               (26U) /* OS_EVENT NULL pointer.                          */
-#define OS_ERR_EVENT_TYPE                      (27U) /* Invalid event type.                             */
-#define OS_ERR_EVENT_PEND_ISR                  (28U) /* Cannot pend an event inside an ISR.             */
-#define OS_ERR_EVENT_PEND_LOCKED               (29U) /* Cannot pend an event while scheduler is locked. */
-#define OS_ERR_EVENT_PEND_ABORT                (30U) /* Waiting for an event is aborted.                */
-#define OS_ERR_EVENT_TIMEOUT                   (31U) /* Event is not occurred within event timeout.     */
+extern OS_ERR OS_ERRNO;                           /* Holds the last error code returned by the last executed prettyOS function. */
 
 /*
 *******************************************************************************
@@ -285,6 +288,16 @@ extern void OS_SchedLock (void);
  */
 extern void OS_SchedUnlock (void);
 
+/*
+ * Function:  OS_StrError
+ * --------------------
+ * Return a constant string describing the error code.
+ *
+ * Arguments    : errno         is an error code defined in the enum list of OS_ERR
+ *
+ * Returns      :               A const pointer to a const char array values describing the error code.
+ */
+extern char const* const OS_StrError(OS_ERR errno);
 /*
 *******************************************************************************
 *                       PrettyOS Time functions                               *
