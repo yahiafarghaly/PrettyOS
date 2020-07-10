@@ -70,12 +70,12 @@ main_BlueBlinky(void* args) {
         ++BBlink_count;
         if(BBlink_count == 3)
         {
-            ret = OS_SuspendTask(GREEN_TASK_PRIO);
-            if(OS_RET_OK == ret)
+            ret = OS_TaskSuspend(GREEN_TASK_PRIO);
+            if(OS_ERR_NONE == ret)
             {
                printf("\nGreen Task is suspended. \n");
                App_printStat();
-            }else if(OS_RET_TASK_SUSPENDED == ret)
+            }else if(OS_ERR_TASK_SUSPENDED == ret)
             {
                 /* Already suspended. */
             }
@@ -91,7 +91,7 @@ void OS_Hook_onIdle(void)
 {
     if(BBlink_count == 10)
     {
-        OS_ResumeTask(GREEN_TASK_PRIO);
+        OS_TaskResume(GREEN_TASK_PRIO);
         printf("\nGreen Task is resumed. \n");
         BBlink_count = 0;
     }
@@ -107,9 +107,9 @@ int main() {
 
     OS_Init(stack_idleTask, sizeof(stack_idleTask));
 
-    OS_TaskCreate(&main_GreenBlinky, OS_NULL, stack_GreenBlink, sizeof(stack_GreenBlink), GREEN_TASK_PRIO);
+    OS_TaskCreate(&main_GreenBlinky, OS_NULL(void), stack_GreenBlink, sizeof(stack_GreenBlink), GREEN_TASK_PRIO);
 
-    OS_TaskCreate(&main_BlueBlinky, OS_NULL, stack_BlueBlink, sizeof(stack_BlueBlink), BLUE_TASK_PRIO);
+    OS_TaskCreate(&main_BlueBlinky, OS_NULL(void), stack_BlueBlink, sizeof(stack_BlueBlink), BLUE_TASK_PRIO);
 
 
     App_minicom_SendClearScreen();

@@ -14,8 +14,7 @@
 *                               Globals                                       *
 *******************************************************************************
 */
-#define GREEN_PRIO      90U
-#define BLUE_PRIO       35U
+
 CPU_tWORD stack_GreenBlink [40];
 CPU_tWORD stack_BlueBlink  [40];
 CPU_tWORD stack_idleTask   [40];
@@ -49,12 +48,7 @@ main_GreenBlinky(void* args) {
         }
         App_printStat();
         OS_DelayTicks(100U);
-        ++GBlink_count;
-        if(GBlink_count == 10)
-        {
-            printf("\nDeleting Green task\n");
-            OS_TaskDelete(GREEN_PRIO);
-        }
+        GBlink_count = ((GBlink_count + 1) > 5) ? 1 : (GBlink_count+1);
     }
 }
 
@@ -71,18 +65,6 @@ main_BlueBlinky(void* args) {
         App_printStat();
         OS_DelayTicks(500U);
         ++BBlink_count;
-        if(BBlink_count == 5)
-        {
-            printf("\nRestoring Green task\n");
-            OS_TaskCreate(&main_GreenBlinky, OS_NULL, stack_GreenBlink, sizeof(stack_GreenBlink), GREEN_PRIO);
-        }
-        if(BBlink_count == 12)
-        {
-            printf("\nExit infinite loop of Blue task\n");
-            printf("\nRe-Create the green task\n");
-            OS_TaskCreate(&main_GreenBlinky, OS_NULL, stack_GreenBlink, sizeof(stack_GreenBlink), GREEN_PRIO);
-            break;
-        }
     }
 }
 
@@ -100,9 +82,9 @@ int main() {
 
     OS_Init(stack_idleTask, sizeof(stack_idleTask));
 
-    OS_TaskCreate(&main_GreenBlinky, OS_NULL, stack_GreenBlink, sizeof(stack_GreenBlink), GREEN_PRIO);
+    OS_TaskCreate(&main_GreenBlinky, OS_NULL(void), stack_GreenBlink, sizeof(stack_GreenBlink), 90U);
 
-    OS_TaskCreate(&main_BlueBlinky, OS_NULL, stack_BlueBlink, sizeof(stack_BlueBlink), BLUE_PRIO);
+    OS_TaskCreate(&main_BlueBlinky, OS_NULL(void), stack_BlueBlink, sizeof(stack_BlueBlink), 35U);
 
 
     App_minicom_SendClearScreen();
@@ -122,14 +104,7 @@ int main() {
 
 static inline void App_printStat()
 {
-    if(BBlink_count == 12 && GBlink_count == 10)
-    {
-        printf("Idle State: ==> Blinky1[G]: %i \t\t Blinky2[B]: %i\r",GBlink_count,BBlink_count);
-    }
-    else
-    {
-        printf("Blinky1[G]: %i \t\t Blinky2[B]: %i\r",GBlink_count,BBlink_count);
-    }
+    printf("Blinky1[G]: %i \t\t Blinky2[B]: %i\r",GBlink_count,BBlink_count);
 }
 
 static inline void App_minicom_SendClearScreen(void)

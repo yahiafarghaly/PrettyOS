@@ -34,7 +34,7 @@ static unsigned long green_count,red_count;
 */
 static inline void App_printStat();
 static inline void App_minicom_SendClearScreen(void);
-
+void loopFail(void);
 /*
 *******************************************************************************
 *                            Functions Definitions                            *
@@ -51,7 +51,7 @@ main_ChangerTask(void* args) {
         switch(var)
         {
         case 0:
-            if(OS_RET_OK != OS_ChangeTaskPriority(GREEN_TASK_PRIO, CHANGED_PRIO))
+            if(OS_ERR_NONE != OS_TaskChangePriority(GREEN_TASK_PRIO, CHANGED_PRIO))
             {
                 printf("\nCannot change green task priority.\n");
             }
@@ -66,15 +66,15 @@ main_ChangerTask(void* args) {
         default:
             break;
         }
-        OS_SuspendTask(CHANGER_TASK_PRIO);
+        OS_TaskSuspend(CHANGER_TASK_PRIO);
     }
 }
 
 void
 main_GreenBlinky(void* args) {
     green_count = 0;
-    uint32_t volatile i;
-    uint32_t volatile j;
+//    uint32_t volatile i;
+//    uint32_t volatile j;
     while (1) {
 
         BSP_UARTSend('G');
@@ -100,8 +100,8 @@ main_GreenBlinky(void* args) {
 void
 main_RedBlinky(void* args) {
     red_count = 0;
-    uint32_t volatile i;
-    uint32_t volatile j;
+//    uint32_t volatile i;
+//    uint32_t volatile j;
     while (1) {
 
         BSP_UARTSend('R');
@@ -132,10 +132,10 @@ void OS_Hook_onIdle(void)
     if(red_count == 3)
     {
         if(OS_TaskCreate(&main_ChangerTask,
-                      OS_NULL,
+                      OS_NULL(void),
                       stack_CHANGER_TASK,
                       sizeof(stack_CHANGER_TASK),
-                      CHANGER_TASK_PRIO) != OS_RET_OK)
+                      CHANGER_TASK_PRIO) != OS_ERR_NONE)
         {
             printf("[Info]: Change Task creation[prio = %d] ... BAD\n",CHANGER_TASK_PRIO);
             loopFail();
@@ -170,7 +170,7 @@ int main() {
     printf("[Info]: System Clock: %d MHz\n", BSP_SystemClockGet()/1000000);
     printf("[Info]: BSP ticks per second: %d \n",BSP_TICKS_PER_SEC);
 
-    if(OS_RET_OK == OS_Init(stack_idleTask, sizeof(stack_idleTask)))
+    if(OS_ERR_NONE == OS_Init(stack_idleTask, sizeof(stack_idleTask)))
         printf("[Info]: Initialization ... Good\n");
     else
     {
@@ -179,12 +179,12 @@ int main() {
     }
 
     ret = OS_TaskCreate(&main_GreenBlinky,
-                        OS_NULL,
+                        OS_NULL(void),
                         stack_GreenBlink,
                         sizeof(stack_GreenBlink),
                         GREEN_TASK_PRIO);
 
-    if(ret == OS_RET_OK)
+    if(ret == OS_ERR_NONE)
         printf("[Info]: Green Task creation[prio = %d] ... Good\n",GREEN_TASK_PRIO);
     else
     {
@@ -193,12 +193,12 @@ int main() {
     }
 
     ret = OS_TaskCreate(&main_RedBlinky,
-                        OS_NULL,
+                        OS_NULL(void),
                         stack_REDBlink,
                         sizeof(stack_REDBlink),
                         RED_TASK_PRIO);
 
-    if(ret == OS_RET_OK)
+    if(ret == OS_ERR_NONE)
         printf("[Info]: Red Task creation[prio = %d] ... Good\n",RED_TASK_PRIO);
     else
     {
