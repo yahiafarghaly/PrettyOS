@@ -44,6 +44,7 @@ SOFTWARE.
 
 /*------------------------- Public Functions ---------------------*/
 
+	.global CPU_CountLeadZeros
 	.global OS_CPU_ContexSwitch
 	.global OS_CPU_FirstStart
 	.global OS_CPU_InterruptContexSwitch
@@ -51,6 +52,19 @@ SOFTWARE.
 
 /*----------------------------------------------------------------*/
 
+/************ CPU_tWORD CPU_CountLeadZeros(CPU_tWORD val) *****************
+ * Counts the number of contiguous, most-significant, leading zero bits before the
+ * first binary one bit in a data value.
+ *
+ * Arguments    :   val   Data value to count the leading zero bits.
+ *
+ * Returns      :   Number of contiguous, most-significant, leading zero bits in 'val'.
+ */
+	.type   CPU_CountLeadZeros,%function
+	.thumb_func
+CPU_CountLeadZeros:
+	clz		r0, r0
+    bx 		lr
 
 /************************* void OS_CPU_ContexSwitch(void) *****************
  * This function triggers the PendSV exception handler to perform

@@ -55,7 +55,7 @@ typedef struct
 
 #define SYSTICK_BASE                    (0xE000E010U)
 #define NVIC_SYSPRI3                    (0xE000ED20U)
-#define NVIC_SYSTICK_PRIO         (OS_CPU_CONFIG_SYSTICK_PRIO)
+#define NVIC_SYSTICK_PRIO         (CPU_CONFIG_SYSTICK_PRIO)
 
 #define SysTick                   ((SysTick_Type*)(SYSTICK_BASE))
 

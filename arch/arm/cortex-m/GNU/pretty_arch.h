@@ -29,6 +29,61 @@ SOFTWARE.
 extern "C" {
 #endif
 
+/*
+*******************************************************************************
+*                             CPU Predefined Macros                           *
+*******************************************************************************
+*/
+
+
+/*-------------------------------- CPU Word Sizes ----------------------------*/
+#define  CPU_WORD_SIZE_08                          (8U)   /*  8-bit word size (1 Bytes).                                                    */
+#define  CPU_WORD_SIZE_16                          (16U)  /* 16-bit word size (2 Bytes).                                                    */
+#define  CPU_WORD_SIZE_32                          (32U)  /* 32-bit word size (4 Bytes).                                                    */
+#define  CPU_WORD_SIZE_64                          (64U)  /* 64-bit word size (8 Bytes).                                                    */
+
+/*----------------------- CPU Critical Sections Methods ----------------------*/
+#define  CPU_CRITICAL_METHOD_NONE                  (0U)   /* Disable critical section protection.                                            */
+#define  CPU_CRITICAL_METHOD_TRIVIAL               (1U)   /* Enable/Disable CPU interrupts without saving interrupt status register.         */
+#define  CPU_CRITICAL_METHOD_STACK                 (2U)   /* Enable/Disable interrupts with saving Interrupt status on stack.                */
+#define  CPU_CRITICAL_METHOD_LOCAL                 (3U)   /* Enable/Disable interrupts with saving Interrupt status on a local variable.     */
+
+/*----------------------- CPU Stack Growth Direction ------------------------*/
+#define  CPU_STACK_GROWTH_NONE                      (0U)
+#define  CPU_STACK_GROWTH_HIGH_TO_LOW               (1U)
+#define  CPU_STACK_GROWTH_LOW_TO_HIGH               (2U)
+
+/*---------------------------- CPU Endianness -------------------------------*/
+#define  CPU_ENDIAN_TYPE_BIG                        (1U)   /* Big-endian order, Store most significant byte in the lowest memory address.     */
+#define  CPU_ENDIAN_TYPE_LITTLE                     (2U)   /* Little-endian order, Store most significant byte in the highest memory address. */
+
+
+/*
+*******************************************************************************
+*                           Compiler Data Types                               *
+*******************************************************************************
+*/
+
+
+typedef unsigned char       CPU_t08U;                    /* Unsigned  8-bit quantity    */
+typedef signed   char       CPU_t08S;                    /* Signed    8-bit quantity    */
+typedef unsigned short      CPU_t16U;                    /* Unsigned 16-bit quantity    */
+typedef signed   short      CPU_t16S;                    /* Signed   16-bit quantity    */
+typedef unsigned int        CPU_t32U;                    /* Unsigned 32-bit quantity    */
+typedef signed   int        CPU_t32S;                    /* Signed   32-bit quantity    */
+typedef unsigned long long  CPU_t64U;                    /* Unsigned 64-bit quantity    */
+typedef signed   long long  CPU_t64S;                    /* Signed   64-bit quantity    */
+
+typedef float               CPU_tFP32;                   /* 32-bit floating point       */
+typedef double              CPU_tFP64;                   /* 64-bit floating point       */
+
+typedef  volatile  CPU_t08U CPU_tReg08;                  /*  8-bit register             */
+typedef  volatile  CPU_t16U CPU_tReg16;                  /* 16-bit register             */
+typedef  volatile  CPU_t32U CPU_tReg32;                  /* 32-bit register             */
+typedef  volatile  CPU_t64U CPU_tReg64;                  /* 64-bit register             */
+
+typedef void*               CPU_tPtr;                    /* Pointer Type                */
+
 
 /*
 *******************************************************************************
@@ -36,37 +91,80 @@ extern "C" {
 *******************************************************************************
 */
 
-/************************* OS Tick Interrupt Priority *************************/
+
+/*----------------------- OS Tick Interrupt Priority -------------------------*/
 /*
  * If the system doesn't require any real time interrupts, then set the tick
  * interrupt to the highest. It will not affect adversely other system operations.
- * Except that, then set it to the highest from any other non critical interrupts. */
-#define OS_CPU_CONFIG_SYSTICK_PRIO          (0U)
+ * Except that, then set it to the highest from any other non critical interrupts.
+ * */
+#define CPU_CONFIG_SYSTICK_PRIO                     (0U)
+
+/*--------------------- Count Lead Zeros Implementation ----------------------*/
+
+/*
+ * (0U) If no assembly instruction is not provided. This will use pretty_CLZ.c implementation of CPU_CountLeadZeros() .
+ * (1U) This will use the assembly implmenetion which is provided with the port.
+ * */
+#define CPU_CONFIG_COUNT_LEAD_ZEROS_ASM_PRESENT     (1U)
+
+/*----------------------- CPU Data word sizes in bits ------------------------*/
+#define CPU_CONFIG_DATA_SIZE_BITS                   (CPU_WORD_SIZE_32)              /*  ARM Cortex-CM4 data bus is 32-bit wide.                            */
+
+/*--------------------- CPU Address word sizes in bits -----------------------*/
+#define CPU_CONFIG_ADDR_SIZE_BITS                   (CPU_WORD_SIZE_32)              /*  ARM Cortex-CM4 address bus is 32-bit wide.                          */
+
+/*----------------------- CPU Stack Growth Direction -------------------------*/
+#define CPU_CONFIG_STACK_GROWTH                     (CPU_STACK_GROWTH_HIGH_TO_LOW)  /*  ARM stack grows from high to low address.                           */
+
+/*----------------------- CPU Data word memory order -------------------------*/
+#define CPU_CONFIG_ENDIAN_TYPE                      (CPU_ENDIAN_TYPE_LITTLE)        /*  ARM is a little endian processor.                                   */
+
+/*----------------------- CPU Stack Alignment in Bytes -----------------------*/
+#define CPU_CONFIG_STACK_ALIGN_BYTES                  (8U)                          /*  ARM Procedure Calls Standard requires an 8 bytes stack alignment.   */
+
+/*----------------------- CPU Critical Section Method ------------------------*/
+#define CPU_CONFIG_CRITICAL_METHOD                  (CPU_CRITICAL_METHOD_TRIVIAL)
+
+
 
 /*
 *******************************************************************************
-*                               Compiler Specific                             *
-*******************************************************************************
-*/
-#define CPU_CountLeadZeros          __builtin_clz   /* If no CPU clz instruction is not supported, implement it in C */
-#define CPU_NumberOfBitsPerWord            (32U)    /* Until I found a magical way to calculate it automatically.    */
-
-/*
-*******************************************************************************
-*                               DATA TYPES                                    *
+*                        CPU Typedefs Configurations                          *
 *******************************************************************************
 */
 
-typedef unsigned char  CPU_t08U;                    /* Unsigned  8 bit quantity                             */
-typedef signed   char  CPU_t08S;                    /* Signed    8 bit quantity                             */
-typedef unsigned short CPU_t16U;                    /* Unsigned 16 bit quantity                             */
-typedef signed   short CPU_t16S;                    /* Signed   16 bit quantity                             */
-typedef unsigned int   CPU_t32U;                    /* Unsigned 32 bit quantity                             */
-typedef signed   int   CPU_t32S;                    /* Signed   32 bit quantity                             */
+/*-------------------------------- CPU_tWORD ---------------------------------*/
 
-typedef void*          CPU_tPtr;                    /* Pointer Type                                         */
-typedef unsigned int   CPU_tWORD;                   /* Define size of CPU word size (In ARM-CM4 = 32 bits)  */
-typedef unsigned int   CPU_tPSR;                    /* Define size of CPU status register (PSR = 32 bits)   */
+#if (CPU_CONFIG_DATA_SIZE_BITS   == CPU_WORD_SIZE_08)
+    typedef CPU_t08U        CPU_tWORD;
+#elif (CPU_CONFIG_DATA_SIZE_BITS == CPU_WORD_SIZE_16)
+    typedef CPU_t16U        CPU_tWORD;
+#elif (CPU_CONFIG_DATA_SIZE_BITS == CPU_WORD_SIZE_32)
+    typedef CPU_t32U        CPU_tWORD;
+#elif (CPU_CONFIG_DATA_SIZE_BITS == CPU_WORD_SIZE_64)
+    typedef CPU_t64U        CPU_tWORD;
+#else
+    #error "Undefined CPU_tWord type."
+#endif
+
+/*-------------------------------- CPU_tADDR ---------------------------------*/
+
+#if (CPU_CONFIG_ADDR_SIZE_BITS  == CPU_WORD_SIZE_08)
+    typedef CPU_t08U        CPU_tADDR;
+#elif (CPU_CONFIG_ADDR_SIZE_BITS == CPU_WORD_SIZE_16)
+    typedef CPU_t16U        CPU_tADDR;
+#elif (CPU_CONFIG_ADDR_SIZE_BITS == CPU_WORD_SIZE_32)
+    typedef CPU_t32U        CPU_tADDR;
+#elif (CPU_CONFIG_ADDR_SIZE_BITS == CPU_WORD_SIZE_64)
+    typedef CPU_t64U        CPU_tADDR;
+#else
+    #error "Undefined CPU_tADDR type."
+#endif
+
+/*-------------------------------- CPU_t* ------------------------------------*/
+typedef CPU_tWORD   CPU_tALIGN; /* CPU Data word alignment size.              */
+typedef CPU_t32U    CPU_tSR;    /* Define size of CPU status register         */
 
 
 
@@ -75,15 +173,30 @@ typedef unsigned int   CPU_tPSR;                    /* Define size of CPU status
 *                             Critical Section Management                     *
 *******************************************************************************
 */
-#define OS_CRTICAL_BEGIN()      __asm volatile ("cpsid i" : : : "memory");
-#define OS_CRTICAL_END()        __asm volatile ("cpsie i" : : : "memory");
+#if(CPU_CONFIG_CRITICAL_METHOD == CPU_CRITICAL_METHOD_TRIVIAL)
+    #define OS_CRTICAL_BEGIN()      __asm volatile ("cpsid i" : : : "memory");
+    #define OS_CRTICAL_END()        __asm volatile ("cpsie i" : : : "memory");
+#endif
+
 
 
 /*
 *******************************************************************************
-*                             Arch Specific Functions Prototypes              *
+*                      CPU Specific Functions Prototypes                      *
 *******************************************************************************
 */
+
+/*
+ * Function:  CPU_CountLeadZeros
+ * --------------------
+ * Counts the number of contiguous, most-significant, leading zero bits before the
+ * first binary one bit in a data value.
+ *
+ * Arguments    :   val   Data value to count the leading zero bits.
+ *
+ * Returns      :   Number of contiguous, most-significant, leading zero bits in 'val'.
+ */
+CPU_tWORD CPU_CountLeadZeros(CPU_tWORD val);
 
 /*
  * Function:  OS_CPU_ContexSwitch

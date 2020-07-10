@@ -35,6 +35,8 @@ SOFTWARE.
 *******************************************************************************
 */
 
+#define CPU_NumberOfBitsPerWord     (CPU_CONFIG_DATA_SIZE_BITS)
+
 #if ((OS_MAX_NUMBER_TASKS) & (OS_MAX_NUMBER_TASKS - 1U))
     #error "OS_MAX_NUMBER_TASKS Must be multiple of power of 2. "
 #endif
