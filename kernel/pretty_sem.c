@@ -32,8 +32,8 @@ SOFTWARE.
 */
 
 extern OS_TASK_TCB* volatile OS_currentTask;
-extern CPU_t08U     OS_IntNestingLvl;
-extern CPU_t08U     OS_LockSchedNesting;
+extern CPU_t08U     volatile OS_IntNestingLvl;
+extern CPU_t08U     volatile OS_LockSchedNesting;
 
 extern void OS_EVENT_allocate (OS_EVENT** pevent);
 extern void OS_EVENT_free (OS_EVENT* pevent);

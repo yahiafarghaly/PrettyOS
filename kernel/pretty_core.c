@@ -87,11 +87,11 @@ static CPU_tWORD    OS_Log2(const CPU_tWORD x);
 *******************************************************************************
 */
 
-CPU_tWORD      volatile OS_Running;     /* Status of the OS.                    */
-OS_TASK_TCB*   volatile OS_currentTask; /* Pointer to the current running TCB.  */
-OS_TASK_TCB*   volatile OS_nextTask;    /* pointer to the next TCB to run.      */
-CPU_t08U  OS_IntNestingLvl;             /* Interrupt nesting level.             */
-CPU_t08U  OS_LockSchedNesting;          /* Scheduler nesting lock level.        */
+CPU_tWORD      volatile OS_Running;                   /* Status of the OS.                    */
+OS_TASK_TCB*   volatile OS_currentTask;               /* Pointer to the current running TCB.  */
+OS_TASK_TCB*   volatile OS_nextTask;                  /* pointer to the next TCB to run.      */
+CPU_t08U       volatile OS_IntNestingLvl;             /* Interrupt nesting level.             */
+CPU_t08U       volatile OS_LockSchedNesting;          /* Scheduler nesting lock level.        */
 
 
 extern void OS_Sched (void);
