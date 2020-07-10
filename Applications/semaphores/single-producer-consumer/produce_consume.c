@@ -101,7 +101,7 @@ int main() {
     fill_cnt  = OS_SemCreate(0);             /* Items produced. */
 
     /* PrettyOS takes control from here. */
-    OS_Run();
+    OS_Run(BSP_SystemClockGet());
 
     /* Never executed. */
     return 0;

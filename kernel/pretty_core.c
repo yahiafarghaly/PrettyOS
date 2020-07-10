@@ -392,12 +392,12 @@ OS_ScheduleHighest (void)
  * --------------------
  * Start running and transfer the control to the PrettyOS to run the tasks.
  *
- * Arguments    : None.
+ * Arguments    : cpuClockFreq          is the running CPU frequency in Hertz .
  *
  * Returns      : None.
  */
 void
-OS_Run (void)
+OS_Run (CPU_t32U cpuClockFreq)
 {
     if(OS_TRUE == OS_Running)
     {
@@ -405,6 +405,8 @@ OS_Run (void)
     }
     else
     {
+        OS_CPU_SystemTimerSetup(cpuClockFreq / OS_TICKS_PER_SEC);
+
         OS_CRTICAL_BEGIN();
 
         OS_ScheduleHighest();                      /* Find the highest priority task to be scheduled.                        */

@@ -144,6 +144,7 @@ OS_CPU_FirstStart:
  *		- Enable processor interrupts.
  *		- Do exception return which will restore the remaining registers.
  *
+ * The function prototype must be placed on entry 14 of of the ARM Cortex-M4 vector table.
  */
 	.type   OS_CPU_PendSVHandler,%function
 	.thumb_func

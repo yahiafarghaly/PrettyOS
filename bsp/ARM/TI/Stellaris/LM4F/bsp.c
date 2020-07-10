@@ -92,11 +92,6 @@ BSP_HardwareSetup(void) {
     GPIOF_AHB->DEN |= (LED_RED | LED_BLUE | LED_GREEN);
 
     BSP_UART_init();
-
-    /* Fire SysTick_Handler every (1/BSP_TICKS_PER_SEC) second. */
-    SysTick_Config(SYS_CLOCK_HZ/BSP_TICKS_PER_SEC);
-    /* Set the SysTick interrupt priority to the highest. */
-    NVIC_SetPriority(SysTick_IRQn, 0U);
 }
 
 void
@@ -156,12 +151,5 @@ BSP_onFailure(char const *module, int location)
 void BSP_WaitForInterrupt(void)
 {
     __WFI(); /* stop the CPU and Wait for Interrupt */
-}
-
-void SysTick_Handler(void)
-{
-    OS_IntEnter();
-    OS_TimerTick();
-    OS_IntExit();
 }
 

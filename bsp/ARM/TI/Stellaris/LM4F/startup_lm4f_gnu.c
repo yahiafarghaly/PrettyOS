@@ -85,7 +85,7 @@ void SVC_Handler           (void) __attribute__ ((weak, alias("Default_Handler")
 void DebugMon_Handler      (void) __attribute__ ((weak, alias("Default_Handler")));
 
                     /*       No weak, Must be defined.          */
-void SysTick_Handler            (void); /* Defined in bsp.c */
+void OS_CPU_SystemTimerHandler  (void); /* Defined in PrettyOS/arch/arm/cortex-m/GNU/pretty_os_cpu.c */
 void OS_CPU_PendSVHandler       (void); /* Defined in the PrettyOS/arch/arm/cortex-m/GNU/pretty_os_cpu_a.asm */
 
                     /* LM4F External interrupts.   */
@@ -221,7 +221,7 @@ int const g_pfnVectors[] = {
     (int)&DebugMon_Handler,       /* Debug monitor handler           */
     0,                            /* Reserved                        */
     (int)&OS_CPU_PendSVHandler,   /* The PendSV handler              */
-    (int)&SysTick_Handler,        /* The SysTick handler             */
+    (int)&OS_CPU_SystemTimerHandler,        /* The SysTick handler             */
 
     /*IRQ handlers... */
     (int)&GPIOPortA_IRQHandler,   /* GPIO Port A                     */

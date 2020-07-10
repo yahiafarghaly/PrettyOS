@@ -35,6 +35,29 @@ SOFTWARE.
 *******************************************************************************
 */
 extern void OS_TaskReturn (void);
+extern void OS_TimerTick  (void);
+extern void OS_IntEnter   (void);
+extern void OS_IntExit    (void);
+
+/*
+*******************************************************************************
+*                 Structures/Macros to access SysTick                         *
+*******************************************************************************
+*/
+
+/*  Structure type to access the System Timer (SysTick). */
+typedef struct
+{
+    volatile CPU_t32U CTRL;                   /* Offset: 0x000 (R/W)  SysTick Control and Status Register   */
+    volatile CPU_t32U LOAD;                   /* Offset: 0x004 (R/W)  SysTick Reload Value Register         */
+    volatile CPU_t32U VAL;                    /* Offset: 0x008 (R/W)  SysTick Current Value Register        */
+} SysTick_Type;
+
+#define SYSTICK_BASE                    (0xE000E010U)
+#define NVIC_SYSPRI3                    (0xE000ED20U)
+#define NVIC_SYSTICK_PRIO         (OS_CPU_CONFIG_SYSTICK_PRIO)
+
+#define SysTick                   ((SysTick_Type*)(SYSTICK_BASE))
 
 /*
  * Function:  OS_CPU_TaskInit
@@ -86,43 +109,51 @@ OS_CPU_TaskInit(void (*TASK_Handler)(void* params),
     *(--sp) = 0x00000005U;                  /* R5 */
     *(--sp) = 0x00000004U;                  /* R4 */
 
-#ifdef ARM_FP_ENABLED
-    *--sp = 0x02000000u;                   /* FPSCR  */
-     /* Initialize S0-S31 floating point registers */
-    *--sp = 0x41F80000u;                        /* S31 */
-    *--sp = 0x41F00000u;                        /* S30 */
-    *--sp = 0x41E80000u;                        /* S29 */
-    *--sp = 0x41E00000u;                        /* S28 */
-    *--sp = 0x41D80000u;                        /* S27 */
-    *--sp = 0x41D00000u;                        /* S26 */
-    *--sp = 0x41C80000u;                        /* S25 */
-    *--sp = 0x41C00000u;                        /* S24 */
-    *--sp = 0x41B80000u;                        /* S23 */
-    *--sp = 0x41B00000u;                        /* S22 */
-    *--sp = 0x41A80000u;                        /* S21 */
-    *--sp = 0x41A00000u;                        /* S20 */
-    *--sp = 0x41980000u;                        /* S19 */
-    *--sp = 0x41900000u;                        /* S18 */
-    *--sp = 0x41880000u;                        /* S17 */
-    *--sp = 0x41800000u;                        /* S16 */
-    *--sp = 0x41700000u;                        /* S15 */
-    *--sp = 0x41600000u;                        /* S14 */
-    *--sp = 0x41500000u;                        /* S13 */
-    *--sp = 0x41400000u;                        /* S12 */
-    *--sp = 0x41300000u;                        /* S11 */
-    *--sp = 0x41200000u;                        /* S10 */
-    *--sp = 0x41100000u;                        /* S9  */
-    *--sp = 0x41000000u;                        /* S8  */
-    *--sp = 0x40E00000u;                        /* S7  */
-    *--sp = 0x40C00000u;                        /* S6  */
-    *--sp = 0x40A00000u;                        /* S5  */
-    *--sp = 0x40800000u;                        /* S4  */
-    *--sp = 0x40400000u;                        /* S3  */
-    *--sp = 0x40000000u;                        /* S2  */
-    *--sp = 0x3F800000u;                        /* S1  */
-    *--sp = 0x00000000u;                        /* S0  */
-#endif
-
     return (sp);
 }
 
+/*
+ * Function:  OS_CPU_SystemTimerHandler
+ * --------------------
+ * Handle the system tick interrupt which is used for signaling the system tick
+ * to OS_TimerTick().
+ *
+ * Arguments    : None.
+ *
+ * Returns      : None.
+ *
+ * Note(s)      :   1) this function must be placed on entry 15 of the ARM Cortex-M4 vector table.
+ */
+void OS_CPU_SystemTimerHandler  (void)
+{
+    OS_CRTICAL_BEGIN();
+
+    OS_IntEnter();          /* Notify that we are entering an ISR.          */
+
+    OS_CRTICAL_END();
+
+    OS_TimerTick();         /* Signal the tick to the OS_timerTick().       */
+
+    OS_IntExit();           /* Notify that we are leaving the ISR.          */
+}
+
+/*
+ * Function:  OS_CPU_SystemTimerSetup
+ * --------------------
+ * Initialize the timer which will be used as a system ticker for the OS.
+ *
+ * Arguments    :   ticks   is the number of ticks count between two OS tick interrupts.
+ *
+ * Returns      :   None.
+ */
+void  OS_CPU_SystemTimerSetup (CPU_t32U ticks)
+{
+    SysTick->LOAD  = (ticks - 1U);      /* Load the value which will reach to zero, Max is 0xFFFFFF      */
+    SysTick->VAL   = 0U;                /* Clear any value in the STCURRENT register.                    */
+    SysTick->CTRL |= (0x04U);           /* Enable Clock source to be from the system clock.              */
+    SysTick->CTRL |= (0x01U);           /* Enable SysTick to operate in multi-shot way.                  */
+
+    (*((volatile CPU_t32U*)NVIC_SYSPRI3)) |= (NVIC_SYSTICK_PRIO << 29U); /* Set the priority of SysTick interrupt */
+
+    SysTick->CTRL |= (0x02U);           /* Finally, Enable Interrupt generation when count reaches 0     */
+}

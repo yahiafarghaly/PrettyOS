@@ -241,11 +241,11 @@ extern OS_tRet OS_Init (CPU_tWORD* pStackBaseIdleTask, CPU_tWORD  stackSizeIdleT
  * --------------------
  * Start running and transfer the control to the PrettyOS to run the tasks.
  *
- * Arguments    : None.
+ * Arguments    : cpuClockFreq          is the running CPU frequency in Hertz .
  *
  * Returns      : None.
  */
-extern void OS_Run (void);
+extern void OS_Run (CPU_t32U cpuClockFreq);
 
 /*
  * Function:  OS_TimerTick

@@ -96,7 +96,7 @@ int main() {
     printf("[Info]: Starts !\n\n");
 
     /* transfer control to the RTOS to run the tasks */
-    OS_Run();
+    OS_Run(BSP_SystemClockGet());
 
     //return 0;
 }

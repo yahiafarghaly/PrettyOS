@@ -25,6 +25,24 @@ SOFTWARE.
 #ifndef __PRETTY_ARCH_H_
 #define __PRETTY_ARCH_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
+/*
+*******************************************************************************
+*                             CPU Configurations                              *
+*******************************************************************************
+*/
+
+/************************* OS Tick Interrupt Priority *************************/
+/*
+ * If the system doesn't require any real time interrupts, then set the tick
+ * interrupt to the highest. It will not affect adversely other system operations.
+ * Except that, then set it to the highest from any other non critical interrupts. */
+#define OS_CPU_CONFIG_SYSTICK_PRIO          (0U)
+
 /*
 *******************************************************************************
 *                               Compiler Specific                             *
@@ -96,15 +114,6 @@ void OS_CPU_InterruptContexSwitch(void);
 void OS_CPU_FirstStart(void);
 
 /*
- * Function:  OS_CPU_PendSVHandler
- * --------------------
- * This where the real context switch happens.
- *
- * Note: Make the PendSVHandler entry in the vector table points to this function.
- */
-void OS_CPU_PendSVHandler(void);
-
-/*
  * Function:  OS_CPU_TaskInit
  * --------------------
  * Initialize the stack frame of the task being created.
@@ -125,5 +134,32 @@ CPU_tWORD* OS_CPU_TaskInit(void (*TASK_Handler)(void* params),
                              void *params,
                              CPU_tWORD* pStackBase,
                              CPU_tWORD  stackSize);
+
+/*
+ * Function:  OS_CPU_SystemTimerHandler
+ * --------------------
+ * Handle the system tick interrupt which is used for signaling the system tick
+ * to OS_TimerTick().
+ *
+ * Arguments    :   None.
+ *
+ * Returns      :   None.
+ */
+void OS_CPU_SystemTimerHandler (void);
+
+/*
+ * Function:  OS_CPU_SystemTimerSetup
+ * --------------------
+ * Initialize the timer which will be used as a system ticker for the OS.
+ *
+ * Arguments    :   ticks   is the number of ticks count between two OS tick interrupts.
+ *
+ * Returns      :   None.
+ */
+void  OS_CPU_SystemTimerSetup (CPU_t32U ticks);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __PRETTY_ARCH_H_ */

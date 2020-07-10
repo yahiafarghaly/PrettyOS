@@ -1,6 +1,10 @@
 #ifndef __BSP_H__
 #define __BSP_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
 *******************************************************************************
 *                               Includes Files                                *
@@ -77,5 +81,9 @@ void BSP_onFailure(char const *module, int location);
  * Wait For Interrupt is a hint instruction that suspends execution until an event occurs.
  */
 void BSP_WaitForInterrupt(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // __BSP_H__

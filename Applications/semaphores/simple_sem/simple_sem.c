@@ -188,7 +188,7 @@ int main() {
     printf("[Info]: Starts !\n\n");
 
     /* PrettyOS takes control from here. */
-    OS_Run();
+    OS_Run(BSP_SystemClockGet());
 
     /* Never executed. */
     return 0;
