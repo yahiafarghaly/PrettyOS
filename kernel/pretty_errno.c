@@ -29,9 +29,9 @@ SOFTWARE.
 */
 #include "pretty_os.h"
 
-
-OS_ERR OS_ERRNO = OS_ERR_NONE;              /* Holds the last error code returned by the last executed prettyOS function. */
-
+#if(OS_CONFIG_ERRNO_EN == 1U)
+    OS_ERR OS_ERRNO = OS_ERR_NONE;              /* Holds the last error code returned by the last executed prettyOS function. */
+#endif
 
 /*
  * Function:  OS_StrError

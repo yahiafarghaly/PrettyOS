@@ -66,10 +66,18 @@ typedef enum {
     OS_ERR_EVENT_PEND_ABORT			=(0x17U),     /* Waiting for an event is aborted.                */
     OS_ERR_EVENT_TIMEOUT			=(0x18U),     /* Event is not occurred within event timeout.     */
     OS_ERR_EVENT_POOL_EMPTY         =(0x19U),     /* No more space for the an OS_EVENT object.       */
-    OS_ERR_EVENT_CREATE_ISR         =(0x20U)      /* Cannot create this event type inside an ISR.    */
+    OS_ERR_EVENT_CREATE_ISR         =(0x20U),     /* Cannot create this event type inside an ISR.    */
+
+    OS_ERR_MUTEX_LOWER_PCP          =(0x21U)      /* Priority of current owning mutex is less than PCP specified with mutex. */
 }OS_ERR;
 
 extern OS_ERR OS_ERRNO;                           /* Holds the last error code returned by the last executed prettyOS function. */
+
+#if(OS_CONFIG_ERRNO_EN == 1U)
+    #define OS_ERR_SET(err)  do { OS_ERRNO = (OS_ERR)err; }while(0);
+#else
+    #define OS_ERR_SET(err)  do { /* This should prevent compiler warnings. */ } while(0);
+#endif
 
 /*
 *******************************************************************************
@@ -101,12 +109,12 @@ extern OS_ERR OS_ERRNO;                           /* Holds the last error code r
 #define OS_TASK_STAT_DELAY          (0x01U)                      /* Delayed or Timeout.           */
 #define OS_TASK_STAT_SUSPENDED      (0x02U)                      /* Suspended.                    */
 #define OS_TASK_STATE_PEND_SEM      (0x04U)                      /* Pend on semaphore.            */
-#define OS_TASK_STATE_PEND_MUX      (0x08U)                      /* Pend on mutex.                */
+#define OS_TASK_STATE_PEND_MUTEX    (0x08U)                      /* Pend on mutex.                */
 
 #define OS_TASK_STAT_DELETED        (0xFFU)                      /* A deleted task or not created.*/
 #define OS_TASK_STAT_RESERVED_MUTEX (0x7FU)                      /* Reserve a TCB entry for Mutex.*/
 
-#define OS_TASK_STATE_PEND_ANY      (OS_TASK_STATE_PEND_SEM | OS_TASK_STATE_PEND_MUX )
+#define OS_TASK_STATE_PEND_ANY      (OS_TASK_STATE_PEND_SEM | OS_TASK_STATE_PEND_MUTEX)
 
 /*
 *******************************************************************************
@@ -202,7 +210,7 @@ struct os_task_event
 {
     CPU_t08U        OSEventType;            /* Event type                                                         */
 
-    OS_EVENT*       OSEventPtr;             /* Ptr to queue structure of Events or message                        */
+    OS_EVENT*       OSEventPtr;             /* Pointer to queue structure of Free Events or to message mailbox or to TCB whichs owns a mutex. */
     OS_TASK_TCB*    OSEventsTCBHead;        /* Pointer to the List of waited TCBs depending on this event.        */
 
     union{
@@ -608,6 +616,9 @@ extern void OS_Hook_onIdle(void);
     #error  "pretty_config.h, Missing OS_TICKS_PER_SEC: Number of ticks per second."
 #endif
 
+#ifndef OS_CONFIG_ERRNO_EN
+    #error  "pretty_config.h, Missing OS_CONFIG_ERRNO_EN : Enable/Disable of OS_ERRNO global variable."
+#endif
 
 #ifdef __cplusplus
 }

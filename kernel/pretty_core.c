@@ -120,7 +120,7 @@ extern void OS_UnBlockTime (OS_PRIO prio);
 void
 OS_IdleTask (void* args)
 {
-    args = args;                /* Prevent compiler warning.                */
+    (void)args;                 /* Prevent compiler warning.                */
     while(1)
     {
         OS_Hook_onIdle();       /* Call user's idle function.               */

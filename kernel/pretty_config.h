@@ -37,6 +37,8 @@ SOFTWARE.
 
 #define OS_MAX_EVENTS        (3U)          /* Number of used events                                  */
 
+#define OS_CONFIG_ERRNO_EN   (1U)          /* 1U = Enable  recording the last error occurred.
+                                              0U = Disable recording the last error occurred.        */
 /*
 *******************************************************************************
 *                             Data Types Sizes                                *
