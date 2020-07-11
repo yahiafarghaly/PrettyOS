@@ -65,7 +65,8 @@ typedef enum {
     OS_ERR_EVENT_PEND_LOCKED		=(0x16U),     /* Cannot pend an event while scheduler is locked. */
     OS_ERR_EVENT_PEND_ABORT			=(0x17U),     /* Waiting for an event is aborted.                */
     OS_ERR_EVENT_TIMEOUT			=(0x18U),     /* Event is not occurred within event timeout.     */
-    OS_ERR_EVENT_POOL_EMPTY         =(0x19U)      /* No more space for the an OS_EVENT object.       */
+    OS_ERR_EVENT_POOL_EMPTY         =(0x19U),     /* No more space for the an OS_EVENT object.       */
+    OS_ERR_EVENT_CREATE_ISR         =(0x20U)      /* Cannot create this event type inside an ISR.    */
 }OS_ERR;
 
 extern OS_ERR OS_ERRNO;                           /* Holds the last error code returned by the last executed prettyOS function. */
@@ -85,7 +86,11 @@ extern OS_ERR OS_ERRNO;                           /* Holds the last error code r
 /**************************** OS Reserved Priorities *************************/
 /********* Your Application should not assign any of these priorities ********/
 #define OS_IDLE_TASK_PRIO_LEVEL         (OS_LOWEST_PRIO_LEVEL)
-#define OS_PRIO_RESERVED_MUTEX          (OS_HIGHEST_PRIO_LEVEL)
+#define OS_PRIO_RESERVED_MUTEX          (1U)
+
+#define OS_IS_VALID_PRIO(_prio)     ((_prio >= OS_LOWEST_PRIO_LEVEL) && (_prio <= OS_HIGHEST_PRIO_LEVEL))
+
+#define OS_IS_RESERVED_PRIO(_prio)  ((_prio == OS_IDLE_TASK_PRIO_LEVEL) ||  (_prio == OS_PRIO_RESERVED_MUTEX))
 
 /*
 *******************************************************************************
@@ -98,9 +103,10 @@ extern OS_ERR OS_ERRNO;                           /* Holds the last error code r
 #define OS_TASK_STATE_PEND_SEM      (0x04U)                      /* Pend on semaphore.            */
 #define OS_TASK_STATE_PEND_MUX      (0x08U)                      /* Pend on mutex.                */
 
-#define OS_TASK_STATE_PEND_ANY      (OS_TASK_STATE_PEND_SEM | OS_TASK_STATE_PEND_MUX )
+#define OS_TASK_STAT_DELETED        (0xFFU)                      /* A deleted task or not created.*/
+#define OS_TASK_STAT_RESERVED_MUTEX (0x7FU)                      /* Reserve a TCB entry for Mutex.*/
 
-#define OS_TASK_STAT_DELETED        (0xFFU) /* A deleted task or not created.*/
+#define OS_TASK_STATE_PEND_ANY      (OS_TASK_STATE_PEND_SEM | OS_TASK_STATE_PEND_MUX )
 
 /*
 *******************************************************************************
@@ -119,8 +125,6 @@ extern OS_ERR OS_ERRNO;                           /* Holds the last error code r
 #define  OS_EVENT_TYPE_UNUSED           (0U)
 #define  OS_EVENT_TYPE_SEM              (1U)
 #define  OS_EVENT_TYPE_MUTEX            (2U)
-#define  OS_EVENT_TYPE_RESERVED         (3U)    /* Reserved to indicate a mutex event type + PCP is enabled. (0x02 | 0x01) */
-#define  OS_EVENT_TYPE_UNIMPLEMENTED    (4U)
 
 /*
 *******************************************************************************
@@ -155,7 +159,7 @@ extern OS_ERR OS_ERRNO;                           /* Holds the last error code r
 #endif
 
 typedef OS_PRIO                      OS_TASK_COUNT;              /* By analogy as #max priority level >= #tasks.  */
-
+typedef CPU_t08U                     OS_BOOLEAN;                 /* For true/false values.                        */
 typedef CPU_t08U                     OS_OPT;                     /* For options values.                           */
 typedef CPU_t08U                     OS_STATUS;                  /* For status values.                            */
 typedef CPU_t32U                     OS_TICK;                    /* Clock tick counter.                           */
@@ -199,15 +203,15 @@ struct os_task_event
     CPU_t08U        OSEventType;            /* Event type                                                         */
 
     OS_EVENT*       OSEventPtr;             /* Ptr to queue structure of Events or message                        */
+    OS_TASK_TCB*    OSEventsTCBHead;        /* Pointer to the List of waited TCBs depending on this event.        */
 
     union{
         OS_SEM_COUNT    OSEventCount;       /* Semaphore Count                                                    */
         struct{
-            OS_PRIO    OSMutexPrio;         /* The priority task that owning the mutex or OS_PRIO_RESERVED_MUTEX if no task is owning the mutex.   */
-            OS_PRIO    OSMutexPrioCeilP;    /* The raised priority to reduce the priority inversion. */
+            OS_PRIO    OSMutexPrio;         /* The original priority task that owning the Mutex or 'OS_PRIO_RESERVED_MUTEX' if no task is owning the Mutex.                                     */
+            OS_PRIO    OSMutexPrioCeilP;    /* The raised priority to reduce the priority inversion or 'OS_PRIO_RESERVED_MUTEX' if priority ceiling promotion is disabled for this Mutex event. */
         };
     };
-    OS_TASK_TCB*    OSEventsTCBHead;        /* Pointer to the List of waited TCBs depending on this event.        */
 };
 
 struct os_task_time

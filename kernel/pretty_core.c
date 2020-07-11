@@ -56,10 +56,6 @@ SOFTWARE.
     #define OS_MAX_PRIO_ENTRIES     (1U)
 #endif
 
-#define OS_IS_VALID_PRIO(_prio)     ((_prio >= OS_LOWEST_PRIO_LEVEL) && (_prio <= OS_HIGHEST_PRIO_LEVEL))
-
-#define OS_IS_RESERVED_PRIO(_prio)  ((_prio == OS_IDLE_TASK_PRIO_LEVEL) ||  (_prio == OS_PRIO_RESERVED_MUTEX))
-
 /*
 *******************************************************************************
 *                               Static/Internal Data                          *
@@ -89,10 +85,11 @@ static CPU_tWORD    OS_Log2(const CPU_tWORD x);
 
 CPU_tWORD      volatile OS_Running;                   /* Status of the OS.                    */
 OS_TASK_TCB*   volatile OS_currentTask;               /* Pointer to the current running TCB.  */
-OS_TASK_TCB*   volatile OS_nextTask;                  /* pointer to the next TCB to run.      */
+OS_TASK_TCB*   volatile OS_nextTask;                  /* Pointer to the next TCB to run.      */
 CPU_t08U       volatile OS_IntNestingLvl;             /* Interrupt nesting level.             */
 CPU_t08U       volatile OS_LockSchedNesting;          /* Scheduler nesting lock level.        */
 
+OS_TASK_TCB*   const    OS_TblTaskPtr = &OS_TblTask[0]; /* A constant pointer to OS_TblTask[] to be accessible from other modules. */
 
 extern void OS_Sched (void);
 extern void OS_Event_FreeListInit (void);

@@ -31,17 +31,16 @@ SOFTWARE.
 *******************************************************************************
 */
 
-extern OS_TASK_TCB* volatile OS_currentTask;
-extern CPU_t08U     volatile OS_IntNestingLvl;
-extern CPU_t08U     volatile OS_LockSchedNesting;
+extern OS_TASK_TCB* volatile        OS_currentTask;
+extern CPU_t08U     volatile        OS_IntNestingLvl;
+extern CPU_t08U     volatile        OS_LockSchedNesting;
+extern OS_TASK_TCB*  const          OS_TblTaskPtr;
 
 extern void OS_EVENT_allocate (OS_EVENT** pevent);
 extern void OS_EVENT_free (OS_EVENT* pevent);
 extern void OS_Event_TaskPend (OS_EVENT* pevent);
 extern void OS_Event_TaskRemove (OS_TASK_TCB* ptcb, OS_EVENT *pevent);
 extern void OS_Sched (void);
-extern void OS_BlockTime (OS_PRIO prio);
-extern void OS_UnBlockTime (OS_PRIO prio);
 extern OS_PRIO OS_Event_TaskMakeReady(OS_EVENT* pevent,void* pmsg, OS_STATUS TASK_StatEventMask, OS_STATUS TASK_PendStat);
 
 extern OS_ERR OS_ERRNO;
@@ -66,16 +65,98 @@ extern OS_ERR OS_ERRNO;
  *
  * Returns      :  != (OS_EVENT*)0U  is a pointer to OS_EVENT object of type OS_EVENT_TYPE_MUTEX for the created mutex.
  *                 == (OS_EVENT*)0U  if error is found.
+ *                 OS_ERRNO = { }
  *
  * Note(s)      :   1) This function is used only from Task code level.
- *                  2) 'OSMutexPrio' is the priority task that owning the mutex or OS_PRIO_RESERVED_MUTEX if no task is owning the mutex.
- *                     'OSMutexPrioCeilP' is the raised priority to reduce the priority inversion.
- *                  3) OSEventType is equal to (3U) when equals to (OS_EVENT_TYPE_MUTEX + OS_MUTEX_PRIO_CEIL_ENABLE),
- *                     So, If it's only OS_EVENT_TYPE_MUTEX, it means that priority ceiling promotion is disabled.
+ *                  2) 'OSMutexPrio'      of returned (OS_EVENT*)   is the original priority task that owning the Mutex or 'OS_PRIO_RESERVED_MUTEX' if no task is owning the Mutex.
+ *                     'OSMutexPrioCeilP' of returned (OS_EVENT*)   is the raised priority to reduce the priority inversion or 'OS_PRIO_RESERVED_MUTEX' if priority ceiling promotion is disabled.
  */
 OS_EVENT*
 OS_MutexCreate (OS_PRIO prio, OS_OPT opt)
 {
 
+    OS_TASK_TCB* pTCB;
+    OS_EVENT*    pevent;
+
+    if(!OS_IS_VALID_PRIO(prio))                                      /* Valid priority ?                                        */
+    {
+        OS_ERRNO = OS_ERR_PRIO_INVALID;
+        return ((OS_EVENT*)0U);
+    }
+
+    if(OS_IS_RESERVED_PRIO(prio))                                   /* Check that OS is not owning it.                          */
+    {
+        OS_ERRNO = OS_ERR_PRIO_EXIST;
+        return ((OS_EVENT*)0U);
+    }
+
+    if (OS_IntNestingLvl > 0U) {                                    /* Don't Create from an ISR.                                */
+        OS_ERRNO = OS_ERR_EVENT_CREATE_ISR;
+        return ((OS_EVENT*)0U);
+    }
+
+    OS_CRTICAL_BEGIN();
+
+    pTCB = &OS_TblTaskPtr[prio];
+
+    if(pTCB->TASK_Stat == OS_TASK_STAT_DELETED &&
+            pTCB->TASK_Stat != OS_TASK_STAT_RESERVED_MUTEX)         /* Mutex priority must be available to use.                 */
+    {
+        OS_ERRNO = OS_ERR_PRIO_EXIST;                               /* Task is reserving this priority already ...              */
+        OS_CRTICAL_END();                                           /* ... which cannot be used as priority ceiling.            */
+        return ((OS_EVENT*)0U);
+    }
+
+    pTCB->TASK_Stat = OS_TASK_STAT_RESERVED_MUTEX;                  /* Reserve This TCB entry for Mutex use.                    */
+
+    OS_EVENT_allocate(&pevent);                                     /* Allocate a free event object.                            */
+    if(pevent == ((OS_EVENT*)0U))
+    {
+        pTCB->TASK_Stat = OS_TASK_STAT_DELETED;                    /* No more free event objects, Release the TCB entry.        */
+        OS_CRTICAL_END();
+        return (pevent);
+    }
+
+    OS_CRTICAL_END();
+
+    pevent->OSEventType      = OS_EVENT_TYPE_MUTEX;                /* Store the Event type.                                     */
+    pevent->OSEventPtr       = ((OS_EVENT*)0U);                    /* Initial, Not related to any tasks.                        */
+    pevent->OSEventsTCBHead  = ((OS_TASK_TCB*)0U);                 /* Initial, No tasks are pended on this event.               */
+    pevent->OSMutexPrio      = OS_PRIO_RESERVED_MUTEX;             /* Initial, No task is owning the Mutex.                     */
+                                                                   /* According to 'opt', Assign PCP or OS_PRIO_RESERVED_MUTEX to indicate a PCP is disabled. */
+    pevent->OSMutexPrioCeilP = ((opt == OS_MUTEX_PRIO_CEIL_DISABLE) ? (OS_PRIO_RESERVED_MUTEX) : prio) ;
+
+    OS_ERRNO = OS_ERR_NONE;
+    return (pevent);
+}
+
+
+/*
+ * Function:  OS_MutexPend
+ * --------------------
+ * Waits for a mutual exclusion semaphore.
+ *
+ * Arguments    :   pevent      is a pointer to the OS_EVENT object associated with the Mutex.
+ *
+ *                  timeout     is an optional timeout period (in clock ticks).  If non-zero, your task will
+ *                              wait for the resource up to the amount of time specified by this argument.
+ *                              If you specify 0, however, your task will wait forever at the specified
+ *                              mutex or, until the resource becomes available (or the event occurs).
+ *
+ * Returns      :   OS_ERRNO = { }
+ *
+ * Notes        :   1) This function must used only from Task code level and not an ISR.
+ */
+void
+OS_MutexPend (OS_EVENT* pevent, OS_TICK timeout)
+{
 
 }
+
+
+
+
+
+
+
+
