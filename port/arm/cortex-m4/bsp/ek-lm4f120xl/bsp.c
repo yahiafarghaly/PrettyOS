@@ -28,8 +28,8 @@ SOFTWARE.
 *******************************************************************************
 */
 
-#include <pretty_os.h>              /* Include the RTOS     */
 #include <bsp.h>                    /* BSP Exposed APIs.    */
+#include <pretty_os.h>              /* Include the RTOS     */
 #include "TM4C123GH6PM.h"           /* Macros for registers access on this BSP. TM4C123 is similar to LM4F120 */
 
 /*
