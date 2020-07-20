@@ -173,6 +173,7 @@ typedef CPU_t08U                     OS_STATUS;                  /* For status v
 typedef CPU_t32U                     OS_TICK;                    /* Clock tick counter.                           */
 
 typedef CPU_tWORD                    OS_tRet;                    /* Fit to the easiest type of memory for CPU.    */
+typedef CPU_tALIGN                   OS_tSTACK;                  /* OS task stack which is word aligned.          */
 
                                                                  /* OS various structures.                        */
 typedef struct      os_task_event    OS_EVENT;

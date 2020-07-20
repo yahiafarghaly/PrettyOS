@@ -15,6 +15,8 @@
 *******************************************************************************
 */
 
+#define GREEN_TASK_PRIO (90U)
+#define BLUE_TASK_PRIO  (35U)
 CPU_tWORD stack_GreenBlink [40];
 CPU_tWORD stack_BlueBlink  [40];
 CPU_tWORD stack_idleTask   [40];
@@ -42,9 +44,9 @@ main_GreenBlinky(void* args) {
         uint32_t volatile i;
         /* Simulate a workload */
         for (i = 1500U; i != 0U; --i) {
-            BSP_ledGreenOn();
-            BSP_ledBlueOff();
-            BSP_ledRedOff();
+            BSP_LED_GreenOn();
+            BSP_LED_BlueOff();
+            BSP_LED_RedOff();
         }
         App_printStat();
         OS_DelayTicks(100U);
@@ -55,25 +57,48 @@ main_GreenBlinky(void* args) {
 void
 main_BlueBlinky(void* args) {
     BBlink_count = 0;
+    OS_tRet ret;
     while (1) {
         uint32_t volatile i;
         for (i = 3*1500U; i != 0U; --i) {
-            BSP_ledBlueOn();
-            BSP_ledGreenOff();
-            BSP_ledRedOff();
+            BSP_LED_BlueOn();
+            BSP_LED_GreenOff();
+            BSP_LED_RedOff();
         }
         App_printStat();
         OS_DelayTicks(500U);
         ++BBlink_count;
+        if(BBlink_count == 3)
+        {
+            ret = OS_TaskSuspend(GREEN_TASK_PRIO);
+            if(OS_ERR_NONE == ret)
+            {
+               printf("\nGreen Task is suspended. \n");
+               App_printStat();
+            }else if(OS_ERR_TASK_SUSPENDED == ret)
+            {
+                /* Already suspended. */
+            }
+            else
+            {
+                printf("\nTask suspension error:%d\n",ret);
+            }
+        }
     }
 }
 
 void OS_Hook_onIdle(void)
 {
+    if(BBlink_count == 10)
+    {
+        OS_TaskResume(GREEN_TASK_PRIO);
+        printf("\nGreen Task is resumed. \n");
+        BBlink_count = 0;
+    }
     App_printStat();
-    BSP_ledGreenOff();
-    BSP_ledBlueOff();
-    BSP_WaitForInterrupt();
+    BSP_LED_GreenOff();
+    BSP_LED_BlueOff();
+    BSP_CPU_WFI();
 }
 
 int main() {
@@ -82,21 +107,21 @@ int main() {
 
     OS_Init(stack_idleTask, sizeof(stack_idleTask));
 
-    OS_TaskCreate(&main_GreenBlinky, OS_NULL(void), stack_GreenBlink, sizeof(stack_GreenBlink), 90U);
+    OS_TaskCreate(&main_GreenBlinky, OS_NULL(void), stack_GreenBlink, sizeof(stack_GreenBlink), GREEN_TASK_PRIO);
 
-    OS_TaskCreate(&main_BlueBlinky, OS_NULL(void), stack_BlueBlink, sizeof(stack_BlueBlink), 35U);
+    OS_TaskCreate(&main_BlueBlinky, OS_NULL(void), stack_BlueBlink, sizeof(stack_BlueBlink), BLUE_TASK_PRIO);
 
 
     App_minicom_SendClearScreen();
     printf("\n\n");
     printf("                PrettyOS              \n");
     printf("                --------              \n");
-    printf("[Info]: System Clock: %d MHz\n", BSP_SystemClockGet()/1000000);
-    printf("[Info]: BSP ticks per second: %d \n",BSP_TICKS_PER_SEC);
+    printf("[Info]: System Clock: %d MHz\n", BSP_CPU_FrequencyGet()/1000000);
+    printf("[Info]: BSP ticks per second: %d \n",BSP_TICKS_PER_SEC_CONFIG);
     printf("[Info]: Starts !\n\n");
 
     /* transfer control to the RTOS to run the tasks */
-    OS_Run(BSP_SystemClockGet());
+    OS_Run(BSP_CPU_FrequencyGet());
 
     //return 0;
 }

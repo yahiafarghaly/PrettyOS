@@ -76,9 +76,9 @@ main_GreenBlinky(void* args) {
 
         ++green_count;
 
-        BSP_ledGreenOn();
-        BSP_ledBlueOff();
-        BSP_ledRedOff();
+        BSP_LED_GreenOn();
+        BSP_LED_BlueOff();
+        BSP_LED_RedOff();
 
         for (i = 5*1500U; i != 0U; --i) {
         }
@@ -108,9 +108,9 @@ main_RedBlinky(void* args) {
 
         ++red_count;
 
-        BSP_ledRedOn();
-        BSP_ledBlueOff();
-        BSP_ledGreenOff();
+        BSP_LED_RedOn();
+        BSP_LED_BlueOff();
+        BSP_LED_GreenOff();
 
         for (i = 5*1500U; i != 0U; --i) {
         }
@@ -121,9 +121,9 @@ main_RedBlinky(void* args) {
 
 void OS_Hook_onIdle(void)
 {
-    BSP_ledGreenOff();
-    BSP_ledBlueOff();
-    BSP_ledRedOff();
+    BSP_LED_GreenOff();
+    BSP_LED_BlueOff();
+    BSP_LED_RedOff();
     App_printStat();
     BSP_WaitForInterrupt();
 }
@@ -209,8 +209,8 @@ static inline void App_minicom_SendClearScreen(void)
      *  2       the ASCII character for numeral 2, value 0x32.
      *  J       the ASCII character for the letter J, value 0x4A.
      * */
-    BSP_UARTSend(0x1B);
-    BSP_UARTSend(0x5B);
-    BSP_UARTSend(0x32);
-    BSP_UARTSend(0x4A);
+    BSP_UART_SendByte(0x1B);
+    BSP_UART_SendByte(0x5B);
+    BSP_UART_SendByte(0x32);
+    BSP_UART_SendByte(0x4A);
 }

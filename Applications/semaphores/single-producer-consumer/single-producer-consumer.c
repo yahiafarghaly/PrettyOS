@@ -111,8 +111,8 @@ void dummy1(void*args)
 {
     while(1)
     {
-        BSP_ledGreenOn();
-        BSP_ledBlueOff();
+        BSP_LED_GreenOn();
+        BSP_LED_BlueOff();
         OS_DelayTicks(50);
     }
 }
@@ -121,8 +121,8 @@ void dummy2(void*args)
 {
     while(1)
     {
-        BSP_ledGreenOff();
-        BSP_ledBlueOn();
+        BSP_LED_GreenOff();
+        BSP_LED_BlueOn();
         OS_DelayTicks(10);
     }
 }

@@ -26,7 +26,7 @@
 #ifndef UARTSTDIO_H_
 #define UARTSTDIO_H_
 
-#include "bsp.h"
+#include "../bsp.h"
 
 #define printf(...) UARTprintf(__VA_ARGS__)
 

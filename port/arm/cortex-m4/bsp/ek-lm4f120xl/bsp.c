@@ -23,13 +23,21 @@ SOFTWARE.
 ******************************************************************************/
 
 /*
+ * Author   : Yahia Farghaly Ashour
+ *
+ * Purpose  : Implementation of BSP APIs for EK-LM4F120XL development board
+ *            based on ARM Cortex-M4 CPU.
+ *
+ * Language:  C
+ */
+
+/*
 *******************************************************************************
 *                               Includes Files                                *
 *******************************************************************************
 */
 
-#include <bsp.h>                    /* BSP Exposed APIs.    */
-#include <pretty_os.h>              /* Include the RTOS     */
+#include <bsp.h>                    /* BSP Exposed APIs.                                                      */
 #include "TM4C123GH6PM.h"           /* Macros for registers access on this BSP. TM4C123 is similar to LM4F120 */
 
 /*
@@ -95,7 +103,44 @@ BSP_HardwareSetup(void) {
 }
 
 void
-BSP_UARTSend(const char cData)
+BSP_DelayMilliseconds (unsigned long ms) {
+    volatile unsigned long ticks;
+
+    /*TODO: Still needs extra work  */
+    if((1000U / BSP_TICKS_PER_SEC_CONFIG) > ms )
+    {
+        ticks = 1U;
+    }
+    else
+    {
+        ticks = (ms * BSP_TICKS_PER_SEC_CONFIG) / 1000U;
+    }
+
+
+    while(ticks)
+    {
+        BSP_CPU_NOP();
+        ticks -= 1U;
+    }
+
+    return;
+    /*
+     * F_CPU = 16*1000*1000 Hz
+     * instruction_time (one cycle) = 1/F_CPU seconds
+     *                  = (1000/F_CPU) milliseconds.
+     * to achieve a delay of milliseconds = (1000*ms/F_CPU)
+     * */
+    /*
+     * 1000 ms -> bsp_ticks (ex:100)
+     * ms ->  ticks
+     * ticks = (ms * bsp_ticks)/1000U
+     *
+     * resolution = 1000/bsp_ticks ms
+     * */
+}
+
+void
+BSP_UART_SendByte(const unsigned char cData)
 {
     /* Wait until the FIFO is empty. */
     while(UART1->FR & 0x00000020);
@@ -104,52 +149,73 @@ BSP_UARTSend(const char cData)
 }
 
 void
-BSP_ledRedOn(void) {
+BSP_UART_ClearVirtualTerminal (void)
+{
+    /* The command sequences for minicom software to clear the screen is Esc[2J
+     * which can be interpreted as
+     *  Esc     the ASCII Escape character, value 0x1B.
+     *  [       the ASCII left square brace character, value 0x5B.
+     *  2       the ASCII character for numeral 2, value 0x32.
+     *  J       the ASCII character for the letter J, value 0x4A.
+     * */
+    BSP_UART_SendByte(0x1B);
+    BSP_UART_SendByte(0x5B);
+    BSP_UART_SendByte(0x32);
+    BSP_UART_SendByte(0x4A);
+}
+
+void
+BSP_LED_RedOn(void) {
     GPIOF_AHB->DATA_Bits[LED_RED] = LED_RED;
 }
 
 void
-BSP_ledRedOff(void) {
+BSP_LED_RedOff(void) {
     GPIOF_AHB->DATA_Bits[LED_RED] = 0U;
 }
 
 void
-BSP_ledBlueOn(void) {
+BSP_LED_BlueOn(void) {
     GPIOF_AHB->DATA_Bits[LED_BLUE] = LED_BLUE;
 }
 
 void
-BSP_ledBlueOff(void) {
+BSP_LED_BlueOff(void) {
     GPIOF_AHB->DATA_Bits[LED_BLUE] = 0U;
 }
 
 void
-BSP_ledGreenOn(void) {
+BSP_LED_GreenOn(void) {
     GPIOF_AHB->DATA_Bits[LED_GREEN] = LED_GREEN;
 }
 
 void
-BSP_ledGreenOff(void) {
+BSP_LED_GreenOff(void) {
     GPIOF_AHB->DATA_Bits[LED_GREEN] = 0U;
 }
 
 unsigned long
-BSP_SystemClockGet(void)
+BSP_CPU_FrequencyGet(void)
 {
     return SYS_CLOCK_HZ;
 }
 
-
 void
 BSP_onFailure(char const *module, int location)
 {
-    module = module;
-    location = location;
-    NVIC_SystemReset();
+    //NVIC_SystemReset();
+    extern void UARTprintf(const char *pcString, ...);
+    UARTprintf("\n%s %d\n",module,location);
+    for(;;);
 }
 
-void BSP_WaitForInterrupt(void)
+void
+BSP_CPU_WFI (void)
 {
     __WFI(); /* stop the CPU and Wait for Interrupt */
 }
 
+void BSP_CPU_NOP (void)
+{
+    __NOP();
+}

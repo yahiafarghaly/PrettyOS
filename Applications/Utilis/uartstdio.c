@@ -24,7 +24,7 @@
 // Modification Date: 06/06/2020
 //*****************************************************************************
 
-#include "../uartstdio.h"
+#include "uartstdio.h"
 
 #include <stdarg.h>
 
@@ -39,9 +39,9 @@ static inline int UARTwrite(const char *pcBuf, unsigned long ulLen)
     {
         if(pcBuf[uIdx] == '\n')
         {
-            BSP_UARTSend('\r');
+            BSP_UART_SendByte('\r');
         }
-        BSP_UARTSend(pcBuf[uIdx]);
+        BSP_UART_SendByte(pcBuf[uIdx]);
     }
     return uIdx;
 }

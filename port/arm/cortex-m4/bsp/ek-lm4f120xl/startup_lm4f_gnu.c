@@ -381,7 +381,7 @@ void Reset_Handler(void) {
     while(dst < &__stack_start__)
     {
         *dst = 0xFEEDC0DE;  /* A magic code for ram bytes. */
-        *dst++;
+         dst++;
     }
 
     /* Copy the data segment initializers from flash to RAM... */

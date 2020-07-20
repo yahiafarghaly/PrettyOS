@@ -14,9 +14,8 @@
 *                               Globals                                       *
 *******************************************************************************
 */
-
-#define GREEN_TASK_PRIO (90U)
-#define BLUE_TASK_PRIO  (35U)
+#define GREEN_PRIO      90U
+#define BLUE_PRIO       35U
 CPU_tWORD stack_GreenBlink [40];
 CPU_tWORD stack_BlueBlink  [40];
 CPU_tWORD stack_idleTask   [40];
@@ -44,60 +43,54 @@ main_GreenBlinky(void* args) {
         uint32_t volatile i;
         /* Simulate a workload */
         for (i = 1500U; i != 0U; --i) {
-            BSP_ledGreenOn();
-            BSP_ledBlueOff();
-            BSP_ledRedOff();
+            BSP_LED_GreenOn();
+            BSP_LED_BlueOff();
+            BSP_LED_RedOff();
         }
         App_printStat();
         OS_DelayTicks(100U);
-        GBlink_count = ((GBlink_count + 1) > 5) ? 1 : (GBlink_count+1);
+        ++GBlink_count;
+        if(GBlink_count == 10)
+        {
+            printf("\nDeleting Green task\n");
+            OS_TaskDelete(GREEN_PRIO);
+        }
     }
 }
 
 void
 main_BlueBlinky(void* args) {
     BBlink_count = 0;
-    OS_tRet ret;
     while (1) {
         uint32_t volatile i;
         for (i = 3*1500U; i != 0U; --i) {
-            BSP_ledBlueOn();
-            BSP_ledGreenOff();
-            BSP_ledRedOff();
+            BSP_LED_BlueOn();
+            BSP_LED_GreenOff();
+            BSP_LED_RedOff();
         }
         App_printStat();
         OS_DelayTicks(500U);
         ++BBlink_count;
-        if(BBlink_count == 3)
+        if(BBlink_count == 5)
         {
-            ret = OS_TaskSuspend(GREEN_TASK_PRIO);
-            if(OS_ERR_NONE == ret)
-            {
-               printf("\nGreen Task is suspended. \n");
-               App_printStat();
-            }else if(OS_ERR_TASK_SUSPENDED == ret)
-            {
-                /* Already suspended. */
-            }
-            else
-            {
-                printf("\nTask suspension error:%d\n",ret);
-            }
+            printf("\nRestoring Green task\n");
+            OS_TaskCreate(&main_GreenBlinky, OS_NULL(void), stack_GreenBlink, sizeof(stack_GreenBlink), GREEN_PRIO);
+        }
+        if(BBlink_count == 12)
+        {
+            printf("\nExit infinite loop of Blue task\n");
+            printf("\nRe-Create the green task\n");
+            OS_TaskCreate(&main_GreenBlinky, OS_NULL(void), stack_GreenBlink, sizeof(stack_GreenBlink), GREEN_PRIO);
+            break;
         }
     }
 }
 
 void OS_Hook_onIdle(void)
 {
-    if(BBlink_count == 10)
-    {
-        OS_TaskResume(GREEN_TASK_PRIO);
-        printf("\nGreen Task is resumed. \n");
-        BBlink_count = 0;
-    }
     App_printStat();
-    BSP_ledGreenOff();
-    BSP_ledBlueOff();
+    BSP_LED_GreenOff();
+    BSP_LED_BlueOff();
     BSP_WaitForInterrupt();
 }
 
@@ -107,21 +100,21 @@ int main() {
 
     OS_Init(stack_idleTask, sizeof(stack_idleTask));
 
-    OS_TaskCreate(&main_GreenBlinky, OS_NULL(void), stack_GreenBlink, sizeof(stack_GreenBlink), GREEN_TASK_PRIO);
+    OS_TaskCreate(&main_GreenBlinky, OS_NULL(void), stack_GreenBlink, sizeof(stack_GreenBlink), GREEN_PRIO);
 
-    OS_TaskCreate(&main_BlueBlinky, OS_NULL(void), stack_BlueBlink, sizeof(stack_BlueBlink), BLUE_TASK_PRIO);
+    OS_TaskCreate(&main_BlueBlinky, OS_NULL(void), stack_BlueBlink, sizeof(stack_BlueBlink), BLUE_PRIO);
 
 
     App_minicom_SendClearScreen();
     printf("\n\n");
     printf("                PrettyOS              \n");
     printf("                --------              \n");
-    printf("[Info]: System Clock: %d MHz\n", BSP_SystemClockGet()/1000000);
-    printf("[Info]: BSP ticks per second: %d \n",BSP_TICKS_PER_SEC);
+    printf("[Info]: System Clock: %d MHz\n", BSP_CPU_FrequencyGet()/1000000);
+    printf("[Info]: OS ticks per second: %d \n",OS_TICKS_PER_SEC);
     printf("[Info]: Starts !\n\n");
 
     /* transfer control to the RTOS to run the tasks */
-    OS_Run(BSP_SystemClockGet());
+    OS_Run(BSP_CPU_FrequencyGet());
 
     //return 0;
 }
@@ -129,7 +122,14 @@ int main() {
 
 static inline void App_printStat()
 {
-    printf("Blinky1[G]: %i \t\t Blinky2[B]: %i\r",GBlink_count,BBlink_count);
+    if(BBlink_count == 12 && GBlink_count == 10)
+    {
+        printf("Idle State: ==> Blinky1[G]: %i \t\t Blinky2[B]: %i\r",GBlink_count,BBlink_count);
+    }
+    else
+    {
+        printf("Blinky1[G]: %i \t\t Blinky2[B]: %i\r",GBlink_count,BBlink_count);
+    }
 }
 
 static inline void App_minicom_SendClearScreen(void)
