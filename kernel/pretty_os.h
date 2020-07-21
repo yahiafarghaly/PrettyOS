@@ -64,11 +64,13 @@ typedef enum {
     OS_ERR_EVENT_PEND_ISR			=(0x15U),     /* Cannot pend an event inside an ISR.             */
     OS_ERR_EVENT_PEND_LOCKED		=(0x16U),     /* Cannot pend an event while scheduler is locked. */
     OS_ERR_EVENT_PEND_ABORT			=(0x17U),     /* Waiting for an event is aborted.                */
-    OS_ERR_EVENT_TIMEOUT			=(0x18U),     /* Event is not occurred within event timeout.     */
-    OS_ERR_EVENT_POOL_EMPTY         =(0x19U),     /* No more space for the an OS_EVENT object.       */
-    OS_ERR_EVENT_CREATE_ISR         =(0x20U),     /* Cannot create this event type inside an ISR.    */
+    OS_ERR_EVENT_POST_ISR           =(0x18U),     /* Cannot Post inside an ISR.                      */
+    OS_ERR_EVENT_TIMEOUT			=(0x19U),     /* Event is not occurred within event timeout.     */
+    OS_ERR_EVENT_POOL_EMPTY         =(0x20U),     /* No more space for the an OS_EVENT object.       */
+    OS_ERR_EVENT_CREATE_ISR         =(0x21U),     /* Cannot create this event type inside an ISR.    */
 
-    OS_ERR_MUTEX_LOWER_PCP          =(0x21U)      /* Priority of current owning mutex is less than PCP specified with mutex. */
+    OS_ERR_MUTEX_LOWER_PCP          =(0x22U),     /* Priority of current owning mutex is less than PCP specified with mutex. */
+    OS_ERR_MUTEX_NO_OWNER           =(0x23U)      /* No task is owning the Mutex while posting it.                           */
 }OS_ERR;
 
 extern OS_ERR OS_ERRNO;                           /* Holds the last error code returned by the last executed prettyOS function. */
@@ -487,6 +489,68 @@ OS_tRet OS_SemPendAbort(OS_EVENT* pevent, CPU_t08U opt, OS_TASK_COUNT* abortedTa
 *                       OS Mutex function Prototypes                          *
 *******************************************************************************
 */
+
+/*
+ * Function:  OS_MutexCreate
+ * --------------------
+ * Creates a mutual exclusion semaphore.
+ *
+ * Arguments    :   prio    is the priority to use when accessing the mutual exclusion semaphore.
+ *                          In other words, when the mutex is acquired and a higher priority task attempts
+ *                          to obtain the mutex, then the priority of the task owning the mutex is rasied to
+ *                          this priority to solve the potential problem (inversion priority) cased when this solution is not provided.
+ *
+ *                          It's assumed that you will specify a priority that HIGHER than ANY of the tasks competing for the mutex.
+ *                          This term is usually called "Priority Ceiling Priority/Promotion/Protocol" or "PCP" for short.
+ *
+ *                  opt     Enable/Disable the Priority Ceiling protocol.
+ *                          = OS_MUTEX_PRIO_CEIL_DISABLE    (Default)
+ *                          = OS_MUTEX_PRIO_CEIL_ENABLE
+ *
+ * Returns      :  != (OS_EVENT*)0U  is a pointer to OS_EVENT object of type OS_EVENT_TYPE_MUTEX for the created mutex.
+ *                 == (OS_EVENT*)0U  if error is found.
+ *                 OS_ERRNO = { OS_ERR_NONE, OS_ERR_PRIO_INVALID, OS_ERR_PRIO_EXIST, OS_ERR_EVENT_CREATE_ISR, OS_ERR_EVENT_POOL_EMPTY}
+ *
+ * Note(s)      :   1) This function is used only from Task code level.
+ *                  2) 'OSMutexPrio'      of returned (OS_EVENT*)   is the original priority task that owning the Mutex or 'OS_PRIO_RESERVED_MUTEX' if no task is owning the Mutex.
+ *                     'OSMutexPrioCeilP' of returned (OS_EVENT*)   is the raised priority to reduce the priority inversion or 'OS_PRIO_RESERVED_MUTEX' if priority ceiling promotion is disabled.
+ */
+OS_EVENT* OS_MutexCreate (OS_PRIO prio, OS_OPT opt);
+
+/*
+ * Function:  OS_MutexPend
+ * --------------------
+ * Waits for a mutual exclusion semaphore.
+ *
+ * Arguments    :   pevent      is a pointer to the OS_EVENT object associated with the Mutex.
+ *
+ *                  timeout     is an optional timeout period (in clock ticks).  If non-zero, your task will
+ *                              wait for the resource up to the amount of time specified by this argument.
+ *                              If you specify 0, however, your task will wait forever at the specified
+ *                              mutex or, until the resource becomes available (or the event occurs).
+ *
+ * Returns      :   OS_ERRNO = { OS_ERR_NONE, OS_ERR_EVENT_PEVENT_NULL, OS_ERR_EVENT_TYPE, OS_ERR_EVENT_PEND_ISR,
+ *                               OS_ERR_MUTEX_PCP_LOWER, OS_ERR_EVENT_PEND_ABORT, OS_ERR_EVENT_TIMEOUT, OS_ERR_EVENT_PEND_LOCKED }
+ *
+ * Note(s)      :   1) This function must used only from Task code level and not an ISR.
+ *                  2) The task that owns the Mutex must not pend on any other events while it's owning the Mutex. Otherwise, you create a possible inversion priority bug.
+ *                  3) [For the current implementation], Don't change the priority of the task that owns the Mutex at run time.
+ */
+void OS_MutexPend (OS_EVENT* pevent, OS_TICK timeout);
+
+/*
+ * Function:  OS_MutexPost
+ * --------------------
+ * Signal a mutual exclusion semaphore.
+ *
+ * Arguments    :   pevent      is a pointer to the OS_EVENT object associated with the Mutex.
+ *
+ * Returns      :   OS_ERRNO = { OS_ERR_NONE, OS_ERR_EVENT_PEVENT_NULL, OS_ERR_EVENT_TYPE, OS_ERR_EVENT_POST_ISR,
+ *                               OS_ERR_MUTEX_PCP_LOWER }
+ *
+ * Notes        :   1) This function must used only from Task code level.
+ */
+void OS_MutexPost (OS_EVENT* pevent);
 
 /*
 *******************************************************************************
