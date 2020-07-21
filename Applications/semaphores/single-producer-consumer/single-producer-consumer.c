@@ -1,42 +1,85 @@
+/*****************************************************************************
+MIT License
+
+Copyright (c) 2020 Yahia Farghaly Ashour
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+******************************************************************************/
+/*
+ * Author   : Yahia Farghaly Ashour
+ *
+ * Purpose  : This example demonstrate a single producer/consumer problem which is solved
+ *              using semaphore service.
+ *            The example is inspired from a wikipedia article:
+ *            ( https://en.wikipedia.org/wiki/Producer%E2%80%93consumer_problem )
+ *
+ * Language:  C
+ */
 
 /*
 *******************************************************************************
 *                               Includes Files                                *
 *******************************************************************************
 */
-#include <stdint.h>
-#include <pretty_os.h>
 #include <bsp.h>
+#include <pretty_os.h>
 #include <uartstdio.h>
+
+/*
+*******************************************************************************
+*                                   Macros                                    *
+*******************************************************************************
+*/
+#define DUMMY_TASK_2_PRIO      (17U)
+#define DUMMY_TASK_1_PRIO      (16U)
+#define CONSUMER_TASK_PRIO     (14U)
+#define PRODUCER_TASK_PRIO     (13U)
+#define BUFFER_SIZE            (3U)
 
 /*
 *******************************************************************************
 *                               Globals                                       *
 *******************************************************************************
 */
-
-#define DUMMY_TASK_2_PRIO      (4U)
-#define DUMMY_TASK_1_PRIO      (3U)
-#define CONSUMER_TASK_PRIO     (2U)
-#define PRODUCER_TASK_PRIO     (1U)
-
-#define BUFFER_SIZE            (5U)
-
-CPU_tWORD task_stacks [5][40];
-
-unsigned char buffer[BUFFER_SIZE];
-static unsigned char buff_Idx = 0;
+OS_tSTACK task_stacks [5][40];
 
 OS_SEM *fill_cnt;
 OS_SEM *remaining_cnt;
 
+unsigned char                   buffer[BUFFER_SIZE];
+static volatile unsigned char    buff_Idx = 0;
+
+/*
+*******************************************************************************
+*                              OS Hooks functions                             *
+*******************************************************************************
+*/
+void OS_Hook_onIdle(void)
+{
+    BSP_CPU_WFI();
+}
 /*
 *******************************************************************************
 *                            Functions Prototypes                             *
 *******************************************************************************
 */
 
-static inline void App_minicom_SendClearScreen(void);
 void consumer(void* args);
 void producer(void* args);
 void dummy1(void*args);
@@ -56,19 +99,17 @@ void fakeWorkload(void);
 *******************************************************************************
 */
 
-
-
 int main() {
 
     BSP_HardwareSetup();
 
-    App_minicom_SendClearScreen();
+    BSP_UART_ClearVirtualTerminal();
 
     printf("\n\n");
     printf("                PrettyOS              \n");
     printf("                --------              \n");
-    printf("[Info]: System Clock: %d MHz\n", BSP_SystemClockGet()/1000000);
-    printf("[Info]: BSP ticks per second: %d \n",BSP_TICKS_PER_SEC);
+    printf("[Info]: System Clock: %d MHz\n", BSP_CPU_FrequencyGet()/1000000);
+    printf("[Info]: OS ticks per second: %d \n",OS_TICKS_PER_SEC);
 
     OS_Init(task_stacks[0], sizeof(task_stacks[0]));
 
@@ -97,11 +138,11 @@ int main() {
 
     printf("[Info]: Starts !\n\n");
 
-    remaining_cnt = OS_SemCreate(BUFFER_SIZE);   /* Remaining space. */
-    fill_cnt  = OS_SemCreate(0);             /* Items produced. */
+    remaining_cnt = OS_SemCreate(BUFFER_SIZE);      /* Remaining space. */
+    fill_cnt  = OS_SemCreate(0);                    /* Items produced.  */
 
     /* PrettyOS takes control from here. */
-    OS_Run(BSP_SystemClockGet());
+    OS_Run(BSP_CPU_FrequencyGet());
 
     /* Never executed. */
     return 0;
@@ -155,25 +196,6 @@ void producer(void* args) {
     }
 }
 
-void OS_Hook_onIdle(void)
-{
-    BSP_WaitForInterrupt();
-}
-
-static inline void App_minicom_SendClearScreen(void)
-{
-    /*The command sequence for minicom to clear the screen is Esc[2J
-     * which can be interpreted as
-     *  Esc     the ASCII Escape character, value 0x1B.
-     *  [       the ASCII left square brace character, value 0x5B.
-     *  2       the ASCII character for numeral 2, value 0x32.
-     *  J       the ASCII character for the letter J, value 0x4A.
-     * */
-    BSP_UARTSend(0x1B);
-    BSP_UARTSend(0x5B);
-    BSP_UARTSend(0x32);
-    BSP_UARTSend(0x4A);
-}
 
 unsigned char produceItem(void)
 {

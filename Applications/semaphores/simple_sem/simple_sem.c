@@ -1,59 +1,107 @@
+/*****************************************************************************
+MIT License
+
+Copyright (c) 2020 Yahia Farghaly Ashour
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+******************************************************************************/
+/*
+ * Author   : Yahia Farghaly Ashour
+ *
+ * Purpose  : This example demonstrate the use of basic operations of pend/post of
+ *              a prettyOS semaphore.
+ *
+ * Language:  C
+ */
 
 /*
 *******************************************************************************
 *                               Includes Files                                *
 *******************************************************************************
 */
-#include <stdint.h>
-#include <pretty_os.h>
 #include <bsp.h>
+#include <pretty_os.h>
 #include <uartstdio.h>
+
+/*
+*******************************************************************************
+*                                   Macros                                    *
+*******************************************************************************
+*/
+#define STACK_SIZE          (40U)
+#define GREEN_TASK_PRIO     (9U)
+#define RED_TASK_PRIO       (5U)
+
+/*
+*******************************************************************************
+*                              Tasks Stacks                                   *
+*******************************************************************************
+*/
+OS_tSTACK stack_GreenBlink [STACK_SIZE];
+OS_tSTACK stack_REDBlink   [STACK_SIZE];
+OS_tSTACK stack_idleTask   [STACK_SIZE];
 
 /*
 *******************************************************************************
 *                               Globals                                       *
 *******************************************************************************
 */
-
-#define GREEN_TASK_PRIO     (70U)
-#define RED_TASK_PRIO       (50U)
-
-CPU_tWORD stack_GreenBlink      [40];
-CPU_tWORD stack_REDBlink        [40];
-CPU_tWORD stack_idleTask        [40];
-
-static unsigned long green_count,red_count;
+static volatile CPU_t32U green_count    = 0U;
+static volatile CPU_t32U red_count      = 0U;
 
 OS_EVENT* sem;
-
-/*
-*******************************************************************************
-*                            Functions Prototypes                             *
-*******************************************************************************
-*/
-static inline void App_printStat();
-static inline void App_minicom_SendClearScreen(void);
 
 /*
 *******************************************************************************
 *                            Functions Definitions                            *
 *******************************************************************************
 */
-
-void loopFail(void)
+static inline void App_printStat()
 {
-    printf("[Info]: S T O P P E D \n");
-    volatile unsigned char i = 1;
-    while(i)
-    {
-        i = i;
-    }
+    printf("Blinky[G]: %i \t\t Blinky[R]: %i\r",green_count,red_count);
 }
+
+/*
+*******************************************************************************
+*                              OS Hooks functions                             *
+*******************************************************************************
+*/
+void OS_Hook_onIdle(void)
+{
+    BSP_LED_GreenOff();
+    BSP_LED_BlueOff();
+    BSP_LED_RedOff();
+    App_printStat();
+    BSP_CPU_WFI();
+}
+
+
+/*
+*******************************************************************************
+*                              Tasks Definitions                              *
+*******************************************************************************
+*/
 
 void
 main_GreenBlinky(void* args) {
     green_count = 0;
-    uint32_t volatile i;
+    CPU_t16U i;
     OS_tRet ret;
     while (1) {
         if(green_count == 5U)
@@ -90,7 +138,7 @@ main_GreenBlinky(void* args) {
 void
 main_RedBlinky(void* args) {
     red_count = 0;
-    uint32_t volatile i;
+    CPU_t16U i;
 
     while (1) {
 
@@ -119,14 +167,6 @@ main_RedBlinky(void* args) {
     }
 }
 
-void OS_Hook_onIdle(void)
-{
-    BSP_LED_GreenOff();
-    BSP_LED_BlueOff();
-    BSP_LED_RedOff();
-    App_printStat();
-    BSP_WaitForInterrupt();
-}
 
 int main() {
 
@@ -134,20 +174,19 @@ int main() {
 
     BSP_HardwareSetup();
 
-    App_minicom_SendClearScreen();
+    BSP_UART_ClearVirtualTerminal();
 
     printf("\n\n");
     printf("                PrettyOS              \n");
     printf("                --------              \n");
-    printf("[Info]: System Clock: %d MHz\n", BSP_SystemClockGet()/1000000);
-    printf("[Info]: BSP ticks per second: %d \n",BSP_TICKS_PER_SEC);
+    printf("[Info]: System Clock: %d MHz\n", BSP_CPU_FrequencyGet()/1000000);
+    printf("[Info]: OS ticks per second: %d \n",OS_TICKS_PER_SEC);
 
     if(OS_ERR_NONE == OS_Init(stack_idleTask, sizeof(stack_idleTask)))
         printf("[Info]: Initialization ... Good\n");
     else
     {
         printf("[Info]: Initialization ... BAD \n");
-        loopFail();
     }
 
     ret = OS_TaskCreate(&main_GreenBlinky,
@@ -161,7 +200,6 @@ int main() {
     else
     {
         printf("[Info]: Green Task creation[prio = %d] ... BAD\n",GREEN_TASK_PRIO);
-        loopFail();
     }
 
     ret = OS_TaskCreate(&main_RedBlinky,
@@ -175,42 +213,20 @@ int main() {
     else
     {
         printf("[Info]: Red Task creation[prio = %d] ... BAD\n",RED_TASK_PRIO);
-        loopFail();
     }
 
     sem = OS_SemCreate(0);
     if(sem == ((OS_SEM*)0U))
     {
         printf("Cannot Create semaphore\n");
-        loopFail();
     }
 
     printf("[Info]: Starts !\n\n");
 
     /* PrettyOS takes control from here. */
-    OS_Run(BSP_SystemClockGet());
+    OS_Run(BSP_CPU_FrequencyGet());
 
     /* Never executed. */
     return 0;
 }
 
-
-static inline void App_printStat()
-{
-    printf("Blinky[G]: %i \t\t Blinky[R]: %i\r",green_count,red_count);
-}
-
-static inline void App_minicom_SendClearScreen(void)
-{
-    /*The command sequence for minicom to clear the screen is Esc[2J
-     * which can be interpreted as
-     *  Esc     the ASCII Escape character, value 0x1B.
-     *  [       the ASCII left square brace character, value 0x5B.
-     *  2       the ASCII character for numeral 2, value 0x32.
-     *  J       the ASCII character for the letter J, value 0x4A.
-     * */
-    BSP_UART_SendByte(0x1B);
-    BSP_UART_SendByte(0x5B);
-    BSP_UART_SendByte(0x32);
-    BSP_UART_SendByte(0x4A);
-}
