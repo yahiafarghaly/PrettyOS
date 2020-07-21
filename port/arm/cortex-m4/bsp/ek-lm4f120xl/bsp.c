@@ -102,41 +102,76 @@ BSP_HardwareSetup(void) {
     BSP_UART_init();
 }
 
+/*
+ * Function:  delay_loop
+ * --------------------
+ * Delay for a number of CPU clocks.
+ * This delay loop is using a 16-bit counter, so up to 65536 iterations (Max possible)
+ * and the a single loop executes at most 4 CPU cycles.
+ * Thus, at a CPU speed of 1 MHz, delays of up to about
+ * ((no.of.cpu.cycles.per.iteration * count) / cpu.freq) = (4*65536/1000 kHz) = 262.14 milliseconds can be achieved.
+ */
+#if __GNUC__                        /*  Defined by GNU C compiler.          */
+__attribute__((naked)) void delay_loop(unsigned short count);
+void
+delay_loop(unsigned short count)
+{
+#if __arm__                         /*  Defined by GNU C compiler for arm.  */
+    __asm volatile (
+            "loop:\n\t"
+            "cbz r0,end\n\t"
+            "subs r0,r0,#1\n\t"
+            "b loop\n\t"
+            "end:\n\t"
+            "bx lr\n\t"
+    );
+#else
+    #error "void delay_loop(unsigned short) is not implemented for the target CPU."
+#endif
+}
+#else
+    #error "void delay_loop(unsigned short) is not implemented for the current used compiler."
+#endif
+
+/*
+ * This implementation is an approximation to the right requested delay.
+ * Hence, it cannot be taking seriously in producing an accurate delay timing.
+ * */
 void
 BSP_DelayMilliseconds (unsigned long ms) {
-    volatile unsigned long ticks;
+    unsigned long ticks;
+    unsigned long count;
 
-    /*TODO: Still needs extra work  */
-    if((1000U / BSP_TICKS_PER_SEC_CONFIG) > ms )
+    /*
+     * Convert the requested milliseconds time to a number of CPU clocks.
+     * Since delay_loop() can delay up to ((no.of.cpu.cycles.per.iteration * count) / cpu.freq) seconds. (cpu.freq in Hz term)
+     * Flipping the equation, we got the following formula:
+     * count = ( (delay.Time[in seconds] * cpu.freq [in Hz]) / no.of.cpu.cycles.per.iteration)
+     * where, no.of.cpu.cycles.per.iteration is equal 4 */
+    count = (BSP_CPU_FrequencyGet() / (4U * 1000U)) * ms;
+
+    if(count < 1)                                                        /* less than 1 ms by too much.                            */
     {
         ticks = 1U;
     }
+    else if (count > 65536U)
+    {
+        /* Greater than the supported max resolution,
+           so we partitioned 'count' into a number of ticks, where each tick
+           execute 0.1 milliseconds delay. */
+        ticks = (unsigned long)(ms * 10U);                               /* Multiply by 10, so we can partition into time slices.  */
+        while(ticks)
+        {
+            delay_loop((BSP_CPU_FrequencyGet() / (4U * 1000U)) / 10U);   /* wait 0.1 milliseconds.                                 */
+            ticks--;
+        }
+        return;
+    }
     else
     {
-        ticks = (ms * BSP_TICKS_PER_SEC_CONFIG) / 1000U;
+        ticks = count;
     }
-
-
-    while(ticks)
-    {
-        BSP_CPU_NOP();
-        ticks -= 1U;
-    }
-
-    return;
-    /*
-     * F_CPU = 16*1000*1000 Hz
-     * instruction_time (one cycle) = 1/F_CPU seconds
-     *                  = (1000/F_CPU) milliseconds.
-     * to achieve a delay of milliseconds = (1000*ms/F_CPU)
-     * */
-    /*
-     * 1000 ms -> bsp_ticks (ex:100)
-     * ms ->  ticks
-     * ticks = (ms * bsp_ticks)/1000U
-     *
-     * resolution = 1000/bsp_ticks ms
-     * */
+    delay_loop(ticks);
 }
 
 void
