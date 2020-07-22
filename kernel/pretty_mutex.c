@@ -128,8 +128,15 @@ OS_MutexCreate (OS_PRIO prio, OS_OPT opt)
     pevent->OSEventPtr       = ((OS_EVENT*)0U);                    /* Initial, Not related to any tasks.                        */
     pevent->OSEventsTCBHead  = ((OS_TASK_TCB*)0U);                 /* Initial, No tasks are pended on this event.               */
     pevent->OSMutexPrio      = OS_PRIO_RESERVED_MUTEX;             /* Initial, No task is owning the Mutex.                     */
-                                                                   /* According to 'opt', Assign PCP or OS_PRIO_RESERVED_MUTEX to indicate a PCP is disabled. */
-    pevent->OSMutexPrioCeilP = ((opt == OS_MUTEX_PRIO_CEIL_DISABLE) ? (OS_PRIO_RESERVED_MUTEX) : prio) ;
+
+    if(OS_MUTEX_PRIO_CEIL_DISABLE == opt)
+    {
+        pevent->OSMutexPrioCeilP = OS_PRIO_RESERVED_MUTEX;         /* OS_PRIO_RESERVED_MUTEX to indicate a PCP is disabled.     */
+    }
+    else
+    {
+        pevent->OSMutexPrioCeilP = prio;                           /* Store PCP value.                                          */
+    }
 
     OS_ERR_SET(OS_ERR_NONE);
     return (pevent);
@@ -188,19 +195,19 @@ OS_MutexPend (OS_EVENT* pevent, OS_TICK timeout)
     {
         pevent->OSMutexPrio = OS_currentTask->TASK_priority;/* Save task priority which owning the mutex.                */
         pevent->OSEventPtr  = (OS_EVENT*)OS_currentTask;    /* Point to the owning task TCB.                             */
-        if(pcp != OS_PRIO_RESERVED_MUTEX)                   /* Is priority ceiling is enabled.                           */
+
+        if((pcp != OS_PRIO_RESERVED_MUTEX) &&               /* Is priority ceiling is enabled.                           */
+                (pcp < OS_currentTask->TASK_priority))      /* PCP should be higher than the Mutex owner task.           */
         {
-            if(pcp < OS_currentTask->TASK_priority)
-            {
-                OS_CRTICAL_END();
-                OS_ERR_SET(OS_ERR_MUTEX_LOWER_PCP);         /* indicate that PCP should not be lower than owner priority.*/
-            }
+            OS_CRTICAL_END();
+            OS_ERR_SET(OS_ERR_MUTEX_LOWER_PCP);             /* indicate that PCP should not be lower than owner priority.*/
         }
         else
         {
             OS_CRTICAL_END();
             OS_ERR_SET(OS_ERR_NONE);
         }
+
         return;                                             /* We are done here, the current task is owning the Mutex.  */
     }
                                                             /* The Mutex is owned by another task.                      */
@@ -289,10 +296,11 @@ OS_MutexPost (OS_EVENT* pevent)
     pcp        = pevent->OSMutexPrioCeilP;
     owner_prio = pevent->OSMutexPrio;
 
-    if(owner_prio == OS_PRIO_RESERVED_MUTEX)                /* See if a task is owning the Mutex to post ?               */
+    if(OS_currentTask != (OS_TASK_TCB*)pevent->OSEventPtr)  /* Check that the task which posts the mutex is actually owning it !         */
     {
         OS_CRTICAL_END();
         OS_ERR_SET(OS_ERR_MUTEX_NO_OWNER);
+        return;
     }
 
     if(pcp != OS_PRIO_RESERVED_MUTEX)                       /* Is priority ceiling is enabled.                           */
@@ -309,14 +317,11 @@ OS_MutexPost (OS_EVENT* pevent)
         pevent->OSMutexPrio = new_owner_prio;                               /* Save task priority which owning the mutex.                */
         pevent->OSEventPtr  = (OS_EVENT*)&OS_TblTaskPtr[new_owner_prio];    /* Point to the new owning task TCB.                         */
 
-        if(pcp != OS_PRIO_RESERVED_MUTEX)                   /* Is priority ceiling is enabled.                           */
+        if((pcp != OS_PRIO_RESERVED_MUTEX) && (pcp < new_owner_prio))       /* Is priority ceiling is enabled                            */
         {
-            if(pcp < new_owner_prio)
-            {
-                OS_CRTICAL_END();
-                OS_Sched();
-                OS_ERR_SET(OS_ERR_MUTEX_LOWER_PCP);         /* indicate that PCP should not be lower than owner priority.*/
-            }
+            OS_CRTICAL_END();
+            OS_Sched();
+            OS_ERR_SET(OS_ERR_MUTEX_LOWER_PCP);                             /* indicate that PCP should not be lower than owner priority.*/
         }
         else
         {
