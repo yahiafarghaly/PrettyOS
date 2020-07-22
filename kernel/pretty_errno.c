@@ -45,18 +45,118 @@ SOFTWARE.
 char const* const
 OS_StrError(OS_ERR errno)
 {
+#if(OS_CONFIG_ERRNO_EN == 1U)
+
+#define str(x) #x               /* stringify the input x                                     */
+#define xstr(x) str(x)          /* expand input x first if necessary, then stringify it.     */
+
     switch(errno)
     {
     case OS_ERR_NONE:
-        return "Success";
+        return xstr(OS_ERR_NONE);
+
     case OS_ERR_PARAM:
-        return "Invalid parameter";
+        return xstr(OS_ERR_PARAM);
+
     case OS_ERR_PRIO_EXIST:
-        return "Reserved priority";
+        return xstr(OS_ERR_PRIO_EXIST);
+
+    case OS_ERR_PRIO_INVALID:
+        return xstr(OS_ERR_PRIO_INVALID);
+
+    case OS_ERR_TASK_CREATE_ISR:
+        return xstr(OS_ERR_TASK_CREATE_ISR);
+
+    case OS_ERR_TASK_SUSPEND_IDLE:
+        return xstr(OS_ERR_TASK_SUSPEND_IDLE);
+
+    case OS_ERR_TASK_SUSPEND_PRIO:
+        return xstr(OS_ERR_TASK_SUSPEND_PRIO);
+
+    case OS_ERR_TASK_SUSPENDED:
+        return xstr(OS_ERR_TASK_SUSPENDED);
+
+    case OS_ERR_TASK_CREATE_EXIST:
+        return xstr(OS_ERR_TASK_CREATE_EXIST);
+
+    case OS_ERR_TASK_RESUME_PRIO:
+        return xstr(OS_ERR_TASK_RESUME_PRIO);
+
+    case OS_ERR_TASK_NOT_EXIST:
+        return xstr(OS_ERR_TASK_NOT_EXIST);
+
+    case OS_ERR_TASK_DELETE_ISR:
+        return xstr(OS_ERR_TASK_DELETE_ISR);
+
+    case OS_ERR_TASK_DELETE_IDLE:
+        return xstr(OS_ERR_TASK_DELETE_IDLE);
+
+    case OS_ERR_EVENT_PEVENT_NULL:
+        return xstr(OS_ERR_EVENT_PEVENT_NULL);
+
+    case OS_ERR_EVENT_TYPE:
+        return xstr(OS_ERR_EVENT_TYPE);
+
+    case OS_ERR_EVENT_PEND_ISR:
+        return xstr(OS_ERR_EVENT_PEND_ISR);
+
+    case OS_ERR_EVENT_PEND_LOCKED:
+        return xstr(OS_ERR_EVENT_PEND_LOCKED);
+
+    case OS_ERR_EVENT_PEND_ABORT:
+        return xstr(OS_ERR_EVENT_PEND_ABORT);
+
+    case OS_ERR_EVENT_POST_ISR:
+        return xstr(OS_ERR_EVENT_POST_ISR);
+
+    case OS_ERR_EVENT_TIMEOUT:
+        return xstr(OS_ERR_EVENT_TIMEOUT);
+
+    case OS_ERR_EVENT_POOL_EMPTY:
+        return xstr(OS_ERR_EVENT_POOL_EMPTY);
+
+    case OS_ERR_EVENT_CREATE_ISR:
+        return xstr(OS_ERR_EVENT_CREATE_ISR);
+
+    case OS_ERR_MUTEX_LOWER_PCP:
+        return xstr(OS_ERR_MUTEX_LOWER_PCP);
+
+    case OS_ERR_MUTEX_NO_OWNER:
+        return xstr(OS_ERR_MUTEX_NO_OWNER);
+
     default:
         break;
     }
-    return "Unknown error code";
+
+    return "Unknown Error Code.";
+#else
+    return "Error Code is not Supported [OS_CONFIG_ERRNO_EN = 0]."
+#endif                                      /* END of OS_CONFIG_ERRNO_EN == 1U */
+}
+
+/*
+ * Function:  OS_StrLastErrIfFail
+ * --------------------
+ * Return a constant string describing the last error occurred.
+ *
+ * Arguments    :    None.
+ *
+ * Returns      :    A const pointer to a const char array values describing the error code.
+ *                   "Success" string if OS_ERR_NONE was the last error.
+ */
+char const* const
+OS_StrLastErrIfFail (void)
+{
+#if(OS_CONFIG_ERRNO_EN == 1U)
+    if (OS_ERRNO != OS_ERR_NONE)
+    {
+        return OS_StrError(OS_ERRNO);
+    }
+
+    return "Success";
+#else
+    return "Error Code is not Supported [OS_CONFIG_ERRNO_EN = 0]."
+#endif                                      /* END of OS_CONFIG_ERRNO_EN == 1U */
 }
 
 

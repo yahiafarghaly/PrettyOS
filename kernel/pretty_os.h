@@ -356,7 +356,19 @@ extern void OS_SchedUnlock (void);
  *
  * Returns      :               A const pointer to a const char array values describing the error code.
  */
-extern char const* const OS_StrError(OS_ERR errno);
+extern char const* const OS_StrError (OS_ERR errno);
+
+/*
+ * Function:  OS_StrLastErrIfFail
+ * --------------------
+ * Return a constant string describing the last error occured.
+ *
+ * Arguments    :    None.
+ *
+ * Returns      :    A const pointer to a const char array values describing the error code.
+ *                   "Success" string if OS_ERR_NONE was the last error.
+ */
+extern char const* const OS_StrLastErrIfFail (void);
 /*
 *******************************************************************************
 *                       PrettyOS Time functions                               *
