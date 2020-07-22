@@ -111,7 +111,7 @@ void task_L(void* args)
     OS_TIME period = { 0, 0, 0, 500};
     while(1)
     {
-        //printf("\nSending '%s' message\n",(char*)args);
+        printf("\nSending '%s' message\n",(char*)args);
         /*  Sending the message takes roughly +2 seconds. */
         OS_MutexPend(message_lock, 0U);
 
@@ -149,11 +149,13 @@ void task_M(void* args)
     while(1)
     {
         /* The execution takes roughly +1 second.  */
-        for(i = 0; i < 5U; i++)
+        BSP_UART_SendByte('[');         /* Starts with close bracket.   */
+        for(i = 0; i < 10U; i++)
         {
-            BSP_UART_SendByte('M');
-            BSP_DelayMilliseconds(200);
+            BSP_UART_SendByte(48 + i);  /* Print digits [0 --> 9]'      */
+            BSP_DelayMilliseconds(100);
         }
+        BSP_UART_SendByte(']');         /* Ends with a bracket.         */
         OS_DelayTime(&period);
     }
 }
@@ -220,7 +222,7 @@ int main (void)
                   sizeof(stkTask_H),
                   PRIO_H_TASK);
 
-    message_lock = OS_MutexCreate(PRIO_PCP, OS_MUTEX_PRIO_CEIL_DISABLE);
+    message_lock = OS_MutexCreate(PRIO_PCP, OS_MUTEX_PRIO_CEIL_ENABLE);
     if(message_lock == (OS_MUTEX*)0U)
     {
         printf("\nError Creating `message_lock` Mutex\n");

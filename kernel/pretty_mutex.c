@@ -42,6 +42,10 @@ extern void OS_Event_TaskPend (OS_EVENT* pevent);
 extern void OS_Event_TaskRemove (OS_TASK_TCB* ptcb, OS_EVENT *pevent);
 extern void OS_Sched (void);
 extern void OS_BlockTime (OS_PRIO prio);
+extern void OS_UnBlockTime (OS_PRIO prio);
+extern void OS_SetReady (OS_PRIO prio);
+extern void OS_RemoveReady (OS_PRIO prio);
+extern void OS_Event_TaskInsert(OS_TASK_TCB* ptcb, OS_EVENT *pevent);
 extern OS_PRIO OS_Event_TaskMakeReady(OS_EVENT* pevent,void* pmsg, OS_STATUS TASK_StatEventMask, OS_STATUS TASK_PendStat);
 
 extern OS_ERR OS_ERRNO;
@@ -75,23 +79,22 @@ extern OS_ERR OS_ERRNO;
 OS_EVENT*
 OS_MutexCreate (OS_PRIO prio, OS_OPT opt)
 {
-
     OS_TASK_TCB* pTCB;
     OS_EVENT*    pevent;
 
-    if(!OS_IS_VALID_PRIO(prio))                                      /* Valid priority ?                                        */
+    if(!OS_IS_VALID_PRIO(prio))                                     /* Valid priority ?                                       */
     {
         OS_ERR_SET(OS_ERR_PRIO_INVALID);
         return ((OS_EVENT*)0U);
     }
 
-    if(OS_IS_RESERVED_PRIO(prio))                                   /* Check that OS is not owning it.                          */
+    if(OS_IS_RESERVED_PRIO(prio))                                  /* Check that OS is not owning it.                          */
     {
         OS_ERR_SET(OS_ERR_PRIO_EXIST);
         return ((OS_EVENT*)0U);
     }
 
-    if (OS_IntNestingLvl > 0U) {                                    /* Don't Create from an ISR.                                */
+    if (OS_IntNestingLvl > 0U) {                                   /* Don't Create from an ISR.                                */
         OS_ERR_SET(OS_ERR_EVENT_CREATE_ISR);
         return ((OS_EVENT*)0U);
     }
@@ -101,19 +104,19 @@ OS_MutexCreate (OS_PRIO prio, OS_OPT opt)
     pTCB = &OS_TblTaskPtr[prio];
 
     if(pTCB->TASK_Stat != OS_TASK_STAT_DELETED ||
-            pTCB->TASK_Stat == OS_TASK_STAT_RESERVED_MUTEX)         /* Mutex priority must be available to use.                 */
+            pTCB->TASK_Stat == OS_TASK_STAT_RESERVED_MUTEX)        /* Mutex priority must be available to use.                 */
     {
-        OS_ERR_SET(OS_ERR_PRIO_EXIST);                              /* TCB entry is reserved for this priority ...              */
-        OS_CRTICAL_END();                                           /* ... which cannot be used as priority ceiling.            */
+        OS_ERR_SET(OS_ERR_PRIO_EXIST);                             /* TCB entry is reserved for this priority ...              */
+        OS_CRTICAL_END();                                          /* ... which cannot be used as priority ceiling.            */
         return ((OS_EVENT*)0U);
     }
 
     if(opt == OS_MUTEX_PRIO_CEIL_ENABLE)
     {
-        pTCB->TASK_Stat = OS_TASK_STAT_RESERVED_MUTEX;             /* Reserve This TCB entry for Mutex use.                    */
+        pTCB->TASK_Stat = OS_TASK_STAT_RESERVED_MUTEX;             /* Reserve This TCB entry for Mutex use.                     */
     }
 
-    OS_EVENT_allocate(&pevent);                                     /* Allocate a free event object.                            */
+    OS_EVENT_allocate(&pevent);                                    /* Allocate a free event object.                             */
     if(pevent == ((OS_EVENT*)0U))
     {
         pTCB->TASK_Stat = OS_TASK_STAT_DELETED;                    /* No more free event objects, Release the TCB entry.        */
@@ -166,6 +169,9 @@ void
 OS_MutexPend (OS_EVENT* pevent, OS_TICK timeout)
 {
     OS_PRIO pcp;                                            /* Priority Ceiling Priority                                 */
+    OS_PRIO owner_prio;
+    OS_TASK_TCB* ptcb_owner;
+    OS_TASK_TCB* ptcb_PCP;
 
     if (pevent == (OS_EVENT*)0U) {                          /* Validate 'pevent'                                         */
         OS_ERR_SET(OS_ERR_EVENT_PEVENT_NULL);
@@ -213,7 +219,52 @@ OS_MutexPend (OS_EVENT* pevent, OS_TICK timeout)
                                                             /* The Mutex is owned by another task.                      */
     if(pcp != OS_PRIO_RESERVED_MUTEX)                       /* Is priority ceiling is enabled.                          */
     {
-        /*TODO:Priority Ceiling protocol*/
+        owner_prio = pevent->OSMutexPrio;                   /* Mutex task owner priority.                               */
+        ptcb_owner  = (OS_TASK_TCB*)pevent->OSEventPtr;     /* Mutex task owner TCB.                                    */
+        if(owner_prio < pcp)                                /* Need to promote to PCP ?                                 */
+        {
+            if(owner_prio < OS_currentTask->TASK_priority)  /* Need to promote the owner of the Mutex ?                 */
+            {
+                 ptcb_PCP = &OS_TblTaskPtr[pcp];            /* We do some work version of OS_TaskChangePriority()       */
+
+                 ptcb_PCP->TASK_SP         = ptcb_owner->TASK_SP;
+                 ptcb_PCP->TASK_Ticks      = ptcb_owner->TASK_Ticks;
+                 ptcb_PCP->TASK_Stat       = ptcb_owner->TASK_Stat;
+                 ptcb_PCP->TASK_PendStat   = ptcb_owner->TASK_PendStat;
+                 ptcb_PCP->TASK_priority   = pcp;
+
+                if(ptcb_owner->TASK_Stat == OS_TASK_STAT_READY)
+                {
+                    OS_RemoveReady(ptcb_owner->TASK_priority);
+                    OS_SetReady(pcp);
+                }
+                else
+                {
+                    if(ptcb_owner->TASK_Stat & OS_TASK_STAT_DELAY)
+                    {
+                        OS_UnBlockTime(ptcb_owner->TASK_priority);
+                        OS_BlockTime(pcp);
+                    }
+
+                    if(ptcb_owner->OSEventPtr != ((OS_EVENT*)0U)) /* If it waits any events..                           */
+                    {
+                        OS_Event_TaskRemove(ptcb_owner, ptcb_owner->OSEventPtr);
+                        OS_Event_TaskInsert(ptcb_PCP  , ptcb_owner->OSEventPtr);
+                    }
+                }
+
+                ptcb_owner->TASK_SP         = 0U;
+                ptcb_owner->TASK_Ticks      = 0U;
+                ptcb_owner->TASK_priority   = 0U;
+                ptcb_owner->TASK_PendStat   = OS_STAT_PEND_OK;
+                ptcb_owner->OSTCBPtr        = ((OS_TASK_TCB*)0U);
+                ptcb_owner->OSEventPtr      = ((OS_EVENT*)0U);
+
+                ptcb_owner->TASK_Stat       = OS_TASK_STAT_RESERVED_MUTEX;
+
+                /* Continue to pend the current task and hopefully, the PCP's Task will be scheduled first.             */
+            }
+        }
     }
 
     OS_currentTask->TASK_Stat      |= OS_TASK_STATE_PEND_MUTEX;  /* Otherwise, pend on mutex.                           */
@@ -271,22 +322,23 @@ OS_MutexPend (OS_EVENT* pevent, OS_TICK timeout)
 void
 OS_MutexPost (OS_EVENT* pevent)
 {
-
     OS_PRIO pcp;
     OS_PRIO owner_prio;
     OS_PRIO new_owner_prio;
+    OS_TASK_TCB* ptcb_owner;
+    OS_TASK_TCB* ptcb_PCP;
 
     if (OS_IntNestingLvl > 0U) {
-        OS_ERR_SET(OS_ERR_EVENT_POST_ISR);                  /* Doesn't make sense to post inside an ISR.                 */
+        OS_ERR_SET(OS_ERR_EVENT_POST_ISR);                  /* Doesn't make sense to post inside an ISR.                                */
         return;
     }
 
-    if (pevent == (OS_EVENT*)0U) {                          /* Validate 'pevent'                                         */
+    if (pevent == (OS_EVENT*)0U) {                          /* Validate 'pevent'                                                        */
         OS_ERR_SET(OS_ERR_EVENT_PEVENT_NULL);
         return;
     }
 
-    if (pevent->OSEventType != OS_EVENT_TYPE_MUTEX) {       /* Validate event type                                       */
+    if (pevent->OSEventType != OS_EVENT_TYPE_MUTEX) {       /* Validate event type                                                      */
         OS_ERR_SET(OS_ERR_EVENT_TYPE);
         return;
     }
@@ -296,16 +348,40 @@ OS_MutexPost (OS_EVENT* pevent)
     pcp        = pevent->OSMutexPrioCeilP;
     owner_prio = pevent->OSMutexPrio;
 
-    if(OS_currentTask != (OS_TASK_TCB*)pevent->OSEventPtr)  /* Check that the task which posts the mutex is actually owning it !         */
-    {
-        OS_CRTICAL_END();
-        OS_ERR_SET(OS_ERR_MUTEX_NO_OWNER);
-        return;
-    }
+//    if(OS_currentTask != (OS_TASK_TCB*)pevent->OSEventPtr)  /* Check that the task which posts the mutex is actually owning it !         */
+//    {
+//        OS_CRTICAL_END();
+//        OS_ERR_SET(OS_ERR_MUTEX_NO_OWNER);
+//        return;
+//    }
 
-    if(pcp != OS_PRIO_RESERVED_MUTEX)                       /* Is priority ceiling is enabled.                           */
+    if(pcp != OS_PRIO_RESERVED_MUTEX)                       /* Is priority ceiling is enabled.                                           */
     {
-        /*TODO: handle PCP situation. */
+        if(OS_currentTask->TASK_priority == pcp)            /* Is it's raised to PCP ?                                                   */
+        {                                                   /* Restore the task's original priority.                                     */
+            ptcb_PCP = &OS_TblTaskPtr[pcp];                 /* == Current executed task.                                                 */
+            ptcb_owner  = (OS_TASK_TCB*)pevent->OSEventPtr; /* Points to the original owner TCB.                                         */
+
+            ptcb_owner->TASK_SP         = ptcb_PCP->TASK_SP;
+            ptcb_owner->TASK_Ticks      = ptcb_PCP->TASK_Ticks;
+            ptcb_owner->TASK_Stat       = ptcb_PCP->TASK_Stat;
+            ptcb_owner->TASK_PendStat   = ptcb_PCP->TASK_PendStat;
+            ptcb_owner->TASK_priority   = owner_prio;
+
+            OS_RemoveReady(pcp);                            /* Remove PCP's task from ready state.                                       */
+            OS_SetReady(owner_prio);                        /* Set the original owner task to be ready.                                  */
+
+            ptcb_PCP->TASK_SP         = 0U;
+            ptcb_PCP->TASK_Ticks      = 0U;
+            ptcb_PCP->TASK_priority   = 0U;
+            ptcb_PCP->TASK_PendStat   = OS_STAT_PEND_OK;
+            ptcb_PCP->OSTCBPtr        = ((OS_TASK_TCB*)0U);
+            ptcb_PCP->OSEventPtr      = ((OS_EVENT*)0U);
+
+            ptcb_PCP->TASK_Stat       = OS_TASK_STAT_RESERVED_MUTEX;
+
+            /* After that: the HPT task, pending on this Mutex will be scheduled                                                        */
+        }
     }
 
     if (pevent->OSEventsTCBHead != ((OS_TASK_TCB*)0U))                      /* See if any task waiting for Mutex.                        */
@@ -321,7 +397,7 @@ OS_MutexPost (OS_EVENT* pevent)
         {
             OS_CRTICAL_END();
             OS_Sched();
-            OS_ERR_SET(OS_ERR_MUTEX_LOWER_PCP);                             /* indicate that PCP should not be lower than owner priority.*/
+            OS_ERR_SET(OS_ERR_MUTEX_LOWER_PCP);                             /* Indicate that PCP should not be lower than owner priority.*/
         }
         else
         {
@@ -330,9 +406,9 @@ OS_MutexPost (OS_EVENT* pevent)
             OS_ERR_SET(OS_ERR_NONE);
         }
 
-        return;                                             /* We are done here, the waited HPT task is owning the Mutex.  */
+        return;                                                             /* We are done here, the waited HPT task is owning the Mutex. */
     }
-                                                            /* No task is owning the Mutex after post.                      */
+                                                                            /* No task is owning the Mutex after post.                    */
     pevent->OSMutexPrio = OS_PRIO_RESERVED_MUTEX;
     pevent->OSEventPtr  = ((OS_EVENT*)0U);
 
