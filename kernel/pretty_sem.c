@@ -22,27 +22,14 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ******************************************************************************/
 
-#include "pretty_os.h"
-
-
 /*
 *******************************************************************************
-*                                    Externs                                  *
+*                               Includes Files                                *
 *******************************************************************************
 */
+#include "pretty_os.h"
+#include "pretty_shared.h"
 
-extern OS_TASK_TCB* volatile OS_currentTask;
-extern CPU_t08U     volatile OS_IntNestingLvl;
-extern CPU_t08U     volatile OS_LockSchedNesting;
-
-extern void OS_EVENT_allocate (OS_EVENT** pevent);
-extern void OS_EVENT_free (OS_EVENT* pevent);
-extern void OS_Event_TaskPend (OS_EVENT* pevent);
-extern void OS_Event_TaskRemove (OS_TASK_TCB* ptcb, OS_EVENT *pevent);
-extern void OS_Sched (void);
-extern void OS_BlockTime (OS_PRIO prio);
-extern void OS_UnBlockTime (OS_PRIO prio);
-extern OS_PRIO OS_Event_TaskMakeReady(OS_EVENT* pevent,void* pmsg, OS_STATUS TASK_StatEventMask, OS_STATUS TASK_PendStat);
 
 /*
 *******************************************************************************

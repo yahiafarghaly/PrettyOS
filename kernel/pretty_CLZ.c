@@ -22,8 +22,22 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ******************************************************************************/
 
+/*
+ * Author   : Yahia Farghaly Ashour
+ *
+ * Purpose  : Contains the implementation of CPU_CountLeadZeros() instruction in C. If no assembly instruction is supported.
+ *
+ * Language:  C
+ */
 
+/*
+*******************************************************************************
+*                               Includes Files                                *
+*******************************************************************************
+*/
 #include "pretty_os.h"
+#include "pretty_shared.h"
+
 
 
 #ifndef CPU_CONFIG_COUNT_LEAD_ZEROS_ASM_PRESENT
@@ -36,14 +50,61 @@ SOFTWARE.
 extern "C" {
 #endif
 
+#if (CPU_CONFIG_DATA_SIZE_BITS == CPU_WORD_SIZE_08)
+CPU_tWORD CntLeadZeros08 (CPU_t08U val)
+{
+    return (0);
+}
+#endif
+
+#if (CPU_CONFIG_DATA_SIZE_BITS == CPU_WORD_SIZE_16)
+CPU_tWORD CntLeadZeros16 (CPU_t16U val)
+{
+    return (0);
+}
+#endif
+
+#if (CPU_CONFIG_DATA_SIZE_BITS == CPU_WORD_SIZE_32)
+CPU_tWORD CntLeadZeros32 (CPU_t32U val)
+{
+    return (0);
+}
+#endif
+
+#if (CPU_CONFIG_DATA_SIZE_BITS == CPU_WORD_SIZE_64)
+CPU_tWORD CntLeadZeros64 (CPU_t64U val)
+{
+    return (0);
+}
+#endif
+
 CPU_tWORD CPU_CountLeadZeros(CPU_tWORD val)
 {
-    return (0U);
+    CPU_tWORD  number_of_lead_zeros;
+
+#if   (CPU_CONFIG_DATA_SIZE_BITS == CPU_WORD_SIZE_08)
+    number_of_lead_zeros = CntLeadZeros08((CPU_t08U)val);
+
+#elif (CPU_CONFIG_DATA_SIZE_BITS == CPU_WORD_SIZE_16)
+    number_of_lead_zeros = CntLeadZeros16((CPU_t16U)val);
+
+#elif (CPU_CONFIG_DATA_SIZE_BITS == CPU_WORD_SIZE_32)
+    number_of_lead_zeros = CntLeadZeros32((CPU_t32U)val);
+
+#elif (CPU_CONFIG_DATA_SIZE_BITS == CPU_WORD_SIZE_64)
+    number_of_lead_zeros = CntLeadZeros64((CPU_t64U)val);
+
+#else                                                         
+        #error "Undefined CPU_tWord type."
+#endif
+
+
+    return (number_of_lead_zeros);
 }
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif
+#endif      /* End of CPU_CONFIG_COUNT_LEAD_ZEROS_ASM_PRESENT   */
 

@@ -583,6 +583,7 @@ void OS_MutexPost (OS_EVENT* pevent);
  *                  priority                is the task priority. ( A unique priority must be assigned to each task )
  *                                              - A greater number means a higher priority
  *                                              - 0 => is reserved for the OS'Idle Task.
+ *                                              - 1 => is reserved for OS use.
  *                                              - OS_LOWEST_PRIO_LEVEL(0) < Allowed value <= OS_HIGHEST_PRIO_LEVEL
  *
  * Returns      :   OS_RET_OK, OS_ERR_PARAM, OS_RET_ERROR_TASK_CREATE_ISR

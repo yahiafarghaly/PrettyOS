@@ -28,26 +28,15 @@ SOFTWARE.
 *******************************************************************************
 */
 #include "pretty_os.h"
+#include "pretty_shared.h"
 
 /*
 *******************************************************************************
 *                               Global Variables                              *
 *******************************************************************************
 */
-OS_EVENT     OSEventsMemoryPool[OS_MAX_EVENTS];
+OS_EVENT  OSEventsMemoryPool[OS_MAX_EVENTS];
 OS_EVENT* volatile pEventFreeList;
-
-/*
-*******************************************************************************
-*                                    Externs                                  *
-*******************************************************************************
-*/
-
-extern OS_TASK_TCB* volatile OS_currentTask;
-
-extern void OS_SetReady(OS_PRIO prio);
-extern void OS_RemoveReady(OS_PRIO prio);
-extern void OS_UnBlockTime(OS_PRIO prio);
 
 /*
  * Function:  OS_Event_FreeListInit

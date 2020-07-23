@@ -22,35 +22,19 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ******************************************************************************/
 
+/*
+*******************************************************************************
+*                               Includes Files                                *
+*******************************************************************************
+*/
 #include "pretty_os.h"
-
+#include "pretty_shared.h"
 
 /*
 *******************************************************************************
-*                                    Externs                                  *
+*                                Mutex functions                              *
 *******************************************************************************
 */
-
-extern OS_TASK_TCB* volatile        OS_currentTask;
-extern CPU_t08U     volatile        OS_IntNestingLvl;
-extern CPU_t08U     volatile        OS_LockSchedNesting;
-extern OS_TASK_TCB*                 OS_tblTCBPrio [OS_MAX_NUMBER_TASKS];
-extern OS_ERR OS_ERRNO;
-
-extern void OS_EVENT_allocate (OS_EVENT** pevent);
-extern void OS_EVENT_free (OS_EVENT* pevent);
-extern void OS_Event_TaskPend (OS_EVENT* pevent);
-extern void OS_Event_TaskRemove (OS_TASK_TCB* ptcb, OS_EVENT *pevent);
-extern void OS_Sched (void);
-extern void OS_BlockTime (OS_PRIO prio);
-extern void OS_UnBlockTime (OS_PRIO prio);
-extern void OS_SetReady (OS_PRIO prio);
-extern void OS_RemoveReady (OS_PRIO prio);
-extern void OS_Event_TaskInsert(OS_TASK_TCB* ptcb, OS_EVENT *pevent);
-extern OS_PRIO OS_Event_TaskMakeReady(OS_EVENT* pevent,void* pmsg, OS_STATUS TASK_StatEventMask, OS_STATUS TASK_PendStat);
-
-
-
 
 /*
  * Function:  OS_MutexCreate
