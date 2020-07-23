@@ -91,6 +91,11 @@ CPU_t08U       volatile OS_LockSchedNesting;          /* Scheduler nesting lock 
 
 OS_TASK_TCB*   const    OS_TblTaskPtr = &OS_TblTask[0]; /* A constant pointer to OS_TblTask[] to be accessible from other modules. */
 
+/*
+ * Table of TCBs pointers, where each pointer refers to a reserved TCB block (For a task, Mutex, ..) or ((OS_TASK_TCB*)0U) if not Valid.
+ *  */
+OS_TASK_TCB*            OS_tblTCBPrio [OS_MAX_NUMBER_TASKS];
+
 extern void OS_Sched (void);
 extern void OS_Event_FreeListInit (void);
 extern void OS_Event_TaskInsert (OS_TASK_TCB* ptcb, OS_EVENT *pevent);
@@ -165,6 +170,7 @@ OS_Init (CPU_tWORD* pStackBaseIdleTask, CPU_tWORD  stackSizeIdleTask)
         OS_TblTask[idx].OSEventPtr  = ((OS_EVENT*)0U);
         OS_TblTask[idx].OSTCBPtr    = ((OS_TASK_TCB*)0U);
         OS_TblTask[idx].TASK_Ticks  = 0U;
+        OS_tblTCBPrio[idx]          = ((OS_TASK_TCB*)0U);
     }
 
     for(idx = 0; idx < OS_MAX_PRIO_ENTRIES; ++idx)
@@ -378,11 +384,11 @@ OS_ScheduleHighest (void)
 
     if(OS_IDLE_TASK_PRIO_LEVEL == OS_HighPrio)
     {
-        OS_nextTask = &OS_TblTask[OS_IDLE_TASK_PRIO_LEVEL];
+        OS_nextTask = OS_tblTCBPrio[OS_IDLE_TASK_PRIO_LEVEL];
     }
     else
     {
-        OS_nextTask = &OS_TblTask[OS_HighPrio];
+        OS_nextTask = OS_tblTCBPrio[OS_HighPrio];
     }
 }
 
@@ -545,6 +551,7 @@ OS_TCB_RegisterTask (CPU_tPtr* stackTop, OS_PRIO priority)
         thisTask->TASK_priority = priority;
         thisTask->TASK_Stat     = OS_TASK_STAT_READY;
         thisTask->TASK_PendStat = OS_STAT_PEND_OK;
+        OS_tblTCBPrio[priority] = thisTask;
         OS_SetReady(priority);
 
         return (OS_ERR_NONE);

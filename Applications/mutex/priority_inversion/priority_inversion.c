@@ -26,6 +26,8 @@ SOFTWARE.
  * Author   : Yahia Farghaly Ashour
  *
  * Purpose  : This example shows the priority inversion bug which can happens if priority ceiling protocol is not used.
+ *            Also, shows how the bug is avoided when OCPP (Original Ceiling Priority Protocol) is used when passing the argument
+ *            'OS_MUTEX_PRIO_CEIL_ENABLE' to the created mutex.
  *
  *            In this example, we have 3 tasks ( L,M,H ) where L refers to a low priority task, M is a middle priority task, H is the highest priority task.
  *            Suppose we have a virtual line that a message is sent on.
@@ -33,6 +35,8 @@ SOFTWARE.
  *            H task: For every 1    second, it sends a critical message "SOS" on a virtual line. It's not acceptable that the task is not meet its periodic timing.
  *            M task: For every 0.25 second, it does some jobs which is roughly takes +1 second. the job is not related to H or L tasks.
  *            L task: For every 0.5  second, it sends a test message " T E S T " on a virtual line (used by H task).
+ *            Additionally to add more complex scenario,
+ *            VH task:For every 5    second, it prints --- VH ---, it is the highest task in the system which doing a job unrelated to L,M or H tasks.
  *
  *            There is a single virtual line to send the message, Hence a mutex service is used in this example to give a special single access for one task at a time.
  *
@@ -64,7 +68,7 @@ SOFTWARE.
 #define PRIO_M_TASK  (6U)
 #define PRIO_H_TASK  (7U)
 #define PRIO_PCP     (8U)
-
+#define PRIO_VH_TASK  (10U)
 /*
 *******************************************************************************
 *                              Tasks Stacks                                   *
@@ -73,6 +77,7 @@ SOFTWARE.
 OS_tSTACK stkTask_L     [STACK_SIZE];
 OS_tSTACK stkTask_M     [STACK_SIZE];
 OS_tSTACK stkTask_H     [STACK_SIZE];
+OS_tSTACK stkTask_VH    [STACK_SIZE];
 OS_tSTACK stkTask_Idle  [STACK_SIZE];
 
 /*
@@ -184,6 +189,16 @@ void task_H(void* args)
     }
 }
 
+void task_VH(void* args)
+{
+    OS_TIME period = { 0, 0, 5U, 0};
+    while(1)
+    {
+        printf("\n--- VH ---\n");
+        OS_DelayTime(&period);
+    }
+}
+
 int main (void)
 {
 
@@ -221,6 +236,12 @@ int main (void)
                   stkTask_H,
                   sizeof(stkTask_H),
                   PRIO_H_TASK);
+
+    OS_TaskCreate(&task_VH,
+                  "SOS",
+                  stkTask_VH,
+                  sizeof(stkTask_VH),
+                  PRIO_VH_TASK);
 
     message_lock = OS_MutexCreate(PRIO_PCP, OS_MUTEX_PRIO_CEIL_ENABLE);
     if(message_lock == (OS_MUTEX*)0U)

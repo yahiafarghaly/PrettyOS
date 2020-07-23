@@ -18,8 +18,7 @@
 |Task suspend/resume| **Yes** |
 |Catch a task that returns| **Yes** |
 |Semaphores| **Yes** |
-| Mutual exclusion semaphores | **Yes** |
-|Original Priority Ceiling Protocol | **In Progress**|
+| Mutual exclusion semaphores(Mutex) | **Yes** with Original Ceiling Priority Protocol (**OCPP**)|
 |Software timers| No|
 | User definable hook functions | No |
 | Message mailboxes | No |

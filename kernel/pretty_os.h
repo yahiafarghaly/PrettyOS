@@ -92,6 +92,7 @@ extern OS_ERR OS_ERRNO;                           /* Holds the last error code r
 
 #define OS_HIGHEST_PRIO_LEVEL           (OS_MAX_NUMBER_TASKS - 1U)
 #define OS_LOWEST_PRIO_LEVEL            (0U)
+#define OS_TCB_MUTEX_RESERVED           ((OS_TASK_TCB*)1U)
 
 /**************************** OS Reserved Priorities *************************/
 /********* Your Application should not assign any of these priorities ********/
@@ -114,7 +115,6 @@ extern OS_ERR OS_ERRNO;                           /* Holds the last error code r
 #define OS_TASK_STATE_PEND_MUTEX    (0x08U)                      /* Pend on mutex.                */
 
 #define OS_TASK_STAT_DELETED        (0xFFU)                      /* A deleted task or not created.*/
-#define OS_TASK_STAT_RESERVED_MUTEX (0x7FU)                      /* Reserve a TCB entry for Mutex.*/
 
 #define OS_TASK_STATE_PEND_ANY      (OS_TASK_STATE_PEND_SEM | OS_TASK_STATE_PEND_MUTEX)
 
