@@ -243,6 +243,8 @@ OS_IntEnter (void)
 void
 OS_IntExit (void)
 {
+    CPU_SR_ALLOC();
+
     if(OS_TRUE == OS_Running)                           /* The kernel has already started.                            */
     {
         OS_CRTICAL_BEGIN();
@@ -288,6 +290,8 @@ OS_IntExit (void)
 void
 OS_SchedLock (void)
 {
+    CPU_SR_ALLOC();
+
     if(OS_TRUE == OS_Running)
     {
         OS_CRTICAL_BEGIN();
@@ -318,6 +322,8 @@ OS_SchedLock (void)
 void
 OS_SchedUnlock (void)
 {
+    CPU_SR_ALLOC();
+
     if(OS_TRUE == OS_Running)
     {
         OS_CRTICAL_BEGIN();
@@ -354,6 +360,8 @@ OS_SchedUnlock (void)
 void
 OS_Sched (void)
 {
+    CPU_SR_ALLOC();
+
     OS_CRTICAL_BEGIN();
 
     if(0U == OS_IntNestingLvl)                      /* Re-schedule if all ISRs are completed.                      */
@@ -411,6 +419,8 @@ OS_ScheduleHighest (void)
 void
 OS_Run (CPU_t32U cpuClockFreq)
 {
+    CPU_SR_ALLOC();
+
     if(OS_TRUE == OS_Running)
     {
         return;
@@ -586,6 +596,7 @@ OS_TimerTick (void)
 {
     CPU_tWORD i = 0;
     CPU_tWORD workingSet;
+    CPU_SR_ALLOC();
 
     if(OS_Running == OS_FAlSE)
     {
@@ -645,6 +656,8 @@ OS_TimerTick (void)
 void
 OS_DelayTicks (OS_TICK ticks)
 {
+    CPU_SR_ALLOC();
+
     if (OS_IntNestingLvl > 0U) {                                /* Don't call from an ISR.                      */
         return;
     }

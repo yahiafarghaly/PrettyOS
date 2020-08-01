@@ -126,6 +126,7 @@ OS_TaskCreate (void (*TASK_Handler)(void* params),
 
 {
     CPU_tWORD* stack_top;
+    CPU_SR_ALLOC();
 
     if(TASK_Handler == OS_NULL(void) || pStackBase == OS_NULL(CPU_tWORD) ||
             stackSize == 0U )
@@ -192,6 +193,7 @@ OS_tRet
 OS_TaskDelete (OS_PRIO prio)
 {
     OS_TASK_TCB* ptcb;
+    CPU_SR_ALLOC();
 
     if(OS_IntNestingLvl > 0U)                                                      /* Don't delete from an ISR.                 */
     {
@@ -259,6 +261,7 @@ OS_TaskChangePriority (OS_PRIO oldPrio, OS_PRIO newPrio)
 {
     OS_TASK_TCB* ptcb;
     OS_EVENT*    pevent;
+    CPU_SR_ALLOC();
 
     if(oldPrio == newPrio)                                                    /* Don't waste more cycles.                     */
     {
@@ -366,6 +369,7 @@ OS_TaskSuspend (OS_PRIO prio)
 {
     CPU_tWORD       selfTask;
     OS_TASK_TCB*    thisTask;
+    CPU_SR_ALLOC();
 
     if(OS_IDLE_TASK_PRIO_LEVEL == prio)                     /* Don't suspend idle task                                                 */
     {
@@ -430,6 +434,7 @@ OS_tRet
 OS_TaskResume (OS_PRIO prio)
 {
     OS_TASK_TCB*    thisTask;
+    CPU_SR_ALLOC();
 
     if(OS_IDLE_TASK_PRIO_LEVEL == prio)                                             /* Resume an suspended task !                                                 */
     {

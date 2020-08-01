@@ -65,6 +65,7 @@ OS_EVENT*
 OS_MutexCreate (OS_PRIO prio, OS_OPT opt)
 {
     OS_EVENT*    pevent;
+    CPU_SR_ALLOC();
 
     if(!OS_IS_VALID_PRIO(prio))                                     /* Valid priority ?                                       */
     {
@@ -154,6 +155,7 @@ OS_MutexPend (OS_EVENT* pevent, OS_TICK timeout)
     OS_TASK_TCB*    ptcb_owner;
     OS_EVENT*       pevent_owner;
     CPU_t08U        ready;                                  /* Flag to indicate that the task was ready.                 */
+    CPU_SR_ALLOC();
 
     if (pevent == (OS_EVENT*)0U) {                          /* Validate 'pevent'                                         */
         OS_ERR_SET(OS_ERR_EVENT_PEVENT_NULL);
@@ -317,6 +319,7 @@ OS_MutexPost (OS_EVENT* pevent)
     OS_PRIO owner_prio;
     OS_PRIO new_owner_prio;
     OS_TASK_TCB* ptcb_owner;
+    CPU_SR_ALLOC();
 
     if (OS_IntNestingLvl > 0U) {
         OS_ERR_SET(OS_ERR_EVENT_POST_ISR);                                  /* Doesn't make sense to post inside an ISR.                */

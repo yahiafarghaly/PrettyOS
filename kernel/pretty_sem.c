@@ -56,6 +56,7 @@ OS_EVENT*
 OS_SemCreate (OS_SEM_COUNT cnt)
 {
     OS_EVENT* pevent = (OS_EVENT*)0U;
+    CPU_SR_ALLOC();
 
     if(OS_IntNestingLvl > 0U)                           /* Create only from task level.                      */
     {
@@ -100,6 +101,7 @@ OS_tRet
 OS_SemPend (OS_EVENT* pevent, OS_TICK timeout)
 {
     OS_tRet ret;
+    CPU_SR_ALLOC();
 
     if (pevent == (OS_EVENT*)0U) {                          /* Validate 'pevent'                                         */
          return (OS_ERR_EVENT_PEVENT_NULL);
@@ -182,6 +184,8 @@ OS_SemPend (OS_EVENT* pevent, OS_TICK timeout)
 OS_tRet
 OS_SemPost (OS_EVENT* pevent)
 {
+    CPU_SR_ALLOC();
+
     if (pevent == (OS_EVENT*)0U) {                          /* Validate 'pevent'                                         */
          return (OS_ERR_EVENT_PEVENT_NULL);
     }
@@ -233,6 +237,7 @@ OS_SEM_COUNT
 OS_SemPendNonBlocking(OS_EVENT* pevent)
 {
     OS_SEM_COUNT count;
+    CPU_SR_ALLOC();
 
     if (pevent == (OS_EVENT*)0U) {                          /* Validate 'pevent'                                            */
          return (0U);
@@ -278,6 +283,7 @@ OS_tRet
 OS_SemPendAbort(OS_EVENT* pevent, CPU_t08U opt, OS_TASK_COUNT* abortedTasksCount)
 {
     OS_TASK_COUNT nAbortedTasks;
+    CPU_SR_ALLOC();
 
     if (pevent == (OS_EVENT*)0U) {                          /* Validate 'pevent'                                         */
          return (OS_ERR_EVENT_PEVENT_NULL);

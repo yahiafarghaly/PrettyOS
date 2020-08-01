@@ -126,6 +126,8 @@ OS_CPU_TaskInit(void (*TASK_Handler)(void* params),
  */
 void OS_CPU_SystemTimerHandler  (void)
 {
+    CPU_SR_ALLOC();
+
     OS_CRTICAL_BEGIN();
 
     OS_IntEnter();          /* Notify that we are entering an ISR.          */

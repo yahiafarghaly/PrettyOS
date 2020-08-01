@@ -103,8 +103,8 @@ typedef void*               CPU_tPtr;                    /* Pointer Type        
 /*--------------------- Count Lead Zeros Implementation ----------------------*/
 
 /*
- * (0U) If no assembly instruction is not provided. This will use pretty_CLZ.c implementation of CPU_CountLeadZeros() .
- * (1U) This will use the assembly implmenetion which is provided with the port.
+ * (0U) If no assembly instruction is not supported. This will use pretty_CLZ.c implementation of CPU_CountLeadZeros() .
+ * (1U) This will use the assembly implementation which is provided with the port.
  * */
 #define CPU_CONFIG_COUNT_LEAD_ZEROS_ASM_PRESENT     (1U)
 
@@ -124,7 +124,7 @@ typedef void*               CPU_tPtr;                    /* Pointer Type        
 #define CPU_CONFIG_STACK_ALIGN_BYTES                  (8U)                          /*  ARM Procedure Calls Standard requires an 8 bytes stack alignment.   */
 
 /*----------------------- CPU Critical Section Method ------------------------*/
-#define CPU_CONFIG_CRITICAL_METHOD                  (CPU_CRITICAL_METHOD_TRIVIAL)
+#define CPU_CONFIG_CRITICAL_METHOD                  (CPU_CRITICAL_METHOD_LOCAL)
 
 
 
@@ -173,9 +173,70 @@ typedef CPU_t32U    CPU_tSR;    /* Define size of CPU status register         */
 *                             Critical Section Management                     *
 *******************************************************************************
 */
+
+/*
+ * Configure 'CPU_CONFIG_CRITICAL_METHOD' to one of the following options:
+ *          1) CPU_CRITICAL_METHOD_TRIVIAL
+ *          2) CPU_CRITICAL_METHOD_STACK
+ *          3) CPU_CRITICAL_METHOD_LOCAL
+ *
+ *          CPU_CRITICAL_METHOD_TRIVIAL
+ *          --------------------------
+ *          Using this method means you are not support multiple levels of interrupts.
+ *
+ *
+ *          CPU_CRITICAL_METHOD_STACK
+ *          -------------------------
+ *          Using this method means you are support multiple levels of interrupts by
+ *          saving the interrupt status on the memory stack.
+ *
+ *              > Enter Critical section:
+ *                  1) Push/save    interrupt status onto a local stack.
+ *                  2) Disable interrupts.
+ *              > Exit  Critical section:
+ *                  1) Pop/restore interrupt status from a local stack.
+ *
+ *
+ *          CPU_CRITICAL_METHOD_LOCAL
+ *          -------------------------
+ *          Using this method means you are support multiple levels of interrupts by
+ *          saving the interrupt status into a local variable.
+ *
+ *              > Enter Critical section:
+ *                  1) Save    interrupt status into a local variable.
+ *                  2) Disable interrupts.
+ *              > Exit  Critical section:
+ *                  1) Restore interrupt status from a local variable.
+ *
+ *                  In this method, a local variable named 'cpu_sr' is used to hold the interrupt status inside PrettyOS code.
+ *                  This requires that 'cpu_sr' to be declared before invoking OS_CRTICAL_BEGIN() or OS_CRTICAL_END()
+ *
+ *                  Using CPU_SR_ALLOC() macro, allows to declare 'cpu_sr' with the appropriate CPU data size
+ *                  which is enough to store the CPU status word.
+ *
+ *                      Usage Example:
+ *                      void Foo (void)
+ *                      {
+ *                          CPU_t32U x;
+ *                          CPU_t32U y;
+ *                          CPU_SR_ALLOC();      Preferred to be declared after all other local variables.
+ *                      }
+ */
+
+#if(CPU_CONFIG_CRITICAL_METHOD == CPU_CRITICAL_METHOD_LOCAL)
+
+    #define CPU_SR_ALLOC()         CPU_tSR cpu_sr = (CPU_tSR)0U                /* Local CPU status word variable.                   */
+    #define OS_CRTICAL_BEGIN()     do { cpu_sr = CPU_SR_Save(); } while (0)    /* Save CPU interrupt status and disable interrupts. */
+    #define OS_CRTICAL_END()       do { CPU_SR_Restore(cpu_sr); } while (0)    /* Restore CPU interrupts status.                    */
+
+#endif
+
 #if(CPU_CONFIG_CRITICAL_METHOD == CPU_CRITICAL_METHOD_TRIVIAL)
+
+    #define CPU_SR_ALLOC()          /* CPU_SR_ALLOC(); To give a completeness for the compiler.                                     */
     #define OS_CRTICAL_BEGIN()      __asm volatile ("cpsid i" : : : "memory");
     #define OS_CRTICAL_END()        __asm volatile ("cpsie i" : : : "memory");
+
 #endif
 
 
@@ -185,6 +246,30 @@ typedef CPU_t32U    CPU_tSR;    /* Define size of CPU status register         */
 *                      CPU Specific Functions Prototypes                      *
 *******************************************************************************
 */
+
+#if(CPU_CONFIG_CRITICAL_METHOD == CPU_CRITICAL_METHOD_LOCAL)
+/*
+ * Function:  CPU_SR_Save
+ * --------------------
+ * Save the interrupt status and disable the system interrupts.
+ *
+ * Arguments    :   None.
+ *
+ * Returns      :   The interrupt status register value.
+ */
+CPU_tSR CPU_SR_Save     (void);
+/*
+ * Function:  CPU_SR_Restore
+ * --------------------
+ * Restore the interrupt status.
+ *
+ * Arguments    :   cpu_sr      is the previous CPU interrupt status value prior to 'CPU_SR_Save' call.
+ *
+ * Returns      :   None.
+ */
+void    CPU_SR_Restore  (CPU_tSR cpu_sr);
+
+#endif
 
 /*
  * Function:  CPU_CountLeadZeros

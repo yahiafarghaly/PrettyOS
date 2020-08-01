@@ -49,8 +49,44 @@ SOFTWARE.
 	.global OS_CPU_FirstStart
 	.global OS_CPU_InterruptContexSwitch
 	.global OS_CPU_PendSVHandler
+	.global CPU_SR_Save
+	.global CPU_SR_Restore
 
 /*----------------------------------------------------------------*/
+
+/************ CPU_tSR CPU_SR_Save (void) *****************
+ * Save the interrupt status and disable the system interrupts.
+ *
+ * Arguments    :   None.
+ *
+ * Returns      :   The interrupt status register value, which is moved to R0.
+ */
+	.type   CPU_SR_Save,%function
+	.thumb_func
+CPU_SR_Save:
+	/* Store the value of PRIMASK inside R0. 													*/
+	mrs		r0,primask
+	/* Disable interrupts and configurable fault handlers. i.e set the value of PRIMASK to 1 .	*/
+	cpsid	i
+	/* Return ...																				*/
+	bx		lr
+
+
+/************ void CPU_SR_Restore (CPU_tSR cpu_sr) *****************
+ * Restore the interrupt status.
+ *
+ * Arguments    :   cpu_sr		is the previous CPU interrupt status value prior to 'CPU_SR_Save' call.
+ *
+ * Returns      :   None.
+ */
+	.type   CPU_SR_Restore,%function
+	.thumb_func
+CPU_SR_Restore:
+	/* Move back the value of the stored interrupt status (R0) to PRIMASK.
+		This will re-enable interrupts if previously PRIMASK was equal to 0.					*/
+	msr		primask,r0
+	/* Return ...																				*/
+	bx		lr
 
 /************ CPU_tWORD CPU_CountLeadZeros(CPU_tWORD val) *****************
  * Counts the number of contiguous, most-significant, leading zero bits before the
