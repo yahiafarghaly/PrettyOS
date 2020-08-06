@@ -23,6 +23,13 @@
 | User definable hook functions | No |
 | Message mailboxes | No |
 
+#### 💻 Porting availability
+| System      			    | BSP        	  | CPU port 		  | Notes         |
+| ----------------------|:-------------:|:-------------:|:-------------:|
+| TI stellaris LM4F120 	| Done 			    | Done 			    |               |
+| Linux machine         | Done          | Done          |Requires POSIX.1b standards as minimal |
+
+
 #### 📜 List of PrettyOS Public APIs
 | Core          | Task managment	| Semaphore 		| Time		|
 | ------------- |:---------------------:|:---------------------:|:-------------:|
@@ -38,11 +45,6 @@
 |OS_MutexCreate	|OS_Hook_onIdle         |OS_StrError            |
 |OS_MutexPend	|                       |OS_StrLastErrIfFail    |
 |OS_MutexPost	|                       |                       |
-
-#### 💻 Porting availability
-| System      			| BSP        	| CPU port 		|
-| ----------------------|:-------------:|:-------------:|
-| TI stellaris LM4F120 	| Done 			| Done 			|
 
 #### 📝 License
 Copyright © 2020 - present, Yahia Farghaly Ashour.<br>
