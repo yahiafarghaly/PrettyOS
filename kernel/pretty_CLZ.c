@@ -78,15 +78,18 @@ static const CPU_t08U CPU_CntLeadZerosTbl[256] = {                              
 extern "C" {
 #endif
 
+/*
+ * Declare CntLeadZeros*() as static inline to prevent linker complaining about
+ * not finding a reference for a function if it's declared only with inline keyword. */
 #if (CPU_CONFIG_DATA_SIZE_BITS == CPU_WORD_SIZE_08)
-CPU_tWORD inline CntLeadZeros08 (CPU_t08U val)
+CPU_tWORD static inline CntLeadZeros08 (CPU_t08U val)
 {
     return (CPU_tWORD)(CPU_CntLeadZerosTbl[(CPU_tWORD)val]);
 }
 #endif
 
 #if (CPU_CONFIG_DATA_SIZE_BITS == CPU_WORD_SIZE_16)
-CPU_tWORD inline CntLeadZeros16 (CPU_t16U val)
+CPU_tWORD static inline CntLeadZeros16 (CPU_t16U val)
 {
     if(val > 0x00FFU)
     {
@@ -100,7 +103,7 @@ CPU_tWORD inline CntLeadZeros16 (CPU_t16U val)
 #endif
 
 #if (CPU_CONFIG_DATA_SIZE_BITS == CPU_WORD_SIZE_32)
-CPU_tWORD inline CntLeadZeros32 (CPU_t32U val)
+CPU_tWORD static inline CntLeadZeros32 (CPU_t32U val)
 {
     if(val > 0x0000FFFFU)
     {
@@ -128,7 +131,7 @@ CPU_tWORD inline CntLeadZeros32 (CPU_t32U val)
 #endif
 
 #if (CPU_CONFIG_DATA_SIZE_BITS == CPU_WORD_SIZE_64)
-CPU_tWORD inline CntLeadZeros64 (CPU_t64U val)
+CPU_tWORD static inline CntLeadZeros64 (CPU_t64U val)
 {
     if (val > 0x00000000FFFFFFFFU) {
         if(val > 0x0000FFFFFFFFFFFFU)

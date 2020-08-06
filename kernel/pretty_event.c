@@ -267,7 +267,7 @@ OS_Event_TaskMakeReady(OS_EVENT* pevent,void* pmsg,
     pHighTCB->TASK_Ticks = 0U;                              /* The task is not waiting for event anymore So, let                */
     OS_UnBlockTime(pHighTCB->TASK_priority);                /* make sure that OS_TimerTick will not try to make it ready.       */
 
-    pmsg = pmsg;                                            /* TODO: Using this argument is not implemented yet for mailboxes.  */
+    (void)pmsg;                                             /* TODO: Using this argument is not implemented yet for mailboxes.  */
 
     pHighTCB->TASK_Stat &= ~(TASK_StatEventMask);           /* Clear the event type bit.                                        */
     pHighTCB->TASK_PendStat = TASK_PendStat;                /* pend status due to a post or abort operation.                    */

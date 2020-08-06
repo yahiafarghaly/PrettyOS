@@ -175,7 +175,7 @@ typedef CPU_t08U                     OS_STATUS;                  /* For status v
 typedef CPU_t32U                     OS_TICK;                    /* Clock tick counter.                           */
 
 typedef CPU_tWORD                    OS_tRet;                    /* Fit to the easiest type of memory for CPU.    */
-typedef CPU_tALIGN                   OS_tSTACK;                  /* OS task stack which is word aligned.          */
+typedef CPU_tSTK                   	 OS_tSTACK;                  /* OS task stack which is word aligned.          */
 
                                                                  /* OS various structures.                        */
 typedef struct      os_task_event    OS_EVENT;
@@ -204,9 +204,16 @@ struct os_task_tcb
 
     OS_STATUS   TASK_PendStat;  /* Task pend status */
 
+#if (OS_CONFIG_TCB_STORE_TASK_ENTRY == 1U)
+    void (*TASK_EntryAddr)(void*);
+    void*  TASK_EntryArg;
+#endif
+
     OS_EVENT*   OSEventPtr;     /* Pointer to this TCB event */
 
     OS_TASK_TCB* OSTCBPtr;      /* Pointer to a TCB (In case of multiple events on the same event object). */
+
+    void*		OSTCBExtension; /* Pointer to user definable data for TCB extension.		 			   */
 };
 
 struct os_task_event
@@ -249,7 +256,7 @@ struct os_task_time
  *
  * Returns      :  OS_RET_OK, OS_ERR_PARAM
  */
-extern OS_tRet OS_Init (CPU_tWORD* pStackBaseIdleTask, CPU_tWORD  stackSizeIdleTask);
+extern OS_tRet OS_Init (CPU_tSTK* pStackBaseIdleTask, CPU_tSTK stackSizeIdleTask);
 
 /*
  * Function:  OS_Run
@@ -590,8 +597,8 @@ void OS_MutexPost (OS_EVENT* pevent);
  */
 OS_tRet OS_TaskCreate (void (*TASK_Handler)(void* params),
                              void *params,
-                             CPU_tWORD* pStackBase,
-                             CPU_tWORD  stackSize,
+                             CPU_tSTK* pStackBase,
+                             CPU_tSTK_SIZE  stackSize,
                              OS_PRIO    priority);
 /*
  * Function:  OS_TaskDelete
@@ -671,6 +678,31 @@ OS_STATUS OS_TaskStatus (OS_PRIO prio);
  * Returns      : None.
  */
 extern void OS_Hook_onIdle(void);
+
+
+
+/*
+*******************************************************************************
+*                      														  *
+*                      Target Hook Specific Functions                 		  *
+*                      	   [Required in CPU port]							  *
+*             [Preferred to do little work as much as possible]				  *
+*                      														  *
+*******************************************************************************
+*/
+
+
+extern void OS_Init_CPU_Hook 		(void);					/* Hooked with OS_Init()				*/
+
+extern void OS_TaskCreate_CPU_Hook 	(OS_TASK_TCB*	ptcb);	/* Hooked with OS_TaskCreate()			*/
+
+extern void OS_TaskDelete_CPU_Hook	(OS_TASK_TCB*	ptcb);	/* Hooked with OS_TaskDelete()			*/
+
+extern void OS_TaskCtxSW_CPU_Hook   (void);					/* Hooked with OS_CPU_ContexSwitch()	*/
+
+extern void OS_TimerTick_CPU_Hook   (void);					/* Hooked with OS_TimerTick()			*/
+
+extern void OS_Idle_CPU_Hook		(void);					/* Hooked with OS_IdleTask				*/
 
 /*
 *******************************************************************************

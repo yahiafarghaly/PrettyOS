@@ -78,18 +78,18 @@ typedef struct
  *
  * Notes:   ARM Cortex-M stack grows from high to low memory address.
  */
-CPU_tWORD*
-OS_CPU_TaskInit(void (*TASK_Handler)(void* params),
+CPU_tSTK*
+OS_CPU_TaskStackInit(void (*TASK_Handler)(void* params),
                              void *params,
-                             CPU_tWORD* pStackBase,
-                             CPU_tWORD  stackSize)
+                             CPU_tSTK* pStackBase,
+                             CPU_tSTK_SIZE  stackSize)
 {
-    CPU_tWORD* sp;
+    CPU_tSTK* sp;
     /*
      * Move to the top of the task stack and round down it 8-bytes to
      * be Aligned.
      * */
-    sp = (CPU_tWORD*)(((CPU_tWORD)pStackBase + stackSize) & 0xFFFFFFF8U);
+    sp = (CPU_tSTK*)(((CPU_tSTK)pStackBase + stackSize) & 0xFFFFFFF8U);
     /* Stacking the registers as auto saved at exception entrance. */
     *(--sp) = (1U << 24);  /* xPSR ( Thumb State ) */
     *(--sp) = (CPU_tWORD)TASK_Handler;      /* PC (Task Entry Point) */
@@ -159,3 +159,42 @@ void  OS_CPU_SystemTimerSetup (CPU_t32U ticks)
 
     SysTick->CTRL |= (0x02U);           /* Finally, Enable Interrupt generation when count reaches 0     */
 }
+
+/*
+*******************************************************************************
+*                           CPU Hook Functions                                *
+*******************************************************************************
+*/
+
+struct OS_TASK_TCB; /* Forward declaration instead of including the pretty_os.h file as i don't use it here. */
+
+void OS_Init_CPU_Hook (void)
+{
+    /* Init certain CPU module.                                 */
+}
+
+void OS_TaskCreate_CPU_Hook (struct OS_TASK_TCB*   ptcb)
+{
+    /* ...                                                      */
+}
+
+void OS_TaskDelete_CPU_Hook (struct OS_TASK_TCB*   ptcb)
+{
+    /* ...                                                      */
+}
+
+void OS_Idle_CPU_Hook (void)
+{
+    /* You may reduce the CPU utilization.                      */
+}
+
+void OS_TaskCtxSW_CPU_Hook (void)
+{
+    /* You may want to count the number of context switches.    */
+}
+
+void OS_TimerTick_CPU_Hook (void)
+{
+    /* You may want to record ticks elapsed here.               */
+}
+

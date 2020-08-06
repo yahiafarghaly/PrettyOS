@@ -25,7 +25,7 @@ SOFTWARE.
 /*
  * Author   : Yahia Farghaly Ashour
  *
- * Purpose  : ARM Cortex-M4 CPU port header file for LM4F120XL board or similar based on Arm.
+ * Purpose  : POSIX port header file.
  *
  * Language:  C
  */
@@ -114,25 +114,25 @@ typedef void*               CPU_tPtr;                    /* Pointer Type        
  * (0U) If no assembly instruction is not supported. This will use pretty_CLZ.c implementation of CPU_CountLeadZeros() .
  * (1U) This will use the assembly implementation which is provided with the port.
  * */
-#define CPU_CONFIG_COUNT_LEAD_ZEROS_ASM_PRESENT     (1U)
+#define CPU_CONFIG_COUNT_LEAD_ZEROS_ASM_PRESENT     (0U)
 
 /*----------------------- CPU Data word sizes in bits ------------------------*/
-#define CPU_CONFIG_DATA_SIZE_BITS                   (CPU_WORD_SIZE_32)              /*  ARM Cortex-CM4 data bus is 32-bit wide.                            */
+#define CPU_CONFIG_DATA_SIZE_BITS                   (CPU_WORD_SIZE_32)              /*  Assume that a system with POSIX runs on a 32-bit processor.         */
 
 /*--------------------- CPU Address word sizes in bits -----------------------*/
-#define CPU_CONFIG_ADDR_SIZE_BITS                   (CPU_WORD_SIZE_32)              /*  ARM Cortex-CM4 address bus is 32-bit wide.                          */
+#define CPU_CONFIG_ADDR_SIZE_BITS                   (CPU_WORD_SIZE_32)              /*  Assume that a system with POSIX runs on a 32-bit processor.         */
 
 /*----------------------- CPU Stack Growth Direction -------------------------*/
-#define CPU_CONFIG_STACK_GROWTH                     (CPU_STACK_GROWTH_HIGH_TO_LOW)  /*  ARM stack grows from high to low address.                           */
+#define CPU_CONFIG_STACK_GROWTH                     (CPU_STACK_GROWTH_NONE)  		/*  Doesn't make a difference.					                        */
 
 /*----------------------- CPU Data word memory order -------------------------*/
-#define CPU_CONFIG_ENDIAN_TYPE                      (CPU_ENDIAN_TYPE_LITTLE)        /*  ARM is a little endian processor.                                   */
+#define CPU_CONFIG_ENDIAN_TYPE                      (CPU_ENDIAN_TYPE_LITTLE)        /*  Doesn't make a difference.					                        */
 
 /*----------------------- CPU Stack Alignment in Bytes -----------------------*/
-#define CPU_CONFIG_STACK_ALIGN_BYTES                  (8U)                          /*  ARM Procedure Calls Standard requires an 8 bytes stack alignment.   */
+#define CPU_CONFIG_STACK_ALIGN_BYTES                  (8U)                          /*  Doesn't make a difference.					                        */
 
 /*----------------------- CPU Critical Section Method ------------------------*/
-#define CPU_CONFIG_CRITICAL_METHOD                  (CPU_CRITICAL_METHOD_LOCAL)
+#define CPU_CONFIG_CRITICAL_METHOD                  (CPU_CRITICAL_METHOD_TRIVIAL)
 
 
 
@@ -171,10 +171,10 @@ typedef void*               CPU_tPtr;                    /* Pointer Type        
 #endif
 
 /*-------------------------------- CPU_t* ------------------------------------*/
-typedef CPU_tWORD   CPU_tALIGN;     /* CPU Data word alignment size.          */
-typedef CPU_t32U    CPU_tSR;        /* Define size of CPU status register     */
-typedef CPU_t32U    CPU_tSTK;       /* Define CPU stack data type.            */
-typedef CPU_t32U    CPU_tSTK_SIZE;  /* Define CPU stack size data type.       */
+typedef CPU_tWORD   CPU_tALIGN; 	/* CPU Data word alignment size.          */
+typedef CPU_t32U    CPU_tSR;    	/* Define size of CPU status register.    */
+typedef CPU_t32U	CPU_tSTK;		/* Define CPU stack data type.			  */
+typedef CPU_t32U	CPU_tSTK_SIZE; 	/* Define CPU stack size data type.		  */
 
 /*
 *******************************************************************************
@@ -231,23 +231,13 @@ typedef CPU_t32U    CPU_tSTK_SIZE;  /* Define CPU stack size data type.       */
  *                      }
  */
 
-#if(CPU_CONFIG_CRITICAL_METHOD == CPU_CRITICAL_METHOD_LOCAL)
-
-    #define CPU_SR_ALLOC()         CPU_tSR cpu_sr = (CPU_tSR)0U                /* Local CPU status word variable.                   */
-    #define OS_CRTICAL_BEGIN()     do { cpu_sr = CPU_SR_Save(); } while (0)    /* Save CPU interrupt status and disable interrupts. */
-    #define OS_CRTICAL_END()       do { CPU_SR_Restore(cpu_sr); } while (0)    /* Restore CPU interrupts status.                    */
-
-#endif
-
 #if(CPU_CONFIG_CRITICAL_METHOD == CPU_CRITICAL_METHOD_TRIVIAL)
 
     #define CPU_SR_ALLOC()          /* CPU_SR_ALLOC(); To give a completeness for the compiler.                                     */
-    #define OS_CRTICAL_BEGIN()      __asm volatile ("cpsid i" : : : "memory");
-    #define OS_CRTICAL_END()        __asm volatile ("cpsie i" : : : "memory");
+    #define OS_CRTICAL_BEGIN()      do { CPU_InterruptDisable(); } while (0)
+    #define OS_CRTICAL_END()        do { CPU_InterruptEnable (); } while (0)
 
 #endif
-
-
 
 /*
 *******************************************************************************
@@ -255,29 +245,10 @@ typedef CPU_t32U    CPU_tSTK_SIZE;  /* Define CPU stack size data type.       */
 *******************************************************************************
 */
 
-#if(CPU_CONFIG_CRITICAL_METHOD == CPU_CRITICAL_METHOD_LOCAL)
-/*
- * Function:  CPU_SR_Save
- * --------------------
- * Save the interrupt status and disable the system interrupts.
- *
- * Arguments    :   None.
- *
- * Returns      :   The interrupt status register value.
- */
-CPU_tSR CPU_SR_Save     (void);
-/*
- * Function:  CPU_SR_Restore
- * --------------------
- * Restore the interrupt status.
- *
- * Arguments    :   cpu_sr      is the previous CPU interrupt status value prior to 'CPU_SR_Save' call.
- *
- * Returns      :   None.
- */
-void    CPU_SR_Restore  (CPU_tSR cpu_sr);
+void CPU_InterruptDisable (void);
 
-#endif
+void CPU_InterruptEnable (void);
+
 
 /*
  * Function:  CPU_CountLeadZeros
@@ -320,7 +291,7 @@ void OS_CPU_InterruptContexSwitch(void);
 void OS_CPU_FirstStart(void);
 
 /*
- * Function:  OS_CPU_TaskInit
+ * Function:  OS_CPU_TaskStackInit
  * --------------------
  * Initialize the stack frame of the task being created.
  * This function is a processor specific.
@@ -338,8 +309,8 @@ void OS_CPU_FirstStart(void);
  */
 CPU_tSTK* OS_CPU_TaskStackInit(void (*TASK_Handler)(void* params),
                              void *params,
-                             CPU_tSTK* pStackBase,
-                             CPU_tSTK_SIZE  stackSize);
+							 CPU_tSTK* pStackBase,
+							 CPU_tSTK_SIZE  stackSize);
 
 /*
  * Function:  OS_CPU_SystemTimerHandler

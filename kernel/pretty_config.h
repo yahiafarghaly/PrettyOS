@@ -39,6 +39,9 @@ SOFTWARE.
 
 #define OS_CONFIG_ERRNO_EN   (1U)          /* 1U = Enable  recording the last error occurred.
                                               0U = Disable recording the last error occurred.        */
+
+#define OS_CONFIG_TCB_STORE_TASK_ENTRY (1U)	/* 1U = Store TASK_EntryAddr & TASK_EntryArg in TCB strutcure. 	*/
+											/* 0U = Don't store.											*/
 /*
 *******************************************************************************
 *                             Data Types Sizes                                *

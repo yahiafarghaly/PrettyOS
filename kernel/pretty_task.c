@@ -120,8 +120,8 @@ OS_TCB_ListInit (void)
 OS_tRet
 OS_TaskCreate (void (*TASK_Handler)(void* params),
                              void *params,
-                             CPU_tWORD* pStackBase,
-                             CPU_tWORD  stackSize,
+                             CPU_tSTK* pStackBase,
+                             CPU_tSTK_SIZE  stackSize,
                              OS_PRIO priority)
 
 {
@@ -142,7 +142,7 @@ OS_TaskCreate (void (*TASK_Handler)(void* params),
         return (OS_ERR_TASK_CREATE_ISR);
     }
 
-    stack_top = OS_CPU_TaskInit(TASK_Handler, params, pStackBase, stackSize);     /* Call low level function to Initialize the stack frame of the task.                      */
+    stack_top = OS_CPU_TaskStackInit(TASK_Handler, params, pStackBase, stackSize);     /* Call low level function to Initialize the stack frame of the task.                      */
 
     if(OS_IS_VALID_PRIO(priority))
     {
@@ -160,6 +160,13 @@ OS_TaskCreate (void (*TASK_Handler)(void* params),
         OS_tblTCBPrio[priority]->TASK_PendStat = OS_STAT_PEND_OK;
         OS_tblTCBPrio[priority]->OSTCBPtr      = OS_NULL(OS_TASK_TCB);
         OS_tblTCBPrio[priority]->OSEventPtr    = OS_NULL(OS_EVENT);
+
+#if (OS_CONFIG_TCB_STORE_TASK_ENTRY == 1U)
+        OS_tblTCBPrio[priority]->TASK_EntryAddr = TASK_Handler;
+        OS_tblTCBPrio[priority]->TASK_EntryArg  = params;
+#endif
+
+        OS_TaskCreate_CPU_Hook(OS_tblTCBPrio[priority]);						 /* Call port specific task creation code.													  */
 
         OS_SetReady(priority);                                                   /* Put in ready state.                                                                       */
     }
@@ -230,6 +237,7 @@ OS_TaskDelete (OS_PRIO prio)
         OS_UnBlockTime(prio);                                                     /* Remove from the time blocked state.        */
     }
 
+    OS_TaskDelete_CPU_Hook(ptcb);												  /* Call port specific task deletion code.		*/
     ptcb->TASK_Ticks    = 0U;                                                     /* Remove any remaining ticks.                */
     ptcb->TASK_PendStat = OS_STAT_PEND_OK;                                        /* Remove any pend state.                     */
     ptcb->TASK_Stat     = OS_TASK_STAT_DELETED;                                   /* Make the task be Dormant.                  */

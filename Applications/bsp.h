@@ -79,6 +79,13 @@ extern void BSP_HardwareSetup (void);
  */
 extern void BSP_DelayMilliseconds (unsigned long ms);
 
+/*
+ * Function:  BSP_Write_to_Console
+ * --------------------------------
+ * Write string data to an output stream, similar to C function "int printf(const char *format, ...)"
+ */
+extern int BSP_Write_to_Console(const char *format, ...);
+
 /*========================== BSP UART functions =============================*/
 
 /*
