@@ -31,6 +31,8 @@ SOFTWARE.
 #include "pretty_shared.h"
 
 
+#if (OS_CONFIG_SEMAPHORE_EN == OS_CONFIG_ENABLE)
+
 /*
 *******************************************************************************
 *                                Semaphore functions                          *
@@ -337,3 +339,5 @@ OS_SemPendAbort(OS_EVENT* pevent, CPU_t08U opt, OS_TASK_COUNT* abortedTasksCount
 
     return (OS_ERR_NONE);
 }
+
+#endif 		/* OS_CONFIG_SEMAPHORE_EN */

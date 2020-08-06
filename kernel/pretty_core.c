@@ -44,25 +44,25 @@ SOFTWARE.
 *******************************************************************************
 */
 
-#define CPU_NumberOfBitsPerWord     (CPU_CONFIG_DATA_SIZE_BITS)
+#define OS_AUTO_CONFIG_CPU_BITS_PER_DATA_WORD     (CPU_CONFIG_DATA_SIZE_BITS)
 
-#if ((OS_MAX_NUMBER_TASKS) & (OS_MAX_NUMBER_TASKS - 1U))
-    #error "OS_MAX_NUMBER_TASKS Must be multiple of power of 2. "
+#if ((OS_CONFIG_TASK_COUNT) & (OS_CONFIG_TASK_COUNT - 1U))
+    #error "OS_CONFIG_TASK_COUNT Must be multiple of power of 2. "
 #endif
 
-#if ((CPU_NumberOfBitsPerWord) & (CPU_NumberOfBitsPerWord - 1U))
-    #error "CPU_NumberOfBitsPerWord Must be multiple of power of 2. The minimum value is 8-bit for normal CPUs !"
+#if ((OS_AUTO_CONFIG_CPU_BITS_PER_DATA_WORD) & (OS_AUTO_CONFIG_CPU_BITS_PER_DATA_WORD - 1U))
+    #error "OS_AUTO_CONFIG_CPU_BITS_PER_DATA_WORD Must be multiple of power of 2. The minimum value is 8-bit for a supported CPU."
 #endif
 
-#define OS_MAX_PRIO_ENTRIES      (OS_MAX_NUMBER_TASKS / CPU_NumberOfBitsPerWord) /* Number of priority entries (levels), minimum value = 1 */
+#define OS_AUTO_CONFIG_MAX_PRIO_ENTRIES      (OS_CONFIG_TASK_COUNT / OS_AUTO_CONFIG_CPU_BITS_PER_DATA_WORD) /* Number of priority entries (levels), minimum value = 1 */
 
-#if (OS_MAX_PRIO_ENTRIES == 0)
-    #warning "OS_MAX_NUMBER_TASKS is less than #bits of one entry of priority map."
-    #warning "OS_MAX_NUMBER_TASKS is re-defined to be equal to #bits of CPU_NumberOfBitsPerWord."
-    #undef  OS_MAX_PRIO_ENTRIES
-    #undef  OS_MAX_NUMBER_TASKS
-    #define OS_MAX_NUMBER_TASKS     CPU_NumberOfBitsPerWord
-    #define OS_MAX_PRIO_ENTRIES     (1U)
+#if (OS_AUTO_CONFIG_MAX_PRIO_ENTRIES == 0U)
+    #warning "OS_CONFIG_TASK_COUNT is less than #bits of one entry of priority map."
+    #warning "OS_CONFIG_TASK_COUNT is re-defined to be equal to #bits of OS_AUTO_CONFIG_CPU_BITS_PER_DATA_WORD."
+    #undef  OS_AUTO_CONFIG_MAX_PRIO_ENTRIES
+    #undef  OS_CONFIG_TASK_COUNT
+    #define OS_CONFIG_TASK_COUNT     OS_AUTO_CONFIG_CPU_BITS_PER_DATA_WORD
+    #define OS_AUTO_CONFIG_MAX_PRIO_ENTRIES     (1U)
 #endif
 
 /*
@@ -73,11 +73,11 @@ SOFTWARE.
 
 /* Array of bit-mask of tasks that are ready to run.
  * (Accessible by task priority)                                              */
-static CPU_tWORD OS_TblReady[OS_MAX_PRIO_ENTRIES]       = { 0U };
+static CPU_tWORD OS_TblReady		[OS_AUTO_CONFIG_MAX_PRIO_ENTRIES] = { 0U };
 
 /* Array of bit-mask of tasks that blocked due to time delay.
  * (Accessible by task priority)                                              */
-static CPU_tWORD OS_TblTimeBlocked[OS_MAX_PRIO_ENTRIES] = { 0U };
+static CPU_tWORD OS_TblTimeBlocked	[OS_AUTO_CONFIG_MAX_PRIO_ENTRIES] = { 0U };
 
 
 /*
@@ -116,7 +116,7 @@ CPU_t08U       volatile OS_LockSchedNesting;
  * For a task, Mutex, ... etc or ((OS_TASK_TCB*)0U) if not pointing to a TCB
  * Entry.
  *  */
-OS_TASK_TCB*            OS_tblTCBPrio [OS_MAX_NUMBER_TASKS];
+OS_TASK_TCB*            OS_tblTCBPrio [OS_CONFIG_TASK_COUNT];
 
 
 /*
@@ -182,13 +182,17 @@ OS_Init (CPU_tSTK* pStackBaseIdleTask, CPU_tSTK  stackSizeIdleTask)
 
     OS_TCB_ListInit();
 
-    for(idx = 0; idx < OS_MAX_PRIO_ENTRIES; ++idx)
+    for(idx = 0; idx < OS_AUTO_CONFIG_MAX_PRIO_ENTRIES; ++idx)
     {
         OS_TblReady[idx]        = 0U;
         OS_TblTimeBlocked[idx]  = 0U;
     }
 
+#if (OS_AUTO_CONFIG_INCLUDE_EVENTS == OS_CONFIG_ENABLE)
+
     OS_Event_FreeListInit();
+
+#endif
 
     ret = OS_TaskCreate(OS_IdleTask,
                         OS_NULL(void),
@@ -429,7 +433,7 @@ OS_Run (CPU_t32U cpuClockFreq)
     }
     else
     {
-        OS_CPU_SystemTimerSetup(cpuClockFreq / OS_TICKS_PER_SEC);
+        OS_CPU_SystemTimerSetup(cpuClockFreq / OS_CONFIG_TICKS_PER_SEC);
 
         OS_CRTICAL_BEGIN();
 
@@ -457,15 +461,15 @@ OS_PriorityHighestGet (void)
     CPU_tWORD   *r_tbl;
     OS_PRIO      prio;
 
-    prio  = (CPU_NumberOfBitsPerWord*OS_MAX_PRIO_ENTRIES);
-    r_tbl = &OS_TblReady[OS_MAX_PRIO_ENTRIES - 1U];
+    prio  = (OS_AUTO_CONFIG_CPU_BITS_PER_DATA_WORD*OS_AUTO_CONFIG_MAX_PRIO_ENTRIES);
+    r_tbl = &OS_TblReady[OS_AUTO_CONFIG_MAX_PRIO_ENTRIES - 1U];
 
     while (*r_tbl == (CPU_tWORD)0) {                    /* Loop Through Entries until find a non empty entry                */
-        prio -= CPU_NumberOfBitsPerWord;                /* Go Back by a Complete Entry                                      */
+        prio -= OS_AUTO_CONFIG_CPU_BITS_PER_DATA_WORD;  /* Go Back by a Complete Entry                                      */
         r_tbl = r_tbl - 1;
     }
-    prio -= CPU_NumberOfBitsPerWord;
-    prio += ((CPU_NumberOfBitsPerWord - (CPU_tWORD)CPU_CountLeadZeros(*r_tbl)) - 1U);
+    prio -= OS_AUTO_CONFIG_CPU_BITS_PER_DATA_WORD;
+    prio += ((OS_AUTO_CONFIG_CPU_BITS_PER_DATA_WORD - (CPU_tWORD)CPU_CountLeadZeros(*r_tbl)) - 1U);
     return (prio);
 }
 
@@ -481,8 +485,8 @@ OS_PriorityHighestGet (void)
 void inline
 OS_SetReady (OS_PRIO prio)
 {
-    CPU_tWORD bit_pos       = prio & (CPU_NumberOfBitsPerWord - 1);
-    CPU_tWORD entry_pos     = prio >> OS_Log2(CPU_NumberOfBitsPerWord);
+    CPU_tWORD bit_pos       = prio & (OS_AUTO_CONFIG_CPU_BITS_PER_DATA_WORD - 1);
+    CPU_tWORD entry_pos     = prio >> OS_Log2(OS_AUTO_CONFIG_CPU_BITS_PER_DATA_WORD);
     OS_TblReady[entry_pos] |= (1U << bit_pos);
 }
 
@@ -498,8 +502,8 @@ OS_SetReady (OS_PRIO prio)
 void inline
 OS_RemoveReady (OS_PRIO prio)
 {
-    CPU_tWORD bit_pos       = prio & (CPU_NumberOfBitsPerWord - 1);
-    CPU_tWORD entry_pos     = prio >> OS_Log2(CPU_NumberOfBitsPerWord);
+    CPU_tWORD bit_pos       = prio & (OS_AUTO_CONFIG_CPU_BITS_PER_DATA_WORD - 1);
+    CPU_tWORD entry_pos     = prio >> OS_Log2(OS_AUTO_CONFIG_CPU_BITS_PER_DATA_WORD);
     OS_TblReady[entry_pos] &= ~(1U << bit_pos);
 }
 
@@ -515,8 +519,8 @@ OS_RemoveReady (OS_PRIO prio)
 void inline
 OS_BlockTime (OS_PRIO prio)
 {
-    CPU_tWORD bit_pos             = prio & (CPU_NumberOfBitsPerWord - 1);
-    CPU_tWORD entry_pos           = prio >> OS_Log2(CPU_NumberOfBitsPerWord);
+    CPU_tWORD bit_pos             = prio & (OS_AUTO_CONFIG_CPU_BITS_PER_DATA_WORD - 1);
+    CPU_tWORD entry_pos           = prio >> OS_Log2(OS_AUTO_CONFIG_CPU_BITS_PER_DATA_WORD);
     OS_TblTimeBlocked[entry_pos] |= (1U << bit_pos);
 }
 
@@ -532,8 +536,8 @@ OS_BlockTime (OS_PRIO prio)
 void inline
 OS_UnBlockTime (OS_PRIO prio)
 {
-    CPU_tWORD bit_pos             = prio & (CPU_NumberOfBitsPerWord - 1);
-    CPU_tWORD entry_pos           = prio >> OS_Log2(CPU_NumberOfBitsPerWord);
+    CPU_tWORD bit_pos             = prio & (OS_AUTO_CONFIG_CPU_BITS_PER_DATA_WORD - 1);
+    CPU_tWORD entry_pos           = prio >> OS_Log2(OS_AUTO_CONFIG_CPU_BITS_PER_DATA_WORD);
     OS_TblTimeBlocked[entry_pos] &= ~(1U << bit_pos);
 }
 
@@ -609,15 +613,15 @@ OS_TimerTick (void)
 
     OS_TimerTick_CPU_Hook();										/* Call port specific tick hook.						  							*/
 
-    for(i = 0; i < OS_MAX_PRIO_ENTRIES; i++)
+    for(i = 0; i < OS_AUTO_CONFIG_MAX_PRIO_ENTRIES; i++)
     {
         if(OS_TblTimeBlocked[i] != 0U)
         {
             workingSet = OS_TblTimeBlocked[i];
             while(workingSet != 0U)
             {
-                CPU_tWORD task_pos = ((CPU_NumberOfBitsPerWord - (CPU_tWORD)CPU_CountLeadZeros(workingSet)) - 1U);
-                OS_TASK_TCB* t = OS_tblTCBPrio[ task_pos + (i * CPU_NumberOfBitsPerWord) ];
+                CPU_tWORD task_pos = ((OS_AUTO_CONFIG_CPU_BITS_PER_DATA_WORD - (CPU_tWORD)CPU_CountLeadZeros(workingSet)) - 1U);
+                OS_TASK_TCB* t = OS_tblTCBPrio[ task_pos + (i * OS_AUTO_CONFIG_CPU_BITS_PER_DATA_WORD) ];
                 if(t != OS_NULL(OS_TASK_TCB))
                 {
                     --(t->TASK_Ticks);
@@ -626,10 +630,14 @@ OS_TimerTick (void)
                         t->TASK_Stat &= ~(OS_TASK_STAT_DELAY);      /* Clear the delay bit                                                               */
                         OS_UnBlockTime(t->TASK_priority);
 
+#if (OS_AUTO_CONFIG_INCLUDE_EVENTS == OS_CONFIG_ENABLE)
+
                         if(t->TASK_Stat & OS_TASK_STATE_PEND_ANY)
                         {
                             t->TASK_PendStat = OS_STAT_PEND_TIMEOUT;
                         }
+
+#endif
                         /* If it's not waiting on any events or suspension,
                            Add the current task to the ready table to be scheduled. */
                         if((t->TASK_Stat & OS_TASK_STAT_SUSPENDED) == OS_TASK_STAT_READY)
@@ -729,8 +737,8 @@ OS_DelayTime(OS_TIME* ptime)
         return;
     }
 
-    ticks = (OS_TICKS_PER_SEC * ( (CPU_t32U)(ptime->seconds) + (CPU_t32U)(ptime->minutes)*60U  + (CPU_t32U)(ptime->hours)*3600U ))
-            + ((OS_TICKS_PER_SEC * ( (CPU_t32U)(ptime->milliseconds) + (500U / OS_TICKS_PER_SEC) )) / 1000U);                       /* Rounded to the nearest tick. */
+    ticks = (OS_CONFIG_TASK_COUNT * ( (CPU_t32U)(ptime->seconds) + (CPU_t32U)(ptime->minutes)*60U  + (CPU_t32U)(ptime->hours)*3600U ))
+            + ((OS_CONFIG_TASK_COUNT * ( (CPU_t32U)(ptime->milliseconds) + (500U / OS_CONFIG_TASK_COUNT) )) / 1000U);                       /* Rounded to the nearest tick. */
 
     OS_DelayTicks(ticks);
 }

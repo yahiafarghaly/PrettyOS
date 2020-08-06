@@ -78,9 +78,7 @@ static const CPU_t08U CPU_CntLeadZerosTbl[256] = {                              
 extern "C" {
 #endif
 
-/*
- * Declare CntLeadZeros*() as static inline to prevent linker complaining about
- * not finding a reference for a function if it's declared only with inline keyword. */
+
 #if (CPU_CONFIG_DATA_SIZE_BITS == CPU_WORD_SIZE_08)
 CPU_tWORD static inline CntLeadZeros08 (CPU_t08U val)
 {

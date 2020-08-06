@@ -50,7 +50,7 @@ SOFTWARE.
 extern CPU_tWORD    volatile        OS_Running;
 
 extern OS_TASK_TCB* volatile        OS_currentTask;
-extern OS_TASK_TCB*                 OS_tblTCBPrio [OS_MAX_NUMBER_TASKS];
+extern OS_TASK_TCB*                 OS_tblTCBPrio [OS_CONFIG_TASK_COUNT];
 
 extern CPU_t08U     volatile        OS_IntNestingLvl;
 extern CPU_t08U     volatile        OS_LockSchedNesting;

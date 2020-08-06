@@ -48,7 +48,7 @@ SOFTWARE.
  * This Table can be accessed by task priority. However, this is not the
  * right way. Instead you should you OS_tblTCBPrio[] pointers which will
  * point to the right TCB for the current execution.                         */
-static OS_TASK_TCB OS_TblTask[OS_MAX_NUMBER_TASKS]      = { 0U };
+static OS_TASK_TCB OS_TblTask[OS_CONFIG_TASK_COUNT]      = { 0U };
 
 
 
@@ -80,12 +80,17 @@ OS_TCB_ListInit (void)
 {
     CPU_t32U idx;
 
-    for(idx = 0; idx < OS_MAX_NUMBER_TASKS; ++idx)
+    for(idx = 0; idx < OS_CONFIG_TASK_COUNT; ++idx)
     {
         OS_TblTask[idx].TASK_Stat   = OS_TASK_STAT_DELETED;
         OS_TblTask[idx].TASK_Ticks  = 0U;
+
+#if (OS_AUTO_CONFIG_INCLUDE_EVENTS == OS_CONFIG_ENABLE)
+
         OS_TblTask[idx].OSEventPtr  = OS_NULL(OS_EVENT);
         OS_TblTask[idx].OSTCBPtr    = OS_NULL(OS_TASK_TCB);
+
+#endif
 
         OS_tblTCBPrio[idx]          = OS_NULL(OS_TASK_TCB);
     }
@@ -157,11 +162,16 @@ OS_TaskCreate (void (*TASK_Handler)(void* params),
         OS_tblTCBPrio[priority]->TASK_SP       = stack_top;
         OS_tblTCBPrio[priority]->TASK_priority = priority;
         OS_tblTCBPrio[priority]->TASK_Stat     = OS_TASK_STAT_READY;
+
+#if (OS_AUTO_CONFIG_INCLUDE_EVENTS == OS_CONFIG_ENABLE)
+
         OS_tblTCBPrio[priority]->TASK_PendStat = OS_STAT_PEND_OK;
         OS_tblTCBPrio[priority]->OSTCBPtr      = OS_NULL(OS_TASK_TCB);
         OS_tblTCBPrio[priority]->OSEventPtr    = OS_NULL(OS_EVENT);
 
-#if (OS_CONFIG_TCB_STORE_TASK_ENTRY == 1U)
+#endif
+
+#if (OS_CONFIG_TCB_TASK_ENTRY_STORE_EN == OS_CONFIG_ENABLE)
         OS_tblTCBPrio[priority]->TASK_EntryAddr = TASK_Handler;
         OS_tblTCBPrio[priority]->TASK_EntryArg  = params;
 #endif
@@ -227,10 +237,14 @@ OS_TaskDelete (OS_PRIO prio)
 
     OS_RemoveReady(prio);                                                         /* Remove the task from ready state.          */
 
+#if (OS_AUTO_CONFIG_INCLUDE_EVENTS == OS_CONFIG_ENABLE)
+
     if(ptcb->OSEventPtr != ((OS_EVENT*)0U))                                       /* If it is waiting for any event...          */
     {
         OS_Event_TaskRemove(ptcb, ptcb->OSEventPtr);                              /* ... unlink it.                             */
     }
+
+#endif
 
     if(ptcb->TASK_Stat & OS_TASK_STAT_DELAY)                                      /* If it's waiting due to a delay             */
     {
@@ -239,7 +253,13 @@ OS_TaskDelete (OS_PRIO prio)
 
     OS_TaskDelete_CPU_Hook(ptcb);												  /* Call port specific task deletion code.		*/
     ptcb->TASK_Ticks    = 0U;                                                     /* Remove any remaining ticks.                */
+
+#if (OS_AUTO_CONFIG_INCLUDE_EVENTS == OS_CONFIG_ENABLE)
+
     ptcb->TASK_PendStat = OS_STAT_PEND_OK;                                        /* Remove any pend state.                     */
+
+#endif
+
     ptcb->TASK_Stat     = OS_TASK_STAT_DELETED;                                   /* Make the task be Dormant.                  */
     OS_tblTCBPrio[prio] = OS_NULL(OS_TASK_TCB);                                   /* At this prio, the task is no longer exist. */
 
@@ -324,7 +344,12 @@ OS_TaskChangePriority (OS_PRIO oldPrio, OS_PRIO newPrio)
     }
 
     ptcb   = OS_tblTCBPrio[oldPrio];                                       /* Store a pointer to TCB entry at old priority.  */
+
+#if (OS_AUTO_CONFIG_INCLUDE_EVENTS == OS_CONFIG_ENABLE)
+
     pevent = ptcb->OSEventPtr;
+
+#endif
 
     if(ptcb->TASK_Stat == OS_TASK_STAT_READY)
     {
@@ -339,6 +364,8 @@ OS_TaskChangePriority (OS_PRIO oldPrio, OS_PRIO newPrio)
             OS_BlockTime(newPrio);
         }
 
+#if (OS_AUTO_CONFIG_INCLUDE_EVENTS == OS_CONFIG_ENABLE)
+
         if(ptcb->OSEventPtr != OS_NULL(OS_EVENT))                          /* If old priority is waiting for an event.        */
         {
             OS_Event_TaskRemove(ptcb, pevent);                             /* ... Remove at the old priority.                 */
@@ -346,6 +373,9 @@ OS_TaskChangePriority (OS_PRIO oldPrio, OS_PRIO newPrio)
             ptcb->TASK_priority    = newPrio;
             OS_Event_TaskInsert(OS_tblTCBPrio[newPrio], pevent);           /* ... Place event at the new priority.            */
         }
+
+#endif
+
     }
 
     ptcb->TASK_priority    = newPrio;                                      /* Store new priority in TCB entry.                */
@@ -526,7 +556,7 @@ OS_TaskReturn (void)
     OS_TaskDelete(OS_currentTask->TASK_priority);       /* Delete a task.            */
     for(;;)                                             /* If deletion fails.        */
     {
-        OS_DelayTicks(OS_TICKS_PER_SEC);
+        OS_DelayTicks(OS_CONFIG_TICKS_PER_SEC);
     }
 }
 

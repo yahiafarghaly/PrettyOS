@@ -30,6 +30,8 @@ SOFTWARE.
 #include "pretty_os.h"
 #include "pretty_shared.h"
 
+#if (OS_CONFIG_MUTEX_EN == OS_CONFIG_ENABLE)
+
 /*
 *******************************************************************************
 *                                Mutex functions                              *
@@ -401,6 +403,8 @@ OS_MutexPost (OS_EVENT* pevent)
 }
 
 
+
+#endif /* OS_CONFIG_MUTEX_EN */
 
 
 

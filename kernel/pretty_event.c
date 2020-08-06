@@ -30,12 +30,18 @@ SOFTWARE.
 #include "pretty_os.h"
 #include "pretty_shared.h"
 
+#if(OS_AUTO_CONFIG_INCLUDE_EVENTS == OS_CONFIG_ENABLE)
+
+#if OS_CONFIG_MAX_EVENTS < 1U
+	#error  "OS_CONFIG_MAX_EVENTS must be >= 1"
+#endif
+
 /*
 *******************************************************************************
 *                               Global Variables                              *
 *******************************************************************************
 */
-OS_EVENT  OSEventsMemoryPool[OS_MAX_EVENTS];
+OS_EVENT  OSEventsMemoryPool[OS_CONFIG_MAX_EVENTS];
 OS_EVENT* volatile pEventFreeList;
 
 /*
@@ -54,16 +60,16 @@ OS_Event_FreeListInit(void)
 {
     CPU_t32U i;
 
-    for(i = 0; i < (OS_MAX_EVENTS - 1U);i++)
+    for(i = 0; i < (OS_CONFIG_MAX_EVENTS - 1U);i++)
     {
         OSEventsMemoryPool[i].OSEventPtr      = &OSEventsMemoryPool[i+1];
         OSEventsMemoryPool[i].OSEventType     = OS_EVENT_TYPE_UNUSED;
         OSEventsMemoryPool[i].OSEventsTCBHead = ((OS_TASK_TCB*)0U);
     }
 
-    OSEventsMemoryPool[OS_MAX_EVENTS - 1U].OSEventPtr       = ((OS_EVENT*)0U);
-    OSEventsMemoryPool[OS_MAX_EVENTS - 1U].OSEventType      = OS_EVENT_TYPE_UNUSED;
-    OSEventsMemoryPool[OS_MAX_EVENTS - 1U].OSEventsTCBHead  = ((OS_TASK_TCB*)0U);
+    OSEventsMemoryPool[OS_CONFIG_MAX_EVENTS - 1U].OSEventPtr       = ((OS_EVENT*)0U);
+    OSEventsMemoryPool[OS_CONFIG_MAX_EVENTS - 1U].OSEventType      = OS_EVENT_TYPE_UNUSED;
+    OSEventsMemoryPool[OS_CONFIG_MAX_EVENTS - 1U].OSEventsTCBHead  = ((OS_TASK_TCB*)0U);
 
     pEventFreeList = &OSEventsMemoryPool[0];
 }
@@ -281,3 +287,6 @@ OS_Event_TaskMakeReady(OS_EVENT* pevent,void* pmsg,
 
     return (pHighTCB->TASK_priority);                       /* Return ready task priority                                       */
 }
+
+
+#endif			/* OS_AUTO_CONFIG_INCLUDE_EVENTS */

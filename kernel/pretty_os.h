@@ -75,7 +75,7 @@ typedef enum {
 
 extern OS_ERR OS_ERRNO;                           /* Holds the last error code returned by the last executed prettyOS function. */
 
-#if(OS_CONFIG_ERRNO_EN == 1U)
+#if(OS_CONFIG_ERRNO_EN == OS_CONFIG_ENABLE)
     #define OS_ERR_SET(err)  do { OS_ERRNO = (OS_ERR)err; }while(0);
 #else
     #define OS_ERR_SET(err)  do { /* This should prevent compiler warnings. */ } while(0);
@@ -90,7 +90,7 @@ extern OS_ERR OS_ERRNO;                           /* Holds the last error code r
 #define OS_TRUE                         (1U)
 #define OS_FAlSE                        (0U)
 
-#define OS_HIGHEST_PRIO_LEVEL           (OS_MAX_NUMBER_TASKS - 1U)
+#define OS_HIGHEST_PRIO_LEVEL           (OS_CONFIG_TASK_COUNT - 1U)
 #define OS_LOWEST_PRIO_LEVEL            (0U)
 #define OS_TCB_MUTEX_RESERVED           ((OS_TASK_TCB*)1U)
 
@@ -158,13 +158,13 @@ extern OS_ERR OS_ERRNO;                           /* Holds the last error code r
 *******************************************************************************
 */
 
-#if (OS_MAX_NUMBER_TASKS - 1) <= (255U)                           /* Fit tasks priority to the correct data type. */
+#if   (OS_CONFIG_TASK_COUNT - 1) <= (0x00000000000000FF)         /* Fit tasks priority to the correct data type. */
     typedef CPU_t08U        OS_PRIO;
-#elif (OS_MAX_NUMBER_TASKS - 1) <= (65535U)
+#elif (OS_CONFIG_TASK_COUNT - 1) <= (0x000000000000FFFF)
     typedef CPU_t16U        OS_PRIO;
-#elif (OS_MAX_NUMBER_TASKS - 1) <= (4294967295U)
+#elif (OS_CONFIG_TASK_COUNT - 1) <= (0x00000000FFFFFFFF)
     typedef CPU_t32U        OS_PRIO;
-#elif (OS_MAX_NUMBER_TASKS - 1) <= (18446744073709551615U)
+#elif (OS_CONFIG_TASK_COUNT - 1) <= (0xFFFFFFFFFFFFFFFF)
     typedef CPU_t64U        OS_PRIO;
 #endif
 
@@ -202,18 +202,29 @@ struct os_task_tcb
 
     OS_STATUS   TASK_Stat;      /* Task Status */
 
-    OS_STATUS   TASK_PendStat;  /* Task pend status */
+#if (OS_AUTO_CONFIG_INCLUDE_EVENTS 		== OS_CONFIG_ENABLE)
 
-#if (OS_CONFIG_TCB_STORE_TASK_ENTRY == 1U)
-    void (*TASK_EntryAddr)(void*);
-    void*  TASK_EntryArg;
-#endif
+    OS_STATUS   TASK_PendStat;  /* Task pend status */
 
     OS_EVENT*   OSEventPtr;     /* Pointer to this TCB event */
 
     OS_TASK_TCB* OSTCBPtr;      /* Pointer to a TCB (In case of multiple events on the same event object). */
 
+#endif
+
+#if (OS_CONFIG_TCB_TASK_ENTRY_STORE_EN 	== OS_CONFIG_ENABLE)
+
+    void (*TASK_EntryAddr)(void*);
+    void*  TASK_EntryArg;
+
+#endif
+
+#if (OS_CONFIG_TCB_EXTENSION_EN 		== OS_CONFIG_ENABLE)
+
     void*		OSTCBExtension; /* Pointer to user definable data for TCB extension.		 			   */
+
+#endif
+
 };
 
 struct os_task_event
@@ -706,29 +717,51 @@ extern void OS_Idle_CPU_Hook		(void);					/* Hooked with OS_IdleTask				*/
 
 /*
 *******************************************************************************
-*                               Miscellaneous                                 *
+*																			  *
+*																			  *
+*                       OS Miscellaneous Configurations                       *
+*                       			Check									  *
+*                                     										  *
 *******************************************************************************
 */
 
-#ifndef OS_MAX_NUMBER_TASKS
-    #error  "pretty_config.h, Missing OS_MAX_NUMBER_TASKS: Max number of supported tasks."
+#ifndef OS_CONFIG_MUTEX_EN
+	#error "Missing  OS_CONFIG_MUTEX_EN "
 #endif
 
-#ifndef OS_MAX_EVENTS
-    #error  "pretty_config.h, Missing OS_MAX_EVENTS: Max number of configured OS Event objects."
-#else
-    #if     OS_MAX_EVENTS < 1U
-    #error  "pretty_config.h, OS_MAX_EVENTS must be >= 1"
-    #endif
-#endif
-
-#ifndef OS_TICKS_PER_SEC
-    #error  "pretty_config.h, Missing OS_TICKS_PER_SEC: Number of ticks per second."
+#ifndef OS_CONFIG_SEMAPHORE_EN
+	#error "Missing  OS_CONFIG_SEMAPHORE_EN "
 #endif
 
 #ifndef OS_CONFIG_ERRNO_EN
-    #error  "pretty_config.h, Missing OS_CONFIG_ERRNO_EN : Enable/Disable of OS_ERRNO global variable."
+	#error "Missing  OS_CONFIG_ERRNO_EN "
 #endif
+
+#ifndef OS_CONFIG_TCB_TASK_ENTRY_STORE_EN
+	#error "Missing  OS_CONFIG_TCB_TASK_ENTRY_STORE_EN "
+#endif
+
+#ifndef OS_CONFIG_TCB_EXTENSION_EN
+	#error "Missing  OS_CONFIG_TCB_EXTENSION_EN "
+#endif
+
+#ifndef OS_CONFIG_TICKS_PER_SEC
+    #error  "Missing OS_CONFIG_TICKS_PER_SEC"
+#endif
+
+#ifndef OS_CONFIG_TASK_COUNT
+    #error  "Missing OS_CONFIG_TASK_COUNT"
+#endif
+
+#ifndef OS_CONFIG_MAX_EVENTS
+    #error  "Missing OS_CONFIG_MAX_EVENTS"
+#endif
+
+#ifndef OS_AUTO_CONFIG_INCLUDE_EVENTS
+    #error  "Missing OS_AUTO_CONFIG_INCLUDE_EVENTS"
+#endif
+
+
 
 #ifdef __cplusplus
 }

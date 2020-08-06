@@ -162,7 +162,7 @@ int main() {
     printf("                PrettyOS              \n");
     printf("                --------              \n");
     printf("[Info]: System Clock: %d MHz\n", BSP_CPU_FrequencyGet()/1000000);
-    printf("[Info]: OS ticks per second: %d \n",OS_TICKS_PER_SEC);
+    printf("[Info]: OS ticks per second: %d \n",OS_CONFIG_TICKS_PER_SEC);
     printf("[Info]: OS Starts !\n\n");
 
     /*  Transfer control to the RTOS to run the tasks.   */

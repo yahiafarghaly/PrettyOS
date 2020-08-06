@@ -29,7 +29,7 @@ SOFTWARE.
 */
 #include "pretty_os.h"
 
-#if(OS_CONFIG_ERRNO_EN == 1U)
+#if(OS_CONFIG_ERRNO_EN == OS_CONFIG_ENABLE)
     OS_ERR OS_ERRNO = OS_ERR_NONE;              /* Holds the last error code returned by the last executed prettyOS function. */
 #endif
 
@@ -45,7 +45,7 @@ SOFTWARE.
 char const* const
 OS_StrError(OS_ERR errno)
 {
-#if(OS_CONFIG_ERRNO_EN == 1U)
+#if(OS_CONFIG_ERRNO_EN == OS_CONFIG_ENABLE)
 
 #define str(x) #x               /* stringify the input x                                     */
 #define xstr(x) str(x)          /* expand input x first if necessary, then stringify it.     */
@@ -130,8 +130,8 @@ OS_StrError(OS_ERR errno)
 
     return "Unknown Error Code.";
 #else
-    return "Error Code is not Supported [OS_CONFIG_ERRNO_EN = 0]."
-#endif                                      /* END of OS_CONFIG_ERRNO_EN == 1U */
+    return "Error Code is not Supported [OS_CONFIG_ERRNO_EN = OS_CONFIG_DISABLE]."
+#endif                                      /* END of OS_CONFIG_ERRNO_EN == OS_CONFIG_ENABLE */
 }
 
 /*
@@ -147,7 +147,7 @@ OS_StrError(OS_ERR errno)
 char const* const
 OS_StrLastErrIfFail (void)
 {
-#if(OS_CONFIG_ERRNO_EN == 1U)
+#if(OS_CONFIG_ERRNO_EN == OS_CONFIG_ENABLE)
     if (OS_ERRNO != OS_ERR_NONE)
     {
         return OS_StrError(OS_ERRNO);
@@ -155,8 +155,8 @@ OS_StrLastErrIfFail (void)
 
     return "Success";
 #else
-    return "Error Code is not Supported [OS_CONFIG_ERRNO_EN = 0]."
-#endif                                      /* END of OS_CONFIG_ERRNO_EN == 1U */
+    return "Error Code is not Supported [OS_CONFIG_ERRNO_EN = OS_CONFIG_DISABLE]."
+#endif                                      /* END of OS_CONFIG_ERRNO_EN == OS_CONFIG_ENABLE */
 }
 
 

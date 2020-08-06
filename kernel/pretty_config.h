@@ -27,27 +27,76 @@ SOFTWARE.
 
 /*
 *******************************************************************************
+*																			  *
+*																			  *
 *                       OS Miscellaneous Configurations                       *
+*                       													  *
+*                                     										  *
 *******************************************************************************
 */
 
-#define OS_TICKS_PER_SEC     (100U)        /* Number of ticks per second.                            */
+/******************************************************************************/
+/**********************	  Enabling/Disabling Configs    ***********************/
+/******************************************************************************/
 
-#define OS_MAX_NUMBER_TASKS  (128U)        /* Number of used tasks  (Must be multiple of 8).         */
 
-#define OS_MAX_EVENTS        (3U)          /* Number of used events                                  */
+#define 	OS_CONFIG_ENABLE				(1U)		/* TRUE  value for Enabling  a macro.		*/
+#define 	OS_CONFIG_DISABLE				(0U)		/* FALSE value for Disabling a macro. 		*/
 
-#define OS_CONFIG_ERRNO_EN   (1U)          /* 1U = Enable  recording the last error occurred.
-                                              0U = Disable recording the last error occurred.        */
+/*===============  Enable/Disable   Mutex 	 service in the code.   ===========*/
 
-#define OS_CONFIG_TCB_STORE_TASK_ENTRY (1U)	/* 1U = Store TASK_EntryAddr & TASK_EntryArg in TCB strutcure. 	*/
-											/* 0U = Don't store.											*/
-/*
-*******************************************************************************
-*                             Data Types Sizes                                *
-*******************************************************************************
-*/
-typedef CPU_t16U        OS_SEM_COUNT;       /* Define max number of semaphore count limit. */
+#define 	OS_CONFIG_MUTEX_EN				(OS_CONFIG_ENABLE)
+
+/*===============  Enable/Disable Semaphores service in the code. 	===========*/
+
+#define 	OS_CONFIG_SEMAPHORE_EN			(OS_CONFIG_ENABLE)
+
+/*===============  Enable/Disable  OS_ERRNO  service in the code.   ===========*/
+
+#define 	OS_CONFIG_ERRNO_EN   			(OS_CONFIG_ENABLE)
+
+/*=========  Enable/Disable Storing TaskEntry/Args in TCB Structure. ==========*/
+
+#define OS_CONFIG_TCB_TASK_ENTRY_STORE_EN	(OS_CONFIG_ENABLE)
+
+/*=========  Enable/Disable Storing OSTCBExtension in TCB Structure. ==========*/
+
+#define OS_CONFIG_TCB_EXTENSION_EN			(OS_CONFIG_ENABLE)
+
+
+/********************************************************************************/
+/**********************	      Parameterized Configs	      ***********************/
+/********************************************************************************/
+
+
+/*====================== Number of System Ticks/Second. =======================*/
+
+#define OS_CONFIG_TICKS_PER_SEC     (100U)		/* 100 or 1000 is acceptable.  		*/
+
+/*=================== Max Number of Possible Created Tasks. ===================*/
+
+#define OS_CONFIG_TASK_COUNT  		(128U)   	/* Required to be multiple of 8.   	*/
+
+/*=================== Max Number of Possible Created Events. ===================*/
+
+#define OS_CONFIG_MAX_EVENTS         (10U)     	/* Max. of Event Objects			*/
+
+
+
+/******************************************************************************/
+/************************* A U T O GENERATED MACROS ***************************/
+/******************************************************************************/
+
+#define OS_AUTO_CONFIG_INCLUDE_EVENTS	(OS_CONFIG_SEMAPHORE_EN || OS_CONFIG_MUTEX_EN)
+
+
+/******************************************************************************/
+/************************* Configurable DataTypes  ****************************/
+/******************************************************************************/
+
+
+typedef CPU_t16U        OS_SEM_COUNT;       	/* Max. Semaphore Count Limit. 		*/
+
 
 
 #endif /* __PRETTY_CONFIG_H_ */
