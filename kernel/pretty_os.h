@@ -69,8 +69,11 @@ typedef enum {
     OS_ERR_EVENT_POOL_EMPTY         =(0x20U),     /* No more space for the an OS_EVENT object.       */
     OS_ERR_EVENT_CREATE_ISR         =(0x21U),     /* Cannot create this event type inside an ISR.    */
 
-    OS_ERR_MUTEX_LOWER_PCP          =(0x22U),     /* Priority of current owning mutex is less than PCP specified with mutex. */
-    OS_ERR_MUTEX_NO_OWNER           =(0x23U)      /* No task is owning the Mutex while posting it.                           */
+    OS_ERR_MUTEX_LOWER_PCP          =(0x22U),     /* Priority of current owning mutex is less than PCP defined with mutex. */
+    OS_ERR_MUTEX_NO_OWNER           =(0x23U),     /* No task is owning the Mutex while posting it.	 */
+
+	OS_ERR_MAILBOX_POST_NULL		=(0x24U),	  /* Posting a NULL pointer inside a mailbox.		 */
+	OS_ERR_MAILBOX_FULL				=(0x25U)	  /* Indicates Full mailbox that cannot post into.	 */
 }OS_ERR;
 
 extern OS_ERR OS_ERRNO;                           /* Holds the last error code returned by the last executed prettyOS function. */
@@ -113,10 +116,11 @@ extern OS_ERR OS_ERRNO;                           /* Holds the last error code r
 #define OS_TASK_STAT_SUSPENDED      (0x02U)                      /* Suspended.                    */
 #define OS_TASK_STATE_PEND_SEM      (0x04U)                      /* Pend on semaphore.            */
 #define OS_TASK_STATE_PEND_MUTEX    (0x08U)                      /* Pend on mutex.                */
+#define OS_TASK_STATE_PEND_MAILBOX	(0x10U)						 /* Pend on message arrival.	  */
 
 #define OS_TASK_STAT_DELETED        (0xFFU)                      /* A deleted task or not created.*/
 
-#define OS_TASK_STATE_PEND_ANY      (OS_TASK_STATE_PEND_SEM | OS_TASK_STATE_PEND_MUTEX)
+#define OS_TASK_STATE_PEND_ANY      (OS_TASK_STATE_PEND_SEM | OS_TASK_STATE_PEND_MUTEX | OS_TASK_STATE_PEND_MAILBOX)
 
 /*
 *******************************************************************************
@@ -135,6 +139,7 @@ extern OS_ERR OS_ERRNO;                           /* Holds the last error code r
 #define  OS_EVENT_TYPE_UNUSED           (0U)
 #define  OS_EVENT_TYPE_SEM              (1U)
 #define  OS_EVENT_TYPE_MUTEX            (2U)
+#define  OS_EVENT_TYPE_MAILBOX			(3U)
 
 /*
 *******************************************************************************
@@ -184,7 +189,7 @@ typedef struct      os_task_time     OS_TIME;
                                                                  /* OS services based on OS_EVENT structure.      */
 typedef             OS_EVENT         OS_SEM;
 typedef             OS_EVENT         OS_MUTEX;
-
+typedef				OS_EVENT		 OS_MAILBOX;
 
 
 /*
@@ -194,21 +199,21 @@ typedef             OS_EVENT         OS_MUTEX;
 */
 struct os_task_tcb
 {
-    CPU_tPtr    TASK_SP;        /* Current Thread's Stack Pointer */
+    CPU_tPtr    TASK_SP;        			/* Current Thread's Stack Pointer 												*/
 
-    OS_TICK     TASK_Ticks;     /* Current Thread's Time out */
+    OS_TICK     TASK_Ticks;     			/* Current Thread's Time out 													*/
 
-    OS_PRIO     TASK_priority;  /* Task Priority */
+    OS_PRIO     TASK_priority;  			/* Task Priority 																*/
 
-    OS_STATUS   TASK_Stat;      /* Task Status */
+    OS_STATUS   TASK_Stat;      			/* Task Status 																	*/
 
 #if (OS_AUTO_CONFIG_INCLUDE_EVENTS 		== OS_CONFIG_ENABLE)
 
-    OS_STATUS   TASK_PendStat;  /* Task pend status */
+    OS_STATUS   TASK_PendStat;  			/* Task pend status 															*/
 
-    OS_EVENT*   OSEventPtr;     /* Pointer to this TCB event */
+    OS_EVENT*   TASK_Event;     			/* Pointer to this TCB event 													*/
 
-    OS_TASK_TCB* OSTCBPtr;      /* Pointer to a TCB (In case of multiple events on the same event object). */
+    OS_TASK_TCB* OSTCB_NextPtr;      		/* Pointer to a TCB (In case of multiple events on the same event object).		*/
 
 #endif
 
@@ -221,7 +226,7 @@ struct os_task_tcb
 
 #if (OS_CONFIG_TCB_EXTENSION_EN 		== OS_CONFIG_ENABLE)
 
-    void*		OSTCBExtension; /* Pointer to user definable data for TCB extension.		 			   */
+    void*		OSTCBExtension; 			/* Pointer to user definable data for TCB extension.		 			   		*/
 
 #endif
 
@@ -229,16 +234,22 @@ struct os_task_tcb
 
 struct os_task_event
 {
-    CPU_t08U        OSEventType;            /* Event type                                                         */
+    CPU_t08U        OSEventType;            /* Event type                                                         			*/
 
-    OS_EVENT*       OSEventPtr;             /* Pointer to queue structure of Free Events or to message mailbox or to TCB whichs owns a mutex. */
-    OS_TASK_TCB*    OSEventsTCBHead;        /* Pointer to the List of waited TCBs depending on this event.        */
+    OS_EVENT*       OSEventPtr;             /* Pointer to 1) Queue structure of Free Events.
+     	 	 	 	 	 	 	 	 	 	 	 	 	  2) or to a mailbox message [ (void*)0 means an Empty mailbox. ]
+     	 	 	 	 	 	 	 	 	 	 	 	 	  3) or to a OS_TASK_TCB object which is owning a mutex. 			*/
+
+    OS_TASK_TCB*    OSEventsTCBHead;        /* Pointer to the List of waited TCBs depending on this event.        			*/
 
     union{
-        OS_SEM_COUNT    OSEventCount;       /* Semaphore Count                                                    */
+        OS_SEM_COUNT    OSEventCount;       /* Semaphore Count                                                    			*/
         struct{
-            OS_PRIO    OSMutexPrio;         /* The original priority task that owning the Mutex or 'OS_PRIO_RESERVED_MUTEX' if no task is owning the Mutex.                                     */
-            OS_PRIO    OSMutexPrioCeilP;    /* The raised priority to reduce the priority inversion or 'OS_PRIO_RESERVED_MUTEX' if priority ceiling promotion is disabled for this Mutex event. */
+            OS_PRIO    OSMutexPrio;         /* The original priority task that owning the Mutex.
+            									or 'OS_PRIO_RESERVED_MUTEX' if no task is owning the Mutex.                 */
+
+            OS_PRIO    OSMutexPrioCeilP;    /* The raised priority to reduce the priority inversion bug.
+            								 	 or 'OS_PRIO_RESERVED_MUTEX' if priority ceiling promotion is disabled.		*/
         };
     };
 };
@@ -441,7 +452,7 @@ extern void OS_DelayTime(OS_TIME* ptime);
  *
  * Notes        :   1) This function must used only from Task code level and not an ISR.
  */
-OS_EVENT* OS_SemCreate (OS_SEM_COUNT cnt);
+OS_SEM* OS_SemCreate (OS_SEM_COUNT cnt);
 
 /*
  * Function:  OS_SemPend
@@ -460,7 +471,7 @@ OS_EVENT* OS_SemCreate (OS_SEM_COUNT cnt);
  *
  * Notes        :   1) This function must used only from Task code level and not an ISR.
  */
-OS_tRet OS_SemPend (OS_EVENT* pevent, OS_TICK timeout);
+OS_tRet OS_SemPend (OS_SEM* pevent, OS_TICK timeout);
 
 /*
  * Function:  OS_SemPost
@@ -473,7 +484,7 @@ OS_tRet OS_SemPend (OS_EVENT* pevent, OS_TICK timeout);
  *
  * Notes        :   1) This function can be called from a task code or an ISR.
  */
-OS_tRet OS_SemPost (OS_EVENT* pevent);
+OS_tRet OS_SemPost (OS_SEM* pevent);
 
 /*
  * Function:  OS_SemPendNonBlocking
@@ -491,7 +502,7 @@ OS_tRet OS_SemPost (OS_EVENT* pevent);
  *              :   2) It's not recommended to be used within an ISR. An ISR is not supposed to obtain a semaphore.
  *                     A good practice is to post a semaphore from an ISR.
  */
-OS_SEM_COUNT OS_SemPendNonBlocking(OS_EVENT* pevent);
+OS_SEM_COUNT OS_SemPendNonBlocking(OS_SEM* pevent);
 
 /*
  * Function:  OS_SemPendAbort
@@ -512,7 +523,7 @@ OS_SEM_COUNT OS_SemPendNonBlocking(OS_EVENT* pevent);
  *
  * Note(s)      :   1) This function can be called from a task code or an ISR.
  */
-OS_tRet OS_SemPendAbort(OS_EVENT* pevent, CPU_t08U opt, OS_TASK_COUNT* abortedTasksCount);
+OS_tRet OS_SemPendAbort(OS_SEM* pevent, CPU_t08U opt, OS_TASK_COUNT* abortedTasksCount);
 
 /*
 *******************************************************************************
@@ -545,7 +556,7 @@ OS_tRet OS_SemPendAbort(OS_EVENT* pevent, CPU_t08U opt, OS_TASK_COUNT* abortedTa
  *                  2) 'OSMutexPrio'      of returned (OS_EVENT*)   is the original priority task that owning the Mutex or 'OS_PRIO_RESERVED_MUTEX' if no task is owning the Mutex.
  *                     'OSMutexPrioCeilP' of returned (OS_EVENT*)   is the raised priority to reduce the priority inversion or 'OS_PRIO_RESERVED_MUTEX' if priority ceiling promotion is disabled.
  */
-OS_EVENT* OS_MutexCreate (OS_PRIO prio, OS_OPT opt);
+OS_MUTEX* OS_MutexCreate (OS_PRIO prio, OS_OPT opt);
 
 /*
  * Function:  OS_MutexPend
@@ -566,7 +577,7 @@ OS_EVENT* OS_MutexCreate (OS_PRIO prio, OS_OPT opt);
  *                  2) The task that owns the Mutex must not pend on any other events while it's owning the Mutex. Otherwise, you create a possible inversion priority bug.
  *                  3) [For the current implementation], Don't change the priority of the task that owns the Mutex at run time.
  */
-void OS_MutexPend (OS_EVENT* pevent, OS_TICK timeout);
+void OS_MutexPend (OS_MUTEX* pevent, OS_TICK timeout);
 
 /*
  * Function:  OS_MutexPost
@@ -580,7 +591,71 @@ void OS_MutexPend (OS_EVENT* pevent, OS_TICK timeout);
  *
  * Notes        :   1) This function must used only from Task code level.
  */
-void OS_MutexPost (OS_EVENT* pevent);
+void OS_MutexPost (OS_MUTEX* pevent);
+
+/*
+*******************************************************************************
+*                       OS Mailbox function Prototypes                        *
+*******************************************************************************
+*/
+
+/*
+ * Function:  OS_MutexCreate
+ * --------------------
+ * Creates a message mailbox container.
+ *
+ * Arguments    :   p_message    is a pointer sized variable which points to the message you desire to deposit at the creation
+ * 								 of the mailbox.
+ *
+ * 								 If you set p_message to ((void*)0) (i.e NULL pointer) then the mailbox will be considered empty.
+ * 								 otherwise, it is Full.
+ *
+ * Returns      :  != (OS_MAILBOX*)0U  is a pointer to OS_EVENT object of type OS_EVENT_TYPE_MAILBOX associated with the created mailbox.
+ *                 == (OS_MAILBOX*)0U  if no events object were available.
+ *
+ *                 OS_ERRNO = { OS_ERR_NONE, OS_ERR_EVENT_POOL_EMPTY, OS_ERR_EVENT_CREATE_ISR }
+ *
+ * Note(s)      :   1) This function is used only from a Task code level.
+ */
+OS_MAILBOX* OS_MailBoxCreate (void* p_message);
+
+/*
+ * Function:  OS_MailBoxPend
+ * --------------------
+ * Waits for a message arrival or within a finite time if 'timeout' is set.
+ *
+ * Arguments    :   pevent    	is a pointer to an OS_EVENT object associated with a mailbox object.
+ *
+ *                  timeout     is an optional timeout period (in clock ticks).  If non-zero, your task will
+ *                              wait for message arrival up to the amount of time specified by this argument.
+ *                              If you specify 0, however, your task will wait forever at the specified
+ *                              mailbox or, until a messages arrives.
+ *
+ * Returns      :  	!= (void*)0 is a pointer to the message which is received.
+ * 					== (void*)0 If no message is received or 'pevent' is a NULL pointer.
+ *
+ * 					OS_ERRNO = { OS_ERR_NONE, OS_ERR_EVENT_PEVENT_NULL,OS_ERR_EVENT_TYPE, OS_ERR_EVENT_PEND_ISR
+ * 								 OS_ERR_EVENT_PEND_LOCKED, OS_ERR_EVENT_PEND_ABORT, OS_ERR_EVENT_TIMEOUT }
+ *
+ * Note(s)      :   1) This function is used only from a Task code level.
+ */
+void* OS_MailBoxPend (OS_MAILBOX* pevent, OS_TICK timeout);
+
+/*
+ * Function:  OS_MailBoxPost
+ * --------------------
+ * Sends a message to a mailbox.
+ *
+ * Arguments    :   pevent    	is a pointer to an OS_EVENT object associated with a mailbox object.
+ *
+ * 					p_message	is a pointer to a message to send.
+ * 								If it's NULL, then you're posting nothing. This will return with an error.
+ *
+ * Returns      :  	OS_ERRNO = { OS_ERR_NONE, OS_ERR_EVENT_PEVENT_NULL, OS_ERR_EVENT_TYPE, OS_ERR_MAILBOX_POST_NULL, OS_ERR_MAILBOX_FULL }
+ *
+ * Note(s)      :   1) This function can be used from a Task code level or an ISR.
+ */
+void OS_MailBoxPost (OS_MAILBOX* pevent, void* p_message);
 
 /*
 *******************************************************************************
@@ -731,6 +806,10 @@ extern void OS_Idle_CPU_Hook		(void);					/* Hooked with OS_IdleTask				*/
 
 #ifndef OS_CONFIG_SEMAPHORE_EN
 	#error "Missing  OS_CONFIG_SEMAPHORE_EN "
+#endif
+
+#ifndef OS_CONFIG_MAILBOX_EN
+	#error "Missing  OS_CONFIG_MAILBOX_EN "
 #endif
 
 #ifndef OS_CONFIG_ERRNO_EN

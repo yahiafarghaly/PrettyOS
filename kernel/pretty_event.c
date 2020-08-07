@@ -143,30 +143,30 @@ OS_Event_TaskInsert(OS_TASK_TCB* ptcb, OS_EVENT *pevent)
     OS_PRIO prio;
     OS_TASK_TCB* currentTCBPtr;
 
-    ptcb->OSEventPtr = pevent;                                      /* Store the event pointer inside the current TCB.              */
-    prio          = ptcb->TASK_priority;
+    ptcb->TASK_Event = pevent;                                      	/* Store the event pointer inside the current TCB.              */
+    prio          	 = ptcb->TASK_priority;
 
     currentTCBPtr = pevent->OSEventsTCBHead;
 
     if(currentTCBPtr == ((OS_TASK_TCB*)0U))
     {
-        ptcb->OSTCBPtr = ((OS_TASK_TCB*)0U);                        /* Place at the head.                                           */
+        ptcb->OSTCB_NextPtr = ((OS_TASK_TCB*)0U);                        /* Place at the head.                                           */
         pevent->OSEventsTCBHead  = ptcb;
     }
     else if(currentTCBPtr->TASK_priority <= prio)
     {
-        ptcb->OSTCBPtr = currentTCBPtr;
+        ptcb->OSTCB_NextPtr = currentTCBPtr;
         pevent->OSEventsTCBHead  = ptcb;
     }
     else
     {
-        while (currentTCBPtr->OSTCBPtr != ((OS_TASK_TCB*)0U)        /* Walk-Through the list to place the TCB in the correct order. */
-                && currentTCBPtr->OSTCBPtr->TASK_priority > prio)
+        while (currentTCBPtr->OSTCB_NextPtr != ((OS_TASK_TCB*)0U)        /* Walk-Through the list to place the TCB in the correct order. */
+                && currentTCBPtr->OSTCB_NextPtr->TASK_priority > prio)
         {
-            currentTCBPtr = currentTCBPtr->OSTCBPtr;
+            currentTCBPtr = currentTCBPtr->OSTCB_NextPtr;
         }
-        ptcb->OSTCBPtr = currentTCBPtr->OSTCBPtr;
-        currentTCBPtr->OSTCBPtr = ptcb;
+        ptcb->OSTCB_NextPtr = currentTCBPtr->OSTCB_NextPtr;
+        currentTCBPtr->OSTCB_NextPtr = ptcb;
     }
 }
 
@@ -212,32 +212,29 @@ OS_Event_TaskRemove (OS_TASK_TCB* ptcb, OS_EVENT *pevent)
     prio = ptcb->TASK_priority;
     currentTCBPtr = pevent->OSEventsTCBHead;
 
-    if (currentTCBPtr == ((OS_TASK_TCB*)0U))                /* Empty List                       */
+    if (currentTCBPtr == OS_NULL(OS_TASK_TCB))                						/* Is an empty pended TCB list                       							*/
     {
         return;
     }
-    else if(currentTCBPtr->OSTCBPtr == ((OS_TASK_TCB*)0U))  /* One element in the list          */
+    else																			/* No ...																		*/
     {
-        if(prio == currentTCBPtr->TASK_priority)
+        if(prio == currentTCBPtr->TASK_priority)									/* Is the head TCB priority equals to the TCB priority we desire to remove ?	*/
         {
-            pevent->OSEventsTCBHead = ((OS_TASK_TCB*)0U);
+            pevent->OSEventsTCBHead = pevent->OSEventsTCBHead->OSTCB_NextPtr;		/* Yes ... Move the head to the next TCB.										*/
+            currentTCBPtr->OSTCB_NextPtr = OS_NULL(OS_TASK_TCB);					/* Clear the next of the previous head.											*/
         }
         else
         {
-            return;
+			while (currentTCBPtr->OSTCB_NextPtr != OS_NULL(OS_TASK_TCB)
+					&& currentTCBPtr->OSTCB_NextPtr->TASK_priority != prio)			/* Loop to the end of the list or we find the desired priority to remove.		*/
+			{
+				currentTCBPtr = currentTCBPtr->OSTCB_NextPtr;
+			}
+			currentTCBPtr->OSTCB_NextPtr = currentTCBPtr->OSTCB_NextPtr->OSTCB_NextPtr;
         }
-    }
-    else
-    {
-        while (currentTCBPtr->OSTCBPtr != ((OS_TASK_TCB*)0U)
-                && currentTCBPtr->OSTCBPtr->TASK_priority != prio)
-        {
-            currentTCBPtr = currentTCBPtr->OSTCBPtr;
-        }
-        currentTCBPtr->OSTCBPtr = currentTCBPtr->OSTCBPtr->OSTCBPtr;
     }
 
-    ptcb->OSEventPtr = ((OS_EVENT*)0U);                      /* Unlink OS_EVENT from TCB         */
+    ptcb->TASK_Event = OS_NULL(OS_EVENT);                   						/* Disconnect the event from the given TCB.        								 */
 }
 
 /*
@@ -246,7 +243,7 @@ OS_Event_TaskRemove (OS_TASK_TCB* ptcb, OS_EVENT *pevent)
  * Make a task that was waiting for an event to occur be ready.
  *
  * Arguments    : pevent                is a pointer to an allocated OS_EVENT object.
- *                pmsg                  is a pointer to a message which is used by mailboxes. (Not implemented yet).
+ *                pmsg                  is a pointer to a message which is used by mailboxes.
  *                TASK_StatEventMask    is a mask that is used to clear the TASK_Stat member of TCB structure of the
  *                                      called post event function. For example, OS_SemPost() will pass OS_TASK_STATE_PEND_SEM.
  *
@@ -273,7 +270,15 @@ OS_Event_TaskMakeReady(OS_EVENT* pevent,void* pmsg,
     pHighTCB->TASK_Ticks = 0U;                              /* The task is not waiting for event anymore So, let                */
     OS_UnBlockTime(pHighTCB->TASK_priority);                /* make sure that OS_TimerTick will not try to make it ready.       */
 
-    (void)pmsg;                                             /* TODO: Using this argument is not implemented yet for mailboxes.  */
+#if (OS_CONFIG_MAILBOX_EN == OS_CONFIG_ENABLE)
+
+    pevent->OSEventPtr	= (OS_EVENT*) pmsg;					/* Send the message to the waiting task.							*/
+
+#else
+
+    (void)pmsg;
+
+#endif
 
     pHighTCB->TASK_Stat &= ~(TASK_StatEventMask);           /* Clear the event type bit.                                        */
     pHighTCB->TASK_PendStat = TASK_PendStat;                /* pend status due to a post or abort operation.                    */

@@ -63,7 +63,7 @@ SOFTWARE.
  *                  2) 'OSMutexPrio'      of returned (OS_EVENT*)   is the original priority task that owning the Mutex or 'OS_PRIO_RESERVED_MUTEX' if no task is owning the Mutex.
  *                     'OSMutexPrioCeilP' of returned (OS_EVENT*)   is the raised priority to reduce the priority inversion or 'OS_PRIO_RESERVED_MUTEX' if priority ceiling promotion is disabled.
  */
-OS_EVENT*
+OS_MUTEX*
 OS_MutexCreate (OS_PRIO prio, OS_OPT opt)
 {
     OS_EVENT*    pevent;
@@ -150,7 +150,7 @@ OS_MutexCreate (OS_PRIO prio, OS_OPT opt)
  *                  3) [For the current implementation], Don't change the priority of the task that owns the Mutex at run time.
  */
 void
-OS_MutexPend (OS_EVENT* pevent, OS_TICK timeout)
+OS_MutexPend (OS_MUTEX* pevent, OS_TICK timeout)
 {
     OS_PRIO         pcp;                                    /* Priority Ceiling Priority                                 */
     OS_PRIO         owner_prio;
@@ -225,7 +225,7 @@ OS_MutexPend (OS_EVENT* pevent, OS_TICK timeout)
                         OS_UnBlockTime(ptcb_owner->TASK_priority);/* ... Unblock it from delay table.                   */
                     }
 
-                    pevent_owner = ptcb_owner->OSEventPtr;
+                    pevent_owner = ptcb_owner->TASK_Event;
                     if(pevent_owner != ((OS_EVENT*)0U))           /* If it waits any events..                           */
                     {
                         OS_Event_TaskRemove(ptcb_owner, pevent_owner); /* ... Remove from event list.                   */
@@ -297,7 +297,7 @@ OS_MutexPend (OS_EVENT* pevent, OS_TICK timeout)
 
     OS_currentTask->TASK_Stat     &= ~(OS_TASK_STATE_PEND_MUTEX);
     OS_currentTask->TASK_PendStat  =  OS_STAT_PEND_OK;
-    OS_currentTask->OSEventPtr     = ((OS_EVENT*)0U);       /* Unlink the event from the current TCB.                    */
+    OS_currentTask->TASK_Event     = OS_NULL(OS_EVENT);     /* Unlink the event from the current TCB.                    */
 
     OS_CRTICAL_END();
 }
@@ -315,7 +315,7 @@ OS_MutexPend (OS_EVENT* pevent, OS_TICK timeout)
  * Notes        :   1) This function must used only from Task code level.
  */
 void
-OS_MutexPost (OS_EVENT* pevent)
+OS_MutexPost (OS_MUTEX* pevent)
 {
     OS_PRIO pcp;
     OS_PRIO owner_prio;

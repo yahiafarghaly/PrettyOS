@@ -19,9 +19,10 @@
 |Catch a task that returns| **Yes** |
 |Semaphores| **Yes** |
 | Mutual exclusion semaphores(Mutex) | **Yes** with Original Ceiling Priority Protocol (**OCPP**)|
+| Message mailboxes | **Yes** |
 |Software timers| No|
 | User definable hook functions | No |
-| Message mailboxes | No |
+
 
 #### 💻 Porting availability
 | System      			    | BSP        	  | CPU port 		  | Notes         |
@@ -40,11 +41,11 @@
 |OS_SchedLock	|OS_TaskResume		|OS_SemPendAbort	|		| 	         
 |OS_SchedUnlock	|OS_TaskStatus		|			|	        |
 
-| Mutex         | Hook Functions 	| Error                 |
-| ------------- |:---------------------:|:---------------------:|
-|OS_MutexCreate	|OS_Hook_onIdle         |OS_StrError            |
-|OS_MutexPend	|                       |OS_StrLastErrIfFail    |
-|OS_MutexPost	|                       |                       |
+| Mutex        	| MailBox			  	| Hook Functions 	| Error                 |
+| --------------|:---------------------:|:---------------------:|:---------------------:|
+|OS_MutexCreate |OS_MailBoxCreate	  	|OS_Hook_onIdle         |OS_StrError            |
+|OS_MutexPend	|OS_MailBoxPend			|                       |OS_StrLastErrIfFail    |
+|OS_MutexPost	|OS_MailBoxPost			|                       |                       |
 
 #### 📝 License
 Copyright © 2020 - present, Yahia Farghaly Ashour.<br>

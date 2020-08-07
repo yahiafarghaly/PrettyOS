@@ -87,8 +87,8 @@ OS_TCB_ListInit (void)
 
 #if (OS_AUTO_CONFIG_INCLUDE_EVENTS == OS_CONFIG_ENABLE)
 
-        OS_TblTask[idx].OSEventPtr  = OS_NULL(OS_EVENT);
-        OS_TblTask[idx].OSTCBPtr    = OS_NULL(OS_TASK_TCB);
+        OS_TblTask[idx].TASK_Event    = OS_NULL(OS_EVENT);
+        OS_TblTask[idx].OSTCB_NextPtr = OS_NULL(OS_TASK_TCB);
 
 #endif
 
@@ -166,8 +166,8 @@ OS_TaskCreate (void (*TASK_Handler)(void* params),
 #if (OS_AUTO_CONFIG_INCLUDE_EVENTS == OS_CONFIG_ENABLE)
 
         OS_tblTCBPrio[priority]->TASK_PendStat = OS_STAT_PEND_OK;
-        OS_tblTCBPrio[priority]->OSTCBPtr      = OS_NULL(OS_TASK_TCB);
-        OS_tblTCBPrio[priority]->OSEventPtr    = OS_NULL(OS_EVENT);
+        OS_tblTCBPrio[priority]->OSTCB_NextPtr = OS_NULL(OS_TASK_TCB);
+        OS_tblTCBPrio[priority]->TASK_Event    = OS_NULL(OS_EVENT);
 
 #endif
 
@@ -239,9 +239,9 @@ OS_TaskDelete (OS_PRIO prio)
 
 #if (OS_AUTO_CONFIG_INCLUDE_EVENTS == OS_CONFIG_ENABLE)
 
-    if(ptcb->OSEventPtr != ((OS_EVENT*)0U))                                       /* If it is waiting for any event...          */
+    if(ptcb->TASK_Event != ((OS_EVENT*)0U))                                       /* If it is waiting for any event...          */
     {
-        OS_Event_TaskRemove(ptcb, ptcb->OSEventPtr);                              /* ... unlink it.                             */
+        OS_Event_TaskRemove(ptcb, ptcb->TASK_Event);                              /* ... unlink it.                             */
     }
 
 #endif
@@ -347,7 +347,7 @@ OS_TaskChangePriority (OS_PRIO oldPrio, OS_PRIO newPrio)
 
 #if (OS_AUTO_CONFIG_INCLUDE_EVENTS == OS_CONFIG_ENABLE)
 
-    pevent = ptcb->OSEventPtr;
+    pevent = ptcb->TASK_Event;
 
 #endif
 
@@ -366,7 +366,7 @@ OS_TaskChangePriority (OS_PRIO oldPrio, OS_PRIO newPrio)
 
 #if (OS_AUTO_CONFIG_INCLUDE_EVENTS == OS_CONFIG_ENABLE)
 
-        if(ptcb->OSEventPtr != OS_NULL(OS_EVENT))                          /* If old priority is waiting for an event.        */
+        if(ptcb->TASK_Event != OS_NULL(OS_EVENT))                          /* If old priority is waiting for an event.        */
         {
             OS_Event_TaskRemove(ptcb, pevent);                             /* ... Remove at the old priority.                 */
 

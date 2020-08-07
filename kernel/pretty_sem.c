@@ -54,7 +54,7 @@ SOFTWARE.
  *
  * Notes        :   1) This function must used only from Task code level and not an ISR.
  */
-OS_EVENT*
+OS_SEM*
 OS_SemCreate (OS_SEM_COUNT cnt)
 {
     OS_EVENT* pevent = (OS_EVENT*)0U;
@@ -100,7 +100,7 @@ OS_SemCreate (OS_SEM_COUNT cnt)
  * Notes        :   1) This function must used only from Task code level and not an ISR.
  */
 OS_tRet
-OS_SemPend (OS_EVENT* pevent, OS_TICK timeout)
+OS_SemPend (OS_SEM* pevent, OS_TICK timeout)
 {
     OS_tRet ret;
     CPU_SR_ALLOC();
@@ -165,7 +165,7 @@ OS_SemPend (OS_EVENT* pevent, OS_TICK timeout)
 
     OS_currentTask->TASK_Stat     &= ~(OS_TASK_STATE_PEND_SEM);
     OS_currentTask->TASK_PendStat  =  OS_STAT_PEND_OK;
-    OS_currentTask->OSEventPtr     = ((OS_EVENT*)0U);       /* Unlink the event from the current TCB.                    */
+    OS_currentTask->TASK_Event     = OS_NULL(OS_EVENT);     /* Unlink the event from the current TCB.                    */
 
     OS_CRTICAL_END();
 
@@ -184,7 +184,7 @@ OS_SemPend (OS_EVENT* pevent, OS_TICK timeout)
  * Notes        :   1) This function can be called from a task code or an ISR.
  */
 OS_tRet
-OS_SemPost (OS_EVENT* pevent)
+OS_SemPost (OS_SEM* pevent)
 {
     CPU_SR_ALLOC();
 
@@ -236,7 +236,7 @@ OS_SemPost (OS_EVENT* pevent)
  *                     A good practice is to post a semaphore from an ISR.
  */
 OS_SEM_COUNT
-OS_SemPendNonBlocking(OS_EVENT* pevent)
+OS_SemPendNonBlocking(OS_SEM* pevent)
 {
     OS_SEM_COUNT count;
     CPU_SR_ALLOC();
@@ -282,7 +282,7 @@ OS_SemPendNonBlocking(OS_EVENT* pevent)
  * Note(s)      :   1) This function can be called from a task code or an ISR.
  */
 OS_tRet
-OS_SemPendAbort(OS_EVENT* pevent, CPU_t08U opt, OS_TASK_COUNT* abortedTasksCount)
+OS_SemPendAbort(OS_SEM* pevent, CPU_t08U opt, OS_TASK_COUNT* abortedTasksCount)
 {
     OS_TASK_COUNT nAbortedTasks;
     CPU_SR_ALLOC();

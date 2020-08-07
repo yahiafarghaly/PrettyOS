@@ -51,6 +51,10 @@ SOFTWARE.
 
 #define 	OS_CONFIG_SEMAPHORE_EN			(OS_CONFIG_ENABLE)
 
+/*===============  Enable/Disable Mail Boxes service in the code. 	===========*/
+
+#define 	OS_CONFIG_MAILBOX_EN			(OS_CONFIG_ENABLE)
+
 /*===============  Enable/Disable  OS_ERRNO  service in the code.   ===========*/
 
 #define 	OS_CONFIG_ERRNO_EN   			(OS_CONFIG_ENABLE)
