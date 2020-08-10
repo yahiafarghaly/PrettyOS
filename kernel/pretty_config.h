@@ -51,7 +51,7 @@ SOFTWARE.
 
 #define 	OS_CONFIG_SEMAPHORE_EN			(OS_CONFIG_ENABLE)
 
-/*===============  Enable/Disable Mail Boxes service in the code. 	===========*/
+/*===============  Enable/Disable Mailboxes service in the code. 	===========*/
 
 #define 	OS_CONFIG_MAILBOX_EN			(OS_CONFIG_ENABLE)
 
@@ -91,7 +91,7 @@ SOFTWARE.
 /************************* A U T O GENERATED MACROS ***************************/
 /******************************************************************************/
 
-#define OS_AUTO_CONFIG_INCLUDE_EVENTS	(OS_CONFIG_SEMAPHORE_EN || OS_CONFIG_MUTEX_EN)
+#define OS_AUTO_CONFIG_INCLUDE_EVENTS	(OS_CONFIG_SEMAPHORE_EN || OS_CONFIG_MUTEX_EN || OS_CONFIG_MAILBOX_EN)
 
 
 /******************************************************************************/

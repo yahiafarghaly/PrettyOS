@@ -23,6 +23,36 @@ SOFTWARE.
 ******************************************************************************/
 
 /*
+ * Author   : Yahia Farghaly Ashour
+ *
+ * Purpose  :	Semaphores Service Implementation.
+ *
+ * 				Semaphores are one of the oldest mechanisms introduced by multitasking systems,
+ * 				 being used both for managing common resources and synchronization.
+ *
+ * 				 For Task Synchronization, there are two types:
+ * 				 	1- Unilateral Rendezvous
+ *						This is one way synchronization which uses a semaphore as a flag to signal another task.
+ *					2- Bilateral Rendezvous
+ *						This is two way synchronization performed using two semaphores. A bilateral rendezvous is similar
+ *						to a unilateral rendezvous, except both tasks must synchronize with one another before proceeding.
+ *
+ *					This type of synchronization can be performed using a binary semaphores which its count is equal to 0 or 1.
+ *
+ *				The kernel supports counting semaphores which the semaphore would accumulate events that have not yet been processed.
+ *				this means that more than one task can be waiting for an event to occur.
+ *				In this case, the kernel could signal the occurrence of the event to the highest priority task waiting for the event to occur.
+ *
+ *
+ *				[ Rule ]:	A task can create/post/delete or pend/acquire the semaphore.
+ *							An ISR can only post a semaphore value.
+ *
+ * 				Your application can have any number of semaphores. The limit is set by OS_CONFIG_MAX_EVENTS .
+ *
+ * Language:  C
+ */
+
+/*
 *******************************************************************************
 *                               Includes Files                                *
 *******************************************************************************
@@ -30,8 +60,29 @@ SOFTWARE.
 #include "pretty_os.h"
 #include "pretty_shared.h"
 
-
 #if (OS_CONFIG_SEMAPHORE_EN == OS_CONFIG_ENABLE)
+
+/*
+ * Return the Max Semaphore Count depending on the predefined data type (OS_SEM_COUNT).
+ * With The Compiler Optimization, This can be replaced with a constant value without the function call.
+ */
+static const unsigned long OS_SemMaxCount (void)
+{
+	switch(sizeof(OS_SEM_COUNT))
+	{
+	case 1:
+		return	0xFF;
+	case 2:
+		return 0x00FF;
+	case 4:
+		return 0x0000FFFFFFFF;
+	case 8:
+		return 0xFFFFFFFFFFFFFFFF;
+	default:
+		break;
+	}
+	return 0x0000FFFFFFFF;
+}
 
 /*
 *******************************************************************************
@@ -49,36 +100,43 @@ SOFTWARE.
  *                       You initialize the semaphore to a non-zero value to specify how many
  *                       resources are available.
  *
- * Returns      : An 'OS_EVENT' object pointer of type semaphore (OS_EVENT_TYPE_SEM) to be used with
- *                 other semaphore functions.
+ * Returns      :  != (OS_SEM*)0U  is a pointer to OS_EVENT object of type OS_EVENT_TYPE_SEM associated with the created semaphore.
+ *                 == (OS_SEM*)0U  if no events object were available.
+ *
+ *                 OS_ERRNO = { OS_ERR_NONE, OS_ERR_EVENT_POOL_EMPTY, OS_ERR_EVENT_CREATE_ISR }
  *
  * Notes        :   1) This function must used only from Task code level and not an ISR.
  */
 OS_SEM*
 OS_SemCreate (OS_SEM_COUNT cnt)
 {
-    OS_EVENT* pevent = (OS_EVENT*)0U;
+    OS_EVENT* pevent;
     CPU_SR_ALLOC();
 
     if(OS_IntNestingLvl > 0U)                           /* Create only from task level.                      */
     {
-        return ((OS_EVENT *)0U);
+        OS_ERR_SET(OS_ERR_EVENT_CREATE_ISR);
+        return OS_NULL(OS_EVENT);
     }
 
     OS_CRTICAL_BEGIN();
+
     OS_EVENT_allocate(&pevent);                         /* Allocate an event object.                         */
+
     OS_CRTICAL_END();
 
-    if(pevent == ((OS_EVENT*)0U))
+    if(pevent == OS_NULL(OS_EVENT))
     {
+    	OS_ERR_SET(OS_ERR_EVENT_POOL_EMPTY);
         return (pevent);
     }
 
     pevent->OSEventType     = OS_EVENT_TYPE_SEM;
-    pevent->OSEventPtr      = ((OS_EVENT*)0U);         /* Unlink from the free list of queue events.         */
+    pevent->OSEventPtr      = OS_NULL(OS_EVENT);       /* Unlink from the free list of queue events.         */
     pevent->OSEventCount    = cnt;
-    pevent->OSEventsTCBHead = ((OS_TASK_TCB*)0U);      /* Initialize that no tasks waiting on this semaphore.*/
+    pevent->OSEventsTCBHead = OS_NULL(OS_TASK_TCB);    /* Initialize that no tasks waiting on this semaphore.*/
 
+    OS_ERR_SET(OS_ERR_NONE);
     return (pevent);
 }
 
@@ -94,31 +152,34 @@ OS_SemCreate (OS_SEM_COUNT cnt)
  *                              If you specify 0, however, your task will wait forever at the specified
  *                              semaphore or, until the resource becomes available (or the event occurs).
  *
- * Returns      :   OS_ERR_EVENT_PEVENT_NULL, OS_ERR_EVENT_PEND_ISR, OS_ERR_EVENT_PEND_LOCKED
- *                  OS_ERR_EVENT_PEND_ABORT, OS_STAT_PEND_TIMEOUT and OS_RET_OK
+ * Return       :   OS_ERRNO = { OS_ERR_NONE, OS_ERR_EVENT_PEVENT_NULL,OS_ERR_EVENT_TYPE, OS_ERR_EVENT_PEND_ISR
+ * 								 OS_ERR_EVENT_PEND_LOCKED, OS_ERR_EVENT_PEND_ABORT, OS_ERR_EVENT_TIMEOUT }
  *
  * Notes        :   1) This function must used only from Task code level and not an ISR.
  */
-OS_tRet
+void
 OS_SemPend (OS_SEM* pevent, OS_TICK timeout)
 {
-    OS_tRet ret;
     CPU_SR_ALLOC();
 
-    if (pevent == (OS_EVENT*)0U) {                          /* Validate 'pevent'                                         */
-         return (OS_ERR_EVENT_PEVENT_NULL);
+    if (pevent == OS_NULL(OS_EVENT)) {                     /* Validate 'pevent'                                         */
+        OS_ERR_SET(OS_ERR_EVENT_PEVENT_NULL);
+        return;
     }
 
-    if (pevent->OSEventType != OS_EVENT_TYPE_SEM) {         /* Validate event type                                       */
-        return (OS_ERR_EVENT_TYPE);
+    if (pevent->OSEventType != OS_EVENT_TYPE_SEM) {        /* Validate event type                                       */
+        OS_ERR_SET(OS_ERR_EVENT_TYPE);
+        return;
     }
 
     if (OS_IntNestingLvl > 0U) {
-        return (OS_ERR_EVENT_PEND_ISR);                     /* Doesn't make sense to wait inside an ISR.                 */
+        OS_ERR_SET(OS_ERR_EVENT_PEND_ISR);                 /* Doesn't make sense to wait inside an ISR.                 */
+        return;
     }
 
     if (OS_LockSchedNesting > 0U) {
-        return (OS_ERR_EVENT_PEND_LOCKED);                  /* Should not wait when scheduler is locked.                 */
+    	OS_ERR_SET(OS_ERR_EVENT_PEND_LOCKED);              /* Should not wait when scheduler is locked.                 */
+    	return;
     }
 
     OS_CRTICAL_BEGIN();
@@ -127,12 +188,14 @@ OS_SemPend (OS_SEM* pevent, OS_TICK timeout)
     {
         (pevent->OSEventCount)--;                           /* ... decrement it ...                                      */
         OS_CRTICAL_END();
-        return (OS_ERR_NONE);                                 /* ... and return.                                           */
+        OS_ERR_SET(OS_ERR_NONE);
+        return;												/* ... and return.                                           */
     }
 
     OS_currentTask->TASK_Stat |= OS_TASK_STATE_PEND_SEM;    /* Otherwise, pend on semaphore and wait for event to occur. */
     OS_currentTask->TASK_PendStat = OS_STAT_PEND_OK;
     OS_currentTask->TASK_Ticks = timeout;
+
     if(timeout > 0U)
     {
         OS_BlockTime(OS_currentTask->TASK_priority);
@@ -149,18 +212,18 @@ OS_SemPend (OS_SEM* pevent, OS_TICK timeout)
 
     switch (OS_currentTask->TASK_PendStat) {                /* ... See if it was timed-out or aborted.                   */
         case OS_STAT_PEND_OK:
-             ret  = OS_ERR_NONE;                              /* Indicate that the task owns the resource.                 */
-             break;
+        	OS_ERR_SET(OS_ERR_NONE);                        /* Indicate that the task owns the resource.                 */
+            break;
 
         case OS_STAT_PEND_ABORT:
-             ret = OS_ERR_EVENT_PEND_ABORT;                 /* Indicate that we aborted.                                 */
-             break;
+        	OS_ERR_SET(OS_ERR_EVENT_PEND_ABORT);            /* Indicate that we aborted.                                 */
+            break;
 
         case OS_STAT_PEND_TIMEOUT:
         default:
             OS_Event_TaskRemove(OS_currentTask, pevent);
-             ret = OS_ERR_EVENT_TIMEOUT;                    /* Indicate that we didn't get event within Time out.        */
-             break;
+            OS_ERR_SET(OS_ERR_EVENT_TIMEOUT);				/* Indicate that we didn't get event within Time out.        */
+            break;
     }
 
     OS_currentTask->TASK_Stat     &= ~(OS_TASK_STATE_PEND_SEM);
@@ -169,7 +232,7 @@ OS_SemPend (OS_SEM* pevent, OS_TICK timeout)
 
     OS_CRTICAL_END();
 
-    return (ret);
+    return;
 }
 
 /*
@@ -179,44 +242,52 @@ OS_SemPend (OS_SEM* pevent, OS_TICK timeout)
  *
  * Arguments    :   pevent      is a pointer to the OS_EVENT object associated with the semaphore.
  *
- * Returns      :   OS_ERR_EVENT_PEVENT_NULL, OS_ERR_EVENT_TYPE, OS_RET_OK
+ * Returns      :   OS_ERRNO = { OS_ERR_NONE, OS_ERR_EVENT_PEVENT_NULL, OS_ERR_EVENT_TYPE, OS_ERR_SEM_OVERFLOW }
  *
  * Notes        :   1) This function can be called from a task code or an ISR.
  */
-OS_tRet
+void
 OS_SemPost (OS_SEM* pevent)
 {
     CPU_SR_ALLOC();
 
-    if (pevent == (OS_EVENT*)0U) {                          /* Validate 'pevent'                                         */
-         return (OS_ERR_EVENT_PEVENT_NULL);
+    if (pevent == OS_NULL(OS_EVENT)) {                      /* Validate 'pevent'                                          */
+         OS_ERR_SET(OS_ERR_EVENT_PEVENT_NULL);
+         return;
     }
 
-    if (pevent->OSEventType != OS_EVENT_TYPE_SEM) {         /* Validate event type                                       */
-        return (OS_ERR_EVENT_TYPE);
+    if (pevent->OSEventType != OS_EVENT_TYPE_SEM) {         /* Validate event type                                        */
+    	OS_ERR_SET(OS_ERR_EVENT_TYPE);
+    	return;
     }
 
     OS_CRTICAL_BEGIN();
 
-    if (pevent->OSEventsTCBHead != ((OS_TASK_TCB*)0U)) {    /* See if any task waiting for semaphore.                    */
-        OS_Event_TaskMakeReady(pevent, (void *)0,           /* Make Highest priority task waiting on event be ready.     */
+    if (pevent->OSEventsTCBHead != ((OS_TASK_TCB*)0U)) {    /* See if any task waiting for semaphore.                     */
+        OS_Event_TaskMakeReady(pevent, (void *)0,           /* Make Highest priority task waiting on event be ready.      */
                             OS_TASK_STATE_PEND_SEM,
-                            OS_STAT_PEND_OK);               /* OS_STAT_PEND_OK indicates a post operation.               */
+                            OS_STAT_PEND_OK);               /* OS_STAT_PEND_OK indicates a post operation.                */
         OS_CRTICAL_END();
         /* We don't need to increment the semaphore count here, since it's emulated by the design as this task is
          * preempted to the highest priority waiting task which takes the resource (decrement it again).
          * Also, this prevent other tasks (preempted to others than the one who waiting for the event) from
          * owning the resource.
          * On the other side, the pend() function is not performing any decrement operation if it is pended. */
-        OS_Sched();                                         /* Call the scheduler, it may be the highest.                */
-        return (OS_ERR_NONE);
+        OS_Sched();                                         /* Call the scheduler, it may be the highest.                 */
+        OS_ERR_SET(OS_ERR_NONE);
+        return;
     }
 
-    (pevent->OSEventCount)++;                               /*TODO: Set a way of checking semaphore overflow             */
+    if(pevent->OSEventCount < (OS_SEM_COUNT)OS_SemMaxCount())
+    {
+        (pevent->OSEventCount)++;
+        OS_CRTICAL_END();
+        OS_ERR_SET(OS_ERR_NONE);
+        return;
+    }
 
-    OS_CRTICAL_END();
-
-    return (OS_ERR_NONE);
+    OS_ERR_SET(OS_ERR_SEM_OVERFLOW);						/* The semaphore count has reached its maximum.				  */
+    return;
 }
 
 /*
@@ -241,12 +312,14 @@ OS_SemPendNonBlocking(OS_SEM* pevent)
     OS_SEM_COUNT count;
     CPU_SR_ALLOC();
 
-    if (pevent == (OS_EVENT*)0U) {                          /* Validate 'pevent'                                            */
-         return (0U);
+    if (pevent == OS_NULL(OS_EVENT)) {                      /* Validate 'pevent'                                            */
+    	OS_ERR_SET(OS_ERR_EVENT_PEVENT_NULL);
+    	return (0U);
     }
 
     if (pevent->OSEventType != OS_EVENT_TYPE_SEM) {         /* Validate event type                                          */
-        return (0U);
+        OS_ERR_SET(OS_ERR_EVENT_TYPE);
+    	return (0U);
     }
 
     OS_CRTICAL_BEGIN();
@@ -259,6 +332,7 @@ OS_SemPendNonBlocking(OS_SEM* pevent)
 
     OS_CRTICAL_END();
 
+    OS_ERR_SET(OS_ERR_NONE);
     return (count);
 }
 
@@ -277,32 +351,34 @@ OS_SemPendNonBlocking(OS_SEM* pevent)
  *
  *                 abortedTasksCount    is pointer to an object to hold the number of aborted waited tasks.
  *
- * Returns      :   OS_ERR_EVENT_PEVENT_NULL, OS_ERR_EVENT_TYPE, OS_ERR_EVENT_PEND_ABORT, OS_RET_OK
+ * Returns      :   OS_ERRNO = { OS_ERR_NONE, OS_ERR_EVENT_PEVENT_NULL, OS_ERR_EVENT_TYPE, OS_ERR_EVENT_PEND_ABORT }
  *
  * Note(s)      :   1) This function can be called from a task code or an ISR.
  */
-OS_tRet
+void
 OS_SemPendAbort(OS_SEM* pevent, CPU_t08U opt, OS_TASK_COUNT* abortedTasksCount)
 {
     OS_TASK_COUNT nAbortedTasks;
     CPU_SR_ALLOC();
 
     if (pevent == (OS_EVENT*)0U) {                          /* Validate 'pevent'                                         */
-         return (OS_ERR_EVENT_PEVENT_NULL);
+         OS_ERR_SET(OS_ERR_EVENT_PEVENT_NULL);
+         return;
     }
 
     if (pevent->OSEventType != OS_EVENT_TYPE_SEM) {         /* Validate event type                                       */
-        return (OS_ERR_EVENT_TYPE);
+    	OS_ERR_SET(OS_ERR_EVENT_TYPE);
+    	return;
     }
 
     OS_CRTICAL_BEGIN();
 
-    if (pevent->OSEventsTCBHead != ((OS_TASK_TCB*)0U)) {    /* See if any task waiting for semaphore.                    */
+    if (pevent->OSEventsTCBHead != OS_NULL(OS_TASK_TCB)) {  /* See if any task waiting for semaphore.                    */
         nAbortedTasks = 0U;
         switch(opt)
         {
         case OS_SEM_ABORT_ALL:
-            while(pevent->OSEventsTCBHead != ((OS_TASK_TCB*)0U))
+            while(pevent->OSEventsTCBHead != OS_NULL(OS_TASK_TCB))
             {
                 OS_Event_TaskMakeReady(pevent, (void *)0,
                                     OS_TASK_STATE_PEND_SEM,
@@ -321,23 +397,25 @@ OS_SemPendAbort(OS_SEM* pevent, CPU_t08U opt, OS_TASK_COUNT* abortedTasksCount)
 
         OS_CRTICAL_END();
 
-        OS_Sched();                                         /* Preempt HPT that no longer wait for an event ?              */
+        OS_Sched();                                        /* Preempt HPT that no longer wait for an event ?              */
 
-        if(abortedTasksCount != ((OS_TASK_COUNT*)0U))
+        if(abortedTasksCount != OS_NULL(OS_TASK_COUNT))
         {
             *abortedTasksCount = nAbortedTasks;
         }
-        return (OS_ERR_EVENT_PEND_ABORT);                   /* Indicate that we aborted.                                    */
+        OS_ERR_SET(OS_ERR_EVENT_PEND_ABORT);               /* Indicate that we aborted.                                    */
+        return;
     }
 
     OS_CRTICAL_END();
 
-    if(abortedTasksCount != ((OS_TASK_COUNT*)0U))          /* No waiting tasks to abort.                                    */
+    if(abortedTasksCount != OS_NULL(OS_TASK_COUNT))        /* No waiting tasks to abort.                                    */
     {
         *abortedTasksCount = 0U;
     }
 
-    return (OS_ERR_NONE);
+    OS_ERR_SET(OS_ERR_NONE);
+    return;
 }
 
 #endif 		/* OS_CONFIG_SEMAPHORE_EN */

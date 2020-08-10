@@ -73,7 +73,9 @@ typedef enum {
     OS_ERR_MUTEX_NO_OWNER           =(0x23U),     /* No task is owning the Mutex while posting it.	 */
 
 	OS_ERR_MAILBOX_POST_NULL		=(0x24U),	  /* Posting a NULL pointer inside a mailbox.		 */
-	OS_ERR_MAILBOX_FULL				=(0x25U)	  /* Indicates Full mailbox that cannot post into.	 */
+	OS_ERR_MAILBOX_FULL				=(0x25U),	  /* Indicates Full mailbox that cannot post into.	 */
+
+	OS_ERR_SEM_OVERFLOW				=(0x26U)	  /* Indicates that the semaphore count reaches max. */
 }OS_ERR;
 
 extern OS_ERR OS_ERRNO;                           /* Holds the last error code returned by the last executed prettyOS function. */
@@ -466,12 +468,12 @@ OS_SEM* OS_SemCreate (OS_SEM_COUNT cnt);
  *                              If you specify 0, however, your task will wait forever at the specified
  *                              semaphore or, until the resource becomes available (or the event occurs).
  *
- * Returns      :   OS_ERR_EVENT_PEVENT_NULL, OS_ERR_EVENT_PEND_ISR, OS_ERR_EVENT_PEND_LOCKED
- *                  OS_ERR_EVENT_PEND_ABORT, OS_STAT_PEND_TIMEOUT and OS_RET_OK
+ * Return       :   OS_ERRNO = { OS_ERR_NONE, OS_ERR_EVENT_PEVENT_NULL,OS_ERR_EVENT_TYPE, OS_ERR_EVENT_PEND_ISR
+ * 								 OS_ERR_EVENT_PEND_LOCKED, OS_ERR_EVENT_PEND_ABORT, OS_ERR_EVENT_TIMEOUT }
  *
  * Notes        :   1) This function must used only from Task code level and not an ISR.
  */
-OS_tRet OS_SemPend (OS_SEM* pevent, OS_TICK timeout);
+void OS_SemPend (OS_SEM* pevent, OS_TICK timeout);
 
 /*
  * Function:  OS_SemPost
@@ -480,11 +482,11 @@ OS_tRet OS_SemPend (OS_SEM* pevent, OS_TICK timeout);
  *
  * Arguments    :   pevent      is a pointer to the OS_EVENT object associated with the semaphore.
  *
- * Returns      :   OS_ERR_EVENT_PEVENT_NULL, OS_ERR_EVENT_TYPE, OS_RET_OK
+ * Returns      :   OS_ERRNO = { OS_ERR_EVENT_PEVENT_NULL, OS_ERR_EVENT_TYPE, OS_ERR_NONE }
  *
  * Notes        :   1) This function can be called from a task code or an ISR.
  */
-OS_tRet OS_SemPost (OS_SEM* pevent);
+void OS_SemPost (OS_SEM* pevent);
 
 /*
  * Function:  OS_SemPendNonBlocking
@@ -519,11 +521,11 @@ OS_SEM_COUNT OS_SemPendNonBlocking(OS_SEM* pevent);
  *
  *                 abortedTasksCount    is pointer to an object to hold the number of aborted waited tasks.
  *
- * Returns      :   OS_ERR_EVENT_PEVENT_NULL, OS_ERR_EVENT_TYPE, OS_ERR_EVENT_PEND_ABORT, OS_RET_OK
+ * Returns      :   OS_ERRNO = { OS_ERR_NONE, OS_ERR_EVENT_PEVENT_NULL, OS_ERR_EVENT_TYPE, OS_ERR_EVENT_PEND_ABORT }
  *
  * Note(s)      :   1) This function can be called from a task code or an ISR.
  */
-OS_tRet OS_SemPendAbort(OS_SEM* pevent, CPU_t08U opt, OS_TASK_COUNT* abortedTasksCount);
+void OS_SemPendAbort(OS_SEM* pevent, CPU_t08U opt, OS_TASK_COUNT* abortedTasksCount);
 
 /*
 *******************************************************************************

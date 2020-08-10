@@ -102,13 +102,12 @@ void
 main_GreenBlinky(void* args) {
     green_count = 0;
     CPU_t16U i;
-    OS_tRet ret;
     while (1) {
         if(green_count == 5U)
         {
             printf("\nPend on sem\n");
-            ret = OS_SemPend(sem, 500*3);
-            switch(ret)
+            OS_SemPend(sem, 500*3);
+            switch(OS_ERRNO)
             {
             case OS_ERR_NONE:
                 printf("\nResume Green Blinky\n");
@@ -144,7 +143,8 @@ main_RedBlinky(void* args) {
 
         if(red_count == 10)
         {
-            if(OS_SemPost(sem) != OS_ERR_NONE)
+        	OS_SemPost(sem);
+            if(OS_ERRNO != OS_ERR_NONE)
             {
                 printf("Cannot post semaphore value\n");
             }

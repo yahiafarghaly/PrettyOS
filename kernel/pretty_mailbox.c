@@ -25,14 +25,15 @@ SOFTWARE.
 /*
  * Author   : Yahia Farghaly Ashour
  *
- * Purpose  :	Mail box service implementation.
+ * Purpose  :	Mailboxes Service Implementation.
  *
  * 				A message mailbox, a mailbox, single queue entry or exchanges are common names for one
  * 				of the simplest methods of inter-task-communication.
  * 				A mailbox allows passing messages between tasks via a pointer sized variable which is
  * 				typically initialized to point to some application specific data structure containing the message.
  *
- * 				[A Rule of Thumb]: A task can send or receive a message. But ISR can only send.
+ * 				[Rule]	: A  task can send or receive a message.
+ * 						  An ISR can only send.
  *
  * 				Your application can have any number of mailboxes. The limit is set by OS_CONFIG_MAX_EVENTS .
  *
