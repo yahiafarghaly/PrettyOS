@@ -75,7 +75,12 @@ typedef enum {
 	OS_ERR_MAILBOX_POST_NULL		=(0x24U),	  /* Posting a NULL pointer inside a mailbox.		 */
 	OS_ERR_MAILBOX_FULL				=(0x25U),	  /* Indicates Full mailbox that cannot post into.	 */
 
-	OS_ERR_SEM_OVERFLOW				=(0x26U)	  /* Indicates that the semaphore count reaches max. */
+	OS_ERR_SEM_OVERFLOW				=(0x26U),	  /* Indicates that the semaphore count reaches max. */
+
+	OS_ERR_MEM_INVALID_ADDR			=(0x27U),	  /* Invalid Memory Address to work with.			 */
+	OS_ERR_MEM_INVALID_BLOCK_SIZE	=(0x28U),	  /* Invalid Memory Block size.						 */
+	OS_ERR_MEM_NO_FREE_BLOCKS		=(0x29U)	  /* No free blocks in a memory partition.			 */
+
 }OS_ERR;
 
 extern OS_ERR OS_ERRNO;                           /* Holds the last error code returned by the last executed prettyOS function. */
@@ -188,6 +193,7 @@ typedef CPU_tSTK                   	 OS_tSTACK;                  /* OS task stac
 typedef struct      os_task_event    OS_EVENT;
 typedef struct      os_task_tcb      OS_TASK_TCB;
 typedef struct      os_task_time     OS_TIME;
+typedef struct		os_memory		 OS_MEMORY;
                                                                  /* OS services based on OS_EVENT structure.      */
 typedef             OS_EVENT         OS_SEM;
 typedef             OS_EVENT         OS_MUTEX;
@@ -254,6 +260,14 @@ struct os_task_event
             								 	 or 'OS_PRIO_RESERVED_MUTEX' if priority ceiling promotion is disabled.		*/
         };
     };
+};
+
+struct os_memory {
+    void*	  		partitionBaseAddr;			/* The base address of a partition from which memory blocks will be allocated.	*/
+    void*	  		nextFreeBlock;				/* Points to the next OS_MEMORY Block or the next free memory block.			*/
+    OS_MEMORY_BLOCK blockSize;					/* Block memory size.															*/
+    OS_MEMORY_BLOCK blockCount;					/* Total number of the memory blocks inside the partition.						*/
+    OS_MEMORY_BLOCK blockFreeCount;				/* The number of the memory blocks which is currently available from partition. */
 };
 
 struct os_task_time

@@ -65,6 +65,7 @@ extern OS_ERR                       OS_ERRNO;
 */
 
 extern void OS_Sched (void);
+extern void OS_MemoryByteClear (CPU_t08U* pdest, CPU_t32U size);
 
 extern void OS_Event_FreeListInit (void);
 
@@ -86,5 +87,7 @@ extern void OS_BlockTime   (OS_PRIO prio);
 extern void OS_UnBlockTime (OS_PRIO prio);
 
 extern void OS_TCB_ListInit (void);
+
+extern void OS_Memory_Init (void);
 
 #endif /* __PRETTY_SHARED_H_ */
