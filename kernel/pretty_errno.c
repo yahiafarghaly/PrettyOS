@@ -124,6 +124,27 @@ OS_StrError(OS_ERR errno)
     case OS_ERR_MUTEX_NO_OWNER:
         return xstr(OS_ERR_MUTEX_NO_OWNER);
 
+    case OS_ERR_MAILBOX_POST_NULL:
+        return xstr(OS_ERR_MAILBOX_POST_NULL);
+
+    case OS_ERR_MAILBOX_FULL:
+        return xstr(OS_ERR_MAILBOX_FULL);
+
+    case OS_ERR_SEM_OVERFLOW:
+        return xstr(OS_ERR_SEM_OVERFLOW);
+
+    case OS_ERR_MEM_INVALID_ADDR:
+        return xstr(OS_ERR_MEM_INVALID_ADDR);
+
+    case OS_ERR_MEM_INVALID_BLOCK_SIZE:
+        return xstr(OS_ERR_MEM_INVALID_BLOCK_SIZE);
+
+    case OS_ERR_MEM_NO_FREE_BLOCKS:
+        return xstr(OS_ERR_MEM_NO_FREE_BLOCKS);
+
+    case OS_ERR_MEM_FULL_PARTITION:
+        return xstr(OS_ERR_MEM_FULL_PARTITION);
+
     default:
         break;
     }

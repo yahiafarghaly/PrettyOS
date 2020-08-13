@@ -71,7 +71,7 @@ static OS_MEMORY* volatile pMemoryPartitionFreeList;
 
 /*
  * Function:  OS_MemoryPartitionCreate
- * --------------------
+ * ----------------------------------
  * Create a fixed-sized memory partition which will be managed by prettyOS.
  *
  * Arguments    :  partitionBaseAddr	is the starting address of the memory partition.
@@ -118,7 +118,7 @@ OS_MemoryPartitionCreate (void* partitionBaseAddr, OS_MEMORY_BLOCK blockCount, O
 	if(pMemoryPart == OS_NULL(OS_MEMORY))							/* If no available memory partition structure is ...						*/
 	{
 		OS_ERR_SET(OS_ERR_MEM_INVALID_ADDR);
-		return OS_NULL(OS_MEMORY);							/* ... return NULL.															*/
+		return OS_NULL(OS_MEMORY);									/* ... return NULL.															*/
 	}
 
 	pLinkAddr 	= (void**)partitionBaseAddr;						/* Get the address of the first memory block in the memory partition.		*/
@@ -174,6 +174,18 @@ OS_MemoryPartitionCreate (void* partitionBaseAddr, OS_MEMORY_BLOCK blockCount, O
 	return (pMemoryPart);
 }
 
+/*
+ * Function:  OS_MemoryAllocateBlock
+ * ---------------------------------
+ * Allocate a free block from a valid memory partition.
+ *
+ * Arguments    :  pMemoryPart		is a pointer to a valid memory partition structure.
+ *
+ * Returns      :  == ((void*)0U)  if no free memory block is available or invalid pointer of memory partition structure.
+ * 				   != ((void*)0U)  is the requested block of memory.
+ *
+ * 				   OS_ERRNO = { OS_ERR_NONE, OS_ERR_MEM_INVALID_ADDR, OS_ERR_MEM_NO_FREE_BLOCKS }
+ */
 void*
 OS_MemoryAllocateBlock (OS_MEMORY* pMemoryPart)
 {
@@ -201,6 +213,57 @@ OS_MemoryAllocateBlock (OS_MEMORY* pMemoryPart)
 	OS_CRTICAL_END();
 	OS_ERR_SET(OS_ERR_MEM_NO_FREE_BLOCKS);							/* No free memory block in this partition.									*/
 	return OS_NULL(void);											/* Return NULL.																*/
+}
+
+/*
+ * Function:  OS_MemoryRestoreBlock
+ * --------------------------------
+ * Free/Restore a block to a valid memory partition.
+ *
+ * Arguments    :  	pMemoryPart		is a pointer to a valid memory partition structure.
+ *
+ * 					pBlock			is a pointer to the released block of the partition pointed by 'pMemoryPart'
+ *
+ * Returns      :	None.
+ *
+ * 				   	OS_ERRNO = { OS_ERR_NONE, OS_ERR_MEM_INVALID_ADDR, OS_ERR_MEM_FULL_PARTITION }
+ *
+ * Note(s)		:	This function is not aware if the returned block is the actually block which is allocated
+ * 					from the given partition 'pMemoryPart'.
+ * 					So, Caution must be considered. Otherwise, the software can be crashed.
+ */
+void
+OS_MemoryRestoreBlock (OS_MEMORY* pMemoryPart, void* pBlock)
+{
+	CPU_SR_ALLOC();
+
+	if(pMemoryPart == OS_NULL(OS_MEMORY))							/* Must be a valid pointer.													*/
+	{
+		OS_ERR_SET(OS_ERR_MEM_INVALID_ADDR);
+		return;
+	}
+
+	if(pBlock == OS_NULL(void))										/* Must be a valid pointer.													*/
+	{
+		OS_ERR_SET(OS_ERR_MEM_INVALID_ADDR);
+		return;
+	}
+
+	OS_CRTICAL_BEGIN();
+
+	if(pMemoryPart->blockFreeCount < pMemoryPart->blockCount)		/* Assert that not all blocks are returned.									*/
+	{
+		*(void**)pBlock = pMemoryPart->nextFreeBlock;				/* Insert the free block into the free memory block list.					*/
+		pMemoryPart->nextFreeBlock = pBlock;						/* Adjust the new free memory block list head. 								*/
+		++(pMemoryPart->blockFreeCount);							/* Increase the number of free blocks by 1 .								*/
+		OS_CRTICAL_END();
+		OS_ERR_SET(OS_ERR_NONE);
+		return;
+	}
+
+	OS_CRTICAL_END();
+	OS_ERR_SET(OS_ERR_MEM_FULL_PARTITION);							/* ALL memory blocks have returned to the memory partition.					*/
+	return;
 }
 
 /*
