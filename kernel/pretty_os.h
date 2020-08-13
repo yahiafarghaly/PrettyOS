@@ -75,7 +75,12 @@ typedef enum {
 	OS_ERR_MAILBOX_POST_NULL		=(0x24U),	  /* Posting a NULL pointer inside a mailbox.		 */
 	OS_ERR_MAILBOX_FULL				=(0x25U),	  /* Indicates Full mailbox that cannot post into.	 */
 
-	OS_ERR_SEM_OVERFLOW				=(0x26U)	  /* Indicates that the semaphore count reaches max. */
+	OS_ERR_SEM_OVERFLOW				=(0x26U),	  /* Indicates that the semaphore count reaches max. */
+
+	OS_ERR_MEM_INVALID_ADDR			=(0x27U),	  /* Invalid Memory Address to work with.			 */
+	OS_ERR_MEM_INVALID_BLOCK_SIZE	=(0x28U),	  /* Invalid Memory Block size.						 */
+	OS_ERR_MEM_NO_FREE_BLOCKS		=(0x29U),	  /* No free blocks in a memory partition.			 */
+	OS_ERR_MEM_FULL_PARTITION		=(0x30U)	  /* Memory Partition is full of free memory blocks. */
 }OS_ERR;
 
 extern OS_ERR OS_ERRNO;                           /* Holds the last error code returned by the last executed prettyOS function. */
@@ -188,6 +193,7 @@ typedef CPU_tSTK                   	 OS_tSTACK;                  /* OS task stac
 typedef struct      os_task_event    OS_EVENT;
 typedef struct      os_task_tcb      OS_TASK_TCB;
 typedef struct      os_task_time     OS_TIME;
+typedef struct		os_memory		 OS_MEMORY;
                                                                  /* OS services based on OS_EVENT structure.      */
 typedef             OS_EVENT         OS_SEM;
 typedef             OS_EVENT         OS_MUTEX;
@@ -254,6 +260,15 @@ struct os_task_event
             								 	 or 'OS_PRIO_RESERVED_MUTEX' if priority ceiling promotion is disabled.		*/
         };
     };
+};
+
+struct os_memory {
+    void*	  		partitionBaseAddr;			/* The base address of a partition from which memory blocks will be allocated.	*/
+    void*	  		nextFreeBlock;				/* Points to the next OS_MEMORY Block or the next free memory block.			*/
+    OS_MEMORY_BLOCK blockSize;					/* Block memory size.															*/
+    OS_MEMORY_BLOCK blockCount;					/* Total number of the memory blocks inside the partition.						*/
+    OS_MEMORY_BLOCK blockFreeCount;				/* The number of the memory blocks which is currently available from partition. */
+    											/* The number of used memory blocks is equal to (blockCount - blockFreeCount).	*/
 };
 
 struct os_task_time
@@ -746,6 +761,62 @@ OS_tRet OS_TaskResume (OS_PRIO prio);
  */
 OS_STATUS OS_TaskStatus (OS_PRIO prio);
 
+/*
+*******************************************************************************
+*                 PrettyOS Memory Management functions                        *
+*******************************************************************************
+*/
+
+/*
+ * Function:  OS_MemoryPartitionCreate
+ * ----------------------------------
+ * Create a fixed-sized memory partition which will be managed by prettyOS.
+ *
+ * Arguments    :  partitionBaseAddr	is the starting address of the memory partition.
+ *
+ *				   blockCount			is the number of the memory blocks of the created memory partition.
+ *
+ *				   blockSizeInBytes		is the number of bytes per memory block.
+ *
+ * Returns      :  == ((OS_MEMORY*)0U)  if memory partition creation fails in case of invalid of arguments or no free partition.
+ * 				   != ((OS_MEMORY*)0U)  is the created memory partition.
+ *
+ * 				   OS_ERRNO = { OS_ERR_NONE, OS_ERR_MEM_INVALID_ADDR, OS_ERR_MEM_INVALID_BLOCK_SIZE }
+ */
+OS_MEMORY* OS_MemoryPartitionCreate (void* partitionBaseAddr, OS_MEMORY_BLOCK blockCount, OS_MEMORY_BLOCK blockSizeInBytes);
+
+/*
+ * Function:  OS_MemoryAllocateBlock
+ * ---------------------------------
+ * Allocate a free block from a valid memory partition.
+ *
+ * Arguments    :  pMemoryPart		is a pointer to a valid memory partition structure.
+ *
+ * Returns      :  == ((void*)0U)  if no free memory block is available or invalid pointer of memory partition structure.
+ * 				   != ((void*)0U)  is the requested block of memory.
+ *
+ * 				   OS_ERRNO = { OS_ERR_NONE, OS_ERR_MEM_INVALID_ADDR, OS_ERR_MEM_NO_FREE_BLOCKS }
+ */
+void* OS_MemoryAllocateBlock (OS_MEMORY* pMemoryPart);
+
+/*
+ * Function:  OS_MemoryRestoreBlock
+ * --------------------------------
+ * Free/Restore a block to a valid memory partition.
+ *
+ * Arguments    :  	pMemoryPart		is a pointer to a valid memory partition structure.
+ *
+ * 					pBlock			is a pointer to the released block of the partition pointed by 'pMemoryPart'
+ *
+ * Returns      :	None.
+ *
+ * 				   	OS_ERRNO = { OS_ERR_NONE, OS_ERR_MEM_INVALID_ADDR, OS_ERR_MEM_FULL_PARTITION }
+ *
+ * Note(s)		:	This function is not aware if the returned block is the actually block which is allocated
+ * 					from the given partition 'pMemoryPart'.
+ * 					So, Caution must be considered. Otherwise, the software can be crashed.
+ */
+void OS_MemoryRestoreBlock (OS_MEMORY* pMemoryPart, void* pBlock);
 
 /*
 *******************************************************************************
@@ -802,6 +873,10 @@ extern void OS_Idle_CPU_Hook		(void);					/* Hooked with OS_IdleTask				*/
 *******************************************************************************
 */
 
+#ifndef OS_CONFIG_MEMORY_EN
+	#error "Missing  OS_CONFIG_MEMORY_EN "
+#endif
+
 #ifndef OS_CONFIG_MUTEX_EN
 	#error "Missing  OS_CONFIG_MUTEX_EN "
 #endif
@@ -836,6 +911,10 @@ extern void OS_Idle_CPU_Hook		(void);					/* Hooked with OS_IdleTask				*/
 
 #ifndef OS_CONFIG_MAX_EVENTS
     #error  "Missing OS_CONFIG_MAX_EVENTS"
+#endif
+
+#ifndef	OS_CONFIG_MEMORY_PARTITION_COUNT
+	#error  "Missing OS_CONFIG_MEMORY_PARTITION_COUNT"
 #endif
 
 #ifndef OS_AUTO_CONFIG_INCLUDE_EVENTS

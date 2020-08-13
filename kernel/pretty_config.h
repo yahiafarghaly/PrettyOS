@@ -55,6 +55,10 @@ SOFTWARE.
 
 #define 	OS_CONFIG_MAILBOX_EN			(OS_CONFIG_ENABLE)
 
+/*===============  Enable/Disable Memory Management service in the code. ======*/
+
+#define		OS_CONFIG_MEMORY_EN				(OS_CONFIG_ENABLE)
+
 /*===============  Enable/Disable  OS_ERRNO  service in the code.   ===========*/
 
 #define 	OS_CONFIG_ERRNO_EN   			(OS_CONFIG_ENABLE)
@@ -75,16 +79,19 @@ SOFTWARE.
 
 /*====================== Number of System Ticks/Second. =======================*/
 
-#define OS_CONFIG_TICKS_PER_SEC     (100U)		/* 100 or 1000 is acceptable.  		*/
+#define OS_CONFIG_TICKS_PER_SEC     								(100U)		/* 100 or 1000 is acceptable.  			*/
 
 /*=================== Max Number of Possible Created Tasks. ===================*/
 
-#define OS_CONFIG_TASK_COUNT  		(128U)   	/* Required to be multiple of 8.   	*/
+#define OS_CONFIG_TASK_COUNT  										(128U)   	/* Required to be multiple of 8.   		*/
 
 /*=================== Max Number of Possible Created Events. ===================*/
 
-#define OS_CONFIG_MAX_EVENTS         (10U)     	/* Max. of Event Objects			*/
+#define OS_CONFIG_MAX_EVENTS         								(10U)     	/* Max. of Event Objects				*/
 
+/*=================== Max Number of Possible Memory Partition. =================*/
+
+#define OS_CONFIG_MEMORY_PARTITION_COUNT							(10U)		/* Max. of Memory Partition Objects.	*/
 
 
 /******************************************************************************/
@@ -100,7 +107,7 @@ SOFTWARE.
 
 
 typedef CPU_t16U        OS_SEM_COUNT;       	/* Max. Semaphore Count Limit. 		*/
-
+typedef CPU_t32U		OS_MEMORY_BLOCK;		/* Max. Size of memory block.		*/
 
 
 #endif /* __PRETTY_CONFIG_H_ */

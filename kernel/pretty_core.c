@@ -182,6 +182,8 @@ OS_Init (CPU_tSTK* pStackBaseIdleTask, CPU_tSTK  stackSizeIdleTask)
 
     OS_TCB_ListInit();
 
+    OS_Memory_Init();
+
     for(idx = 0; idx < OS_AUTO_CONFIG_MAX_PRIO_ENTRIES; ++idx)
     {
         OS_TblReady[idx]        = 0U;
@@ -575,6 +577,31 @@ OS_Log2(const CPU_tWORD x)
         break;
     }
     return 0;
+}
+
+/*
+ * Function:  OS_MemoryByteClear
+ * --------------------
+ * This function is called to clear a contiguous block of RAM.
+ *
+ * Arguments    :   pdest   is pointer to the first RAM byte to start to clear.
+ *
+ * 					size	is the number of bytes to clear.
+ *
+ * Returns      :   None.
+ *
+ * Note(s)		:	1) This function is for internal use.
+ * 					2) It's selected to be byte clear at a time since it will work correctly regardless
+ * 						the processor alignment.
+ */
+void
+OS_MemoryByteClear (CPU_t08U* pdest, CPU_t32U size)
+{
+    while (size > 0U) {
+        *pdest = (CPU_t08U)0;
+         ++pdest;
+		 --size;
+    }
 }
 
 /*
