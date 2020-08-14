@@ -20,6 +20,21 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+ _______                        __      __                 ______    ______
+|       \                      |  \    |  \               /      \  /      \
+| $$$$$$$\  ______    ______  _| $$_  _| $$_    __    __ |  $$$$$$\|  $$$$$$\
+| $$__/ $$ /      \  /      \|   $$ \|   $$ \  |  \  |  \| $$  | $$| $$___\$$
+| $$    $$|  $$$$$$\|  $$$$$$\\$$$$$$ \$$$$$$  | $$  | $$| $$  | $$ \$$    \
+| $$$$$$$ | $$   \$$| $$    $$ | $$ __ | $$ __ | $$  | $$| $$  | $$ _\$$$$$$\
+| $$      | $$      | $$$$$$$$ | $$|  \| $$|  \| $$__/ $$| $$__/ $$|  \__| $$
+| $$      | $$       \$$     \  \$$  $$ \$$  $$ \$$    $$ \$$    $$ \$$    $$
+ \$$       \$$        \$$$$$$$   \$$$$   \$$$$  _\$$$$$$$  \$$$$$$   \$$$$$$
+                                               |  \__| $$
+                                                \$$    $$
+                                                 \$$$$$$
+
+
 ******************************************************************************/
 
 /*
@@ -111,6 +126,11 @@ CPU_t08U       volatile OS_IntNestingLvl;
 /* Scheduler nesting lock level. Max lock levels is 255.                      */
 CPU_t08U       volatile OS_LockSchedNesting;
 
+#if (OS_CONFIG_SYSTEM_TIME_SET_GET_EN == OS_CONFIG_ENABLE)
+/* Contain the system time in clock ticks since the first OS_TimerTick call.  */
+OS_TICK		   volatile OS_TickTime;
+#endif
+
 /*
  * Array of TCBs pointers, where each pointer refers to a reserved TCB entry.
  * For a task, Mutex, ... etc or ((OS_TASK_TCB*)0U) if not pointing to a TCB
@@ -178,6 +198,9 @@ OS_Init (CPU_tSTK* pStackBaseIdleTask, CPU_tSTK  stackSizeIdleTask)
     OS_nextTask         = OS_NULL(OS_TASK_TCB);
     OS_IntNestingLvl    = 0U;
     OS_LockSchedNesting = 0U;
+#if (OS_CONFIG_SYSTEM_TIME_SET_GET_EN == OS_CONFIG_ENABLE)
+    OS_TickTime			= 0U;
+#endif
     OS_Running          = OS_FAlSE;
 
     OS_TCB_ListInit();
@@ -605,14 +628,6 @@ OS_MemoryByteClear (CPU_t08U* pdest, CPU_t32U size)
 }
 
 /*
-*******************************************************************************
-*                                                                             *
-*                       PrettyOS Time functions                               *
-*                                                                             *
-*******************************************************************************
-*/
-
-/*
  * Function:  OS_TimerTick
  * --------------------
  * Signal the occurrence of a "system tick" to the prettyOS which reflects
@@ -630,6 +645,12 @@ OS_TimerTick (void)
     CPU_tWORD i = 0;
     CPU_tWORD workingSet;
     CPU_SR_ALLOC();
+
+#if (OS_CONFIG_SYSTEM_TIME_SET_GET_EN == OS_CONFIG_ENABLE)
+    OS_CRTICAL_BEGIN();
+    OS_TickTime += 1U;												/* Update System time of ticks.														*/
+    OS_CRTICAL_END();
+#endif
 
     if(OS_Running == OS_FAlSE)
     {
@@ -680,93 +701,3 @@ OS_TimerTick (void)
 
     OS_CRTICAL_END();
 }
-
-/*
- * Function:  OS_DelayTicks
- * --------------------
- * Block the current task execution for number of system ticks.
- *
- * Arguments    :   ticks   is the number of ticks for the task to be blocked.
- *
- * Returns      :   None.
- *
- * Note(s)      :   1) This function is called only from task level code.
- */
-void
-OS_DelayTicks (OS_TICK ticks)
-{
-    CPU_SR_ALLOC();
-
-    if (OS_IntNestingLvl > 0U) {                                /* Don't call from an ISR.                      */
-        return;
-    }
-    if (OS_LockSchedNesting > 0U) {                             /* Don't delay while the scheduler is locked.   */
-        return;
-    }
-
-    OS_CRTICAL_BEGIN();
-
-    if(ticks == 0U)
-    {
-        OS_CRTICAL_END();
-        return;
-    }
-
-    if(OS_currentTask != OS_tblTCBPrio[OS_IDLE_TASK_PRIO_LEVEL])  /* Don't allow blocking the ideal task.         */
-    {
-        OS_currentTask->TASK_Ticks = ticks;
-        OS_currentTask->TASK_Stat |= OS_TASK_STAT_DELAY;
-
-        OS_RemoveReady(OS_currentTask->TASK_priority);
-        OS_BlockTime(OS_currentTask->TASK_priority);
-
-        OS_Sched();                                             /* Preempt Another Task.                        */
-    }
-
-    OS_CRTICAL_END();
-}
-
-/*
- * Function:  OS_DelayTime
- * --------------------
- * Block the current task execution for a time specified in the OS_TIME structure.
- *
- * Arguments    :   ptime   is a pointer to an OS_TIME structure where time is specified ( Hours, Minutes, seconds and milliseconds.)
- *
- * Returns      :   None.
- *
- * Note(s)      :   1) This function is called only from task level code.
- *                  2) A non valid value of any member of the internal structure of the OS_TIME object results in an immediate return.
- *                  3) This call can be expensive for some MCUs.
- */
-void
-OS_DelayTime(OS_TIME* ptime)
-{
-    OS_TICK ticks;
-
-    if(ptime == (OS_TIME*)0U)
-    {
-        return;
-    }
-
-    if(ptime->minutes > 59U)
-    {
-        return;
-    }
-
-    if(ptime->seconds > 59U)
-    {
-        return;
-    }
-
-    if(ptime->milliseconds > 999U)
-    {
-        return;
-    }
-
-    ticks = (OS_CONFIG_TASK_COUNT * ( (CPU_t32U)(ptime->seconds) + (CPU_t32U)(ptime->minutes)*60U  + (CPU_t32U)(ptime->hours)*3600U ))
-            + ((OS_CONFIG_TASK_COUNT * ( (CPU_t32U)(ptime->milliseconds) + (500U / OS_CONFIG_TASK_COUNT) )) / 1000U);                       /* Rounded to the nearest tick. */
-
-    OS_DelayTicks(ticks);
-}
-

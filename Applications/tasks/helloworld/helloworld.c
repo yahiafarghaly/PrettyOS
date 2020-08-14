@@ -81,9 +81,19 @@ void OS_Hook_onIdle(void)
 
 void
 main_welcomeTask(void* args) {
-    OS_TIME period = { 0U, 0U, 1U, 0U};
+    OS_TIME period = { 0U, 0U, 0U, 100U};
+    OS_TIME time_stamp = { 0, 0, 0, 0};
+
     while (1) {
-        printf("PrettyOS %s !\n",(char*)args);
+    	OS_TimeGet(&time_stamp);
+
+    	printf("\r[%2d H : %2d M : %2d S : %3d MilliSec] => Hello PrettyOS %s !\r",
+        		time_stamp.hours,
+				time_stamp.minutes,
+				time_stamp.seconds,
+				time_stamp.milliseconds
+				,(char*)args);
+
         OS_DelayTime(&period);
     }
 }

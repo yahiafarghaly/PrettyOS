@@ -450,6 +450,40 @@ extern void OS_DelayTicks (OS_TICK ticks);
 extern void OS_DelayTime(OS_TIME* ptime);
 
 /*
+ * Function:  OS_TickTimeGet
+ * --------------------------
+ * Obtain the current value of the time counter which keeps track of the number of clock ticks
+ * occurred since the first system tick of system ISR ticker.
+ *
+ * Arguments    :   None.
+ *
+ * Returns      :   The current value of OS_TickTime
+ */
+extern OS_TICK OS_TickTimeGet (void);
+
+/*
+ * Function:  OS_TickTimeSet
+ * --------------------------
+ * Set the OS_TickTime to a new value.
+ *
+ * Arguments    :   tick	is the new value of OS_TickTime to be set.
+ *
+ * Returns      :   None.
+ */
+extern void OS_TickTimeSet (OS_TICK tick);
+
+/*
+ * Function:  OS_TimeGet
+ * --------------------------
+ * Obtain the current value of system time in OS_TIME structure.
+ *
+ * Arguments    :   ptime	is a pointer to a valid OS_TIME structure which will contain the current system time.
+ *
+ * Returns      :   None.
+ */
+extern void OS_TimeGet (OS_TIME* ptime);
+
+/*
 *******************************************************************************
 *                   OS Semaphore function Prototypes                          *
 *******************************************************************************
@@ -899,6 +933,10 @@ extern void OS_Idle_CPU_Hook		(void);					/* Hooked with OS_IdleTask				*/
 
 #ifndef OS_CONFIG_TCB_EXTENSION_EN
 	#error "Missing  OS_CONFIG_TCB_EXTENSION_EN "
+#endif
+
+#ifndef OS_CONFIG_SYSTEM_TIME_SET_GET_EN
+	#error "Missing OS_CONFIG_SYSTEM_TIME_SET_GET_EN"
 #endif
 
 #ifndef OS_CONFIG_TICKS_PER_SEC

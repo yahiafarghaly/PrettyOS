@@ -71,6 +71,10 @@ SOFTWARE.
 
 #define OS_CONFIG_TCB_EXTENSION_EN			(OS_CONFIG_ENABLE)
 
+/*=========  Enable/Disable Set/Get functions of current system time. =========*/
+
+#define OS_CONFIG_SYSTEM_TIME_SET_GET_EN	(OS_CONFIG_ENABLE)
+
 
 /********************************************************************************/
 /**********************	      Parameterized Configs	      ***********************/

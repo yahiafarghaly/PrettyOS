@@ -55,6 +55,10 @@ extern OS_TASK_TCB*                 OS_tblTCBPrio [OS_CONFIG_TASK_COUNT];
 extern CPU_t08U     volatile        OS_IntNestingLvl;
 extern CPU_t08U     volatile        OS_LockSchedNesting;
 
+#if (OS_CONFIG_SYSTEM_TIME_SET_GET_EN == OS_CONFIG_ENABLE)
+extern OS_TICK		volatile		OS_TickTime;
+#endif
+
 extern OS_ERR                       OS_ERRNO;
 
 
