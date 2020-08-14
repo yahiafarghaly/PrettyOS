@@ -9,17 +9,18 @@
 
 | Features      | Status        |
 | ------------- |:-------------:|
-| Preemptive Multitasking      | **Yes** |
+| Preemptive Multitasking Scheduling | **Yes** |
 | Maximum number of tasks      | Configurable     |
 | Number of tasks at each priority level | 1      |
 | Priority Change at run time | **Yes** |
-| Support Round robin scheduling | No |
+| Support Round robin Scheduling | No |
 | Scheduling lock/Unlock | **Yes** |
 |Task suspend/resume| **Yes** |
 |Catch a task that returns| **Yes** |
 |Semaphores| **Yes** |
 | Mutual exclusion semaphores(Mutex) | **Yes** with Original Ceiling Priority Protocol (**OCPP**)|
 | Message mailboxes | **Yes** |
+| Memory Management | **Yes** - Basic Memory Partition Manager |
 |Software timers| No|
 | User definable hook functions | No |
 
@@ -29,6 +30,8 @@
 | ----------------------|:-------------:|:-------------:|:-------------:|
 | TI stellaris LM4F120 	| Done 			    | Done 			    |               |
 | Linux machine         | Done          | Done          |Requires POSIX.1b standards as minimal |
+
+To add another port, Please read this [porting guide](port/porting_guide.md) first.
 
 
 #### 📜 List of PrettyOS Public APIs
@@ -41,11 +44,12 @@
 |OS_SchedLock	|OS_TaskResume		|OS_SemPendAbort	|		| 	         
 |OS_SchedUnlock	|OS_TaskStatus		|			|	        |
 
-| Mutex        	| MailBox			  	| Hook Functions 	| Error                 |
+| Mutex        	| MailBox		| Hook Functions 	| Error                 |
 | --------------|:---------------------:|:---------------------:|:---------------------:|
-|OS_MutexCreate |OS_MailBoxCreate	  	|OS_Hook_onIdle         |OS_StrError            |
-|OS_MutexPend	|OS_MailBoxPend			|                       |OS_StrLastErrIfFail    |
-|OS_MutexPost	|OS_MailBoxPost			|                       |                       |
+|OS_MutexCreate |OS_MailBoxCreate	|OS_Hook_onIdle         |OS_StrError            |
+|OS_MutexPend	|OS_MailBoxPend		|                       |OS_StrLastErrIfFail    |
+|OS_MutexPost	|OS_MailBoxPost		|                       |                       |
+
 
 #### 📝 License
 Copyright © 2020 - present, Yahia Farghaly Ashour.<br>
