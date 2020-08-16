@@ -32,12 +32,22 @@ SOFTWARE.
  * 				A mailbox allows passing messages between tasks via a pointer sized variable which is
  * 				typically initialized to point to some application specific data structure containing the message.
  *
- * 				[Rule]	: A  task can send or receive a message.
+ * 				[ Rule ]: A  task can send or receive a message.
  * 						  An ISR can only send.
  *
  * 				Your application can have any number of mailboxes. The limit is set by OS_CONFIG_MAX_EVENTS .
  *
+ *
+ * 				List of Available APIs		:	Short Description
+ * 				=================================================
+ * 					- OS_MailBoxCreate()	:	Creates a mailbox object.
+ * 					- OS_MailBoxPend()  	:	Wait for a mailbox object to have a message.
+ * 					- OS_MailBoxPost()  	:	Send a message via a mailbox object.
+ * 					- OS_MailBoxRead()  	:	Read a message from a mailbox object without waiting if it's not available.
+ *
  * Language:  C
+ *
+ * Set 1 tab = 4 spaces for better comments readability.
  */
 
 /*
@@ -276,6 +286,47 @@ OS_MailBoxPost (OS_MAILBOX* pevent, void* p_message)
      pevent->OSEventPtr	= (OS_EVENT*) p_message;			 /* No, .. Put the message in the mailbox.					  */
      OS_CRTICAL_END();
      OS_ERR_SET(OS_ERR_NONE);
+}
+
+/*
+ * Function:  OS_MailBoxRead
+ * --------------------
+ * Read the message in the Mailbox without waiting/pending.
+ *
+ * Arguments    :   pevent    	is a pointer to an OS_EVENT object associated with a mailbox object.
+ *
+ * Returns      :  	!= (void*)0 is a pointer to the message which is received.
+ * 					== (void*)0 If no message is received or 'pevent' is a NULL pointer or invalid type of OSEventType.
+ *
+ * 					OS_ERRNO = { OS_ERR_NONE, OS_ERR_EVENT_PEVENT_NULL,OS_ERR_EVENT_TYPE }
+ *
+ * Note(s)      :   1) This function can be used from task level code or an ISR.
+ */
+void*
+OS_MailBoxRead(OS_MAILBOX* pevent)
+{
+	void* p_message;
+    CPU_SR_ALLOC();
+
+    if (pevent == OS_NULL(OS_EVENT)) {                    	/* Validate 'pevent'                                         */
+        OS_ERR_SET(OS_ERR_EVENT_PEVENT_NULL);
+        return OS_NULL(void);
+    }
+
+    if (pevent->OSEventType != OS_EVENT_TYPE_MAILBOX) {     /* Validate event type                                       */
+        OS_ERR_SET(OS_ERR_EVENT_TYPE);
+        return OS_NULL(void);
+    }
+
+    OS_CRTICAL_BEGIN();
+
+    p_message = pevent->OSEventPtr;							/* Read the Mailbox.										 */
+    pevent->OSEventPtr = OS_NULL(void);						/* Empty Mailbox.											 */
+
+    OS_CRTICAL_END();
+
+    OS_ERR_SET(OS_ERR_NONE);
+    return (p_message);
 }
 
 #endif	/* OS_CONFIG_MAILBOX_EN */

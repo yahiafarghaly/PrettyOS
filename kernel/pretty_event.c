@@ -23,6 +23,45 @@ SOFTWARE.
 ******************************************************************************/
 
 /*
+ * Author   :   Yahia Farghaly Ashour
+ *
+ * Purpose  :   The base block for prettyOS events.
+ *                  Tasks and ISRs can interact with each other via a kernel object called an ECB (Event Control Block).
+ *                  This ECB is represented here as a data structure of type `OS_EVENT`.
+ *                  
+ *                  An OS_EVENT structure is a building block for implementing prettyOS Services such as Semaphores, Mutexes, Mailboxes, ... etc.
+ *                  The details of structure is described in pretty_os.h file.
+ * 
+ *                  An OS_EVENT structure helps in implementing a common interface for prettyOS services to interact with and avoiding
+ *                  code redundancy for pending or activing a task for each of prettyOS services.
+ * 
+ *              The Common APIs which are used when implementing a prettyOS kernel object depending on OS_EVENT object :
+ * 
+ *				List of Available APIs		    :	Short Description
+ * 				======================================================
+ * 					- OS_EVENT_allocate()	    :	Get  an ECB block for event object use.
+ * 					- OS_EVENT_free()           :	Free an ECB block into the free list of ECB objects.
+ * 					- OS_Event_TaskPend()  	    :	Pend the current running task and set it into a pend state.
+ * 					- OS_Event_TaskMakeReady()  :	Set a waiting task for an event to be in a ready state.
+ *                  - OS_Event_TaskInsert()     :   Insert a task to a wait list of tasks pending on an event.
+ *                  - OS_Event_TaskRemove()     :   Remove a task that was waiting for an event from a wait list of tasks.
+ * 
+ * 
+ *              A wait list of tasks pending on an event is a simple sorted linked list based on task priority. i.e a higher priority task
+ *              waiting for an event to occur is get placed in the head of the wait list.
+ * 
+ *              The search strategy for insertion or deletion is a linear search which takes up to O(n) in its worst case.
+ * 
+ *              Finally, An OS_EVENT structure is a connection between tasks/ISRs.
+ *              i.e     - An ISR  can signal a task          for event occurrence through an OS_EVENT.
+ *                      - A  task can signal another task    for event occurrence through an OS_EVENT.
+ *                      - A  task or ISR can signal tasks    for event occurrence through an OS_EVENT. [ In this case, the High Priority Task is signaled first ]
+ * Language :  C
+ * 
+ * Set 1 tab = 4 spaces for better comments readability.
+ */
+
+/*
 *******************************************************************************
 *                               Includes Files                                *
 *******************************************************************************
@@ -53,7 +92,7 @@ OS_EVENT* volatile pEventFreeList;
  *
  * Returns      : None.
  *
- * Notes        :   1) This function for internal use.
+ * Notes        :   1) This function for internal use and is called once at the kernel init ( i.e OS_Init() )
  */
 void
 OS_Event_FreeListInit(void)

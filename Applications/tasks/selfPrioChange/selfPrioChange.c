@@ -77,7 +77,7 @@ OS_tSTACK stkTask_three   [STACK_SIZE];
 *                              OS Hooks functions                             *
 *******************************************************************************
 */
-void OS_Hook_onIdle(void)
+void App_Hook_TaskIdle(void)
 {
     /*  Application idle routine.    */
 }

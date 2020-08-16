@@ -251,14 +251,14 @@ void  CPU_IRQ_TimerInterruptTrigger (void)
 */
 
 /*
- * Function:  OS_Init_CPU_Hook
+ * Function:  OS_CPU_Hook_Init
  * --------------------------------
  * This function is called at the beginning of OS_Init().
  *
  * Note(s)	:	1)	Interrupts should be disabled during this call.
  *
  */
-void OS_Init_CPU_Hook (void)
+void OS_CPU_Hook_Init (void)
 {
     struct  rlimit  rtprio_limits;
 
@@ -274,7 +274,7 @@ void OS_Init_CPU_Hook (void)
 }
 
 /*
- * Function:  OS_TaskCreate_CPU_Hook
+ * Function:  OS_CPU_Hook_TaskCreated
  * --------------------------------
  * This function is called when a task is created.
  *
@@ -285,7 +285,7 @@ void OS_Init_CPU_Hook (void)
  * Note(s)	:	1)	Interrupts should be disabled during this call.
  *
  */
-void OS_TaskCreate_CPU_Hook (OS_TASK_TCB*	ptcb)
+void OS_CPU_Hook_TaskCreated (OS_TASK_TCB*	ptcb)
 {
 	OS_TCB_POSIX*			ptcbPosix;
     pthread_attr_t       	attr;
@@ -331,7 +331,7 @@ void OS_TaskCreate_CPU_Hook (OS_TASK_TCB*	ptcb)
 }
 
 /*
- * Function:  OS_TaskCreate_CPU_Hook
+ * Function:  OS_CPU_Hook_TaskDeleted
  * --------------------------------
  * This function is called when a task is deleted.
  *
@@ -342,7 +342,7 @@ void OS_TaskCreate_CPU_Hook (OS_TASK_TCB*	ptcb)
  * Note(s)	:	1)	Interrupts should be disabled during this call.
  *
  */
-void OS_TaskDelete_CPU_Hook	(OS_TASK_TCB*	ptcb)
+void OS_CPU_Hook_TaskDeleted (OS_TASK_TCB*	ptcb)
 {
 	OS_TCB_POSIX* ptcbPosix = (OS_TCB_POSIX*)ptcb->OSTCBExtension;
 
@@ -354,7 +354,7 @@ void OS_TaskDelete_CPU_Hook	(OS_TASK_TCB*	ptcb)
 }
 
 /*
- * Function:  OS_TaskCreate_CPU_Hook
+ * Function:  OS_CPU_Hook_Idle
  * --------------------------------
  * This function is called by the OS_IdleTask().
  *
@@ -362,17 +362,17 @@ void OS_TaskDelete_CPU_Hook	(OS_TASK_TCB*	ptcb)
  *
  * Returns	:	None.
  */
-void OS_Idle_CPU_Hook (void)
+void OS_CPU_Hook_Idle (void)
 {
 	sleep(1);																/* For some reason, this solve a possible deadlock in this porting code :) 					*/
 }
 
-void OS_TaskCtxSW_CPU_Hook (void)
+void OS_CPU_Hook_ContextSwitch (void)
 {
 
 }
 
-void OS_TimerTick_CPU_Hook (void)
+void OS_CPU_Hook_TimeTick (void)
 {
 
 }
@@ -450,7 +450,7 @@ void OS_CPU_ContexSwitch (void)
     CPU_t08U        current_deleted;
     int             ret;
 
-    OS_TaskCtxSW_CPU_Hook();												/* Call Task Context Switch Hook.										*/
+    OS_CPU_Hook_ContextSwitch();											/* Call Task Context Switch Hook.										*/
 
     ptcbPosix_new = (OS_TCB_POSIX*)OS_nextTask->OSTCBExtension;				/* Retrieve the saved TCB POSIX structure. 								*/
     ptcbPosix_old = (OS_TCB_POSIX*)OS_currentTask->OSTCBExtension;			/* Retrieve the saved TCB POSIX structure. 								*/
@@ -493,7 +493,7 @@ void OS_CPU_FirstStart (void)
 
     __print_debug("[%u] is the  %s() \n",pthread_self(),__FUNCTION__);
 
-    OS_TaskCtxSW_CPU_Hook();												/* Call Task Context Switch Hook.										*/
+    OS_CPU_Hook_ContextSwitch();											/* Call Task Context Switch Hook.										*/
 
     OS_currentTask = OS_nextTask;											/* Since it's the first Context Switch, OS_currentTask should be NULL.	*/
 

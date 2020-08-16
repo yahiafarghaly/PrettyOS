@@ -25,10 +25,12 @@ SOFTWARE.
 /*
  * Author   : Yahia Farghaly Ashour
  *
- * Purpose  : Contains the implementation of CPU_CountLeadZeros()in C
+ * Purpose  : Contains the implementation of CPU_CountLeadZeros() in C
  *            which can be used if no assembly instruction is supported by the target processor/Compiler.
  *
  * Language:  C
+ * 
+ * Set 1 tab = 4 spaces for better comments readability.
  */
 
 /*
@@ -157,6 +159,8 @@ CPU_tWORD static inline CntLeadZeros64 (CPU_t64U val)
     }
     else
     {
+        /*Lazy TODO: Replace the following function call to its implementation since
+         this will result in a linker error due to macro guard.                         */
         return (CPU_tWORD)(CntLeadZeros32((CPU_t32U)val) + 32U);
     }
 }

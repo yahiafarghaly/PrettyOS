@@ -70,7 +70,7 @@ static volatile unsigned char    buff_Idx = 0;
 *                              OS Hooks functions                             *
 *******************************************************************************
 */
-void OS_Hook_onIdle(void)
+void App_Hook_TaskIdle(void)
 {
     BSP_CPU_WFI();
 }
@@ -213,7 +213,7 @@ unsigned char produceItem(void)
 
 void consumeItem(unsigned char item)
 {
-    item = item;
+    (unsigned char)item;
 }
 
 void

@@ -156,6 +156,19 @@ Here, I am providing a pseudo code for the context switch which you will replace
 
 The above code is usually placed inside an interrupt handler for doing the context switch in a privileged mode.
 
+At last, there are few low level APIs hooks which are user definable but must be included in the port file
+if configured to be added since it's called internally by prettyOS.
+
+These are the list of hook functions:
+| Hook Function          |  Short Description	                                                        |
+| ---------------------- |:----------------------------------------------------------------------------:|
+| OS_CPU_Hook_Init       | Called at the early stages of OS_Init() before doing any OS initialization.  |
+| OS_CPU_Hook_TaskCreated | Called when a task is created.                                               |
+| OS_CPU_Hook_TaskDeleted | Called when a task is deleted.                                               |
+| OS_CPU_Hook_ContextSwitch  | Called when OS performs a task context switch                                |
+| OS_CPU_Hook_TimeTick  | Called when OS_TimerTick() is called before decrementing any tasks ticks.    |
+| OS_CPU_Hook_Idle       | Called when OS is running its idle task.                                     |
+
 This document ends here, hope it's helpful for starting to port to other architectures and target boards.
 Beside this document, I recommend reading the code of one the supported ported target. It will definitally help clarifying 
 much more.

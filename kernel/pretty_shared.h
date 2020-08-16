@@ -29,6 +29,8 @@ SOFTWARE.
  *            These variables or function APIs listed here should not be used or interacted with the application level code.
  *
  * Language:  C
+ *
+ * Set 1 tab = 4 spaces for better comments readability.
  */
 
 #ifndef __PRETTY_SHARED_H_

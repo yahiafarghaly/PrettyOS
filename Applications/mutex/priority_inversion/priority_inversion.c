@@ -93,7 +93,7 @@ OS_MUTEX* message_lock;
 *******************************************************************************
 */
 
-void OS_Hook_onIdle(void)
+void App_Hook_TaskIdle(void)
 {
     /*  Application idle routine.    */
 }

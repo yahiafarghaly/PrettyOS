@@ -13,7 +13,6 @@
 | Maximum number of tasks      | Configurable     |
 | Number of tasks at each priority level | 1      |
 | Priority Change at run time | **Yes** |
-| Support Round robin Scheduling | No |
 | Scheduling lock/Unlock | **Yes** |
 |Task suspend/resume| **Yes** |
 |Catch a task that returns| **Yes** |
@@ -21,8 +20,9 @@
 | Mutual exclusion semaphores(Mutex) | **Yes** with Original Ceiling Priority Protocol (**OCPP**)|
 | Message mailboxes | **Yes** |
 | Memory Management | **Yes** - Basic Memory Partition Manager |
+| User definable hook functions | **Yes** - In both Application level and CPU Port Level |
 |Software timers| No|
-| User definable hook functions | No |
+| Support Round robin Scheduling | No |
 
 
 #### 💻 Porting availability
@@ -33,22 +33,9 @@
 
 To add another port, Please read this [porting guide](port/porting_guide.md) first.
 
-
-#### 📜 List of PrettyOS Public APIs
-| Core          | Task managment	| Semaphore 		| Time		|
-| ------------- |:---------------------:|:---------------------:|:-------------:|
-|OS_Init	|OS_TaskCreate		|OS_SemCreate		|OS_DelayTicks  |
-|OS_Run		|OS_TaskDelete		|OS_SemPend		|OS_TimerTick	| 	 	
-|OS_IntEnter    |OS_TaskChangePriority	|OS_SemPost		|OS_DelayTime	| 		 
-|OS_IntExit	|OS_TaskSuspend		|OS_SemPendNonBlocking	|		| 	         
-|OS_SchedLock	|OS_TaskResume		|OS_SemPendAbort	|		| 	         
-|OS_SchedUnlock	|OS_TaskStatus		|			|	        |
-
-| Mutex        	| MailBox		| Hook Functions 	| Error                 |
-| --------------|:---------------------:|:---------------------:|:---------------------:|
-|OS_MutexCreate |OS_MailBoxCreate	|OS_Hook_onIdle         |OS_StrError            |
-|OS_MutexPend	|OS_MailBoxPend		|                       |OS_StrLastErrIfFail    |
-|OS_MutexPost	|OS_MailBoxPost		|                       |                       |
+#### Include the RTOS
+You include only a single header file [pretty_os.h](kernel/pretty_os.h) which contains the list
+of the public APIs with a proper description for each one.
 
 
 #### 📝 License

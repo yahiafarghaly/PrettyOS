@@ -48,8 +48,18 @@ SOFTWARE.
  *							An ISR can only post a semaphore value.
  *
  * 				Your application can have any number of semaphores. The limit is set by OS_CONFIG_MAX_EVENTS .
- *
+ * 
+ * 				List of Available APIs		:	Short Description
+ * 				=================================================
+ * 					- OS_SemCreate ()	        :	Creates a semaphore object.
+ * 					- OS_SemPend ()  	        :	Wait for a semaphore resource to be available.
+ * 					- OS_SemPost ()  	        :	Free a semaphore resource to be available for other tasks.
+ * 					- OS_SemPendNonBlocking ()  :	Acquire a semaphore resource and not pending the current task if it's not available.
+ *                  - OS_SemPendAbort ()        :   Abort pending a task on a semaphore and let it continue its code flow.
+ *                  - OS_SemGetCount ()         :   Retrieve the available count of semaphore resources.
  * Language:  C
+ *  
+ * Set 1 tab = 4 spaces for better comments readability.
  */
 
 /*
@@ -71,17 +81,17 @@ static const unsigned long OS_SemMaxCount (void)
 	switch(sizeof(OS_SEM_COUNT))
 	{
 	case 1:
-		return	0xFF;
+		return	0x00FFU;
 	case 2:
-		return 0x00FF;
+		return 0x00FFU;
 	case 4:
-		return 0x0000FFFFFFFF;
+		return 0x0000FFFFFFFFU;
 	case 8:
-		return 0xFFFFFFFFFFFFFFFF;
+		return 0xFFFFFFFFFFFFFFFFU;
 	default:
 		break;
 	}
-	return 0x0000FFFFFFFF;
+	return 0x0000FFFFFFFFU;
 }
 
 /*
@@ -307,7 +317,7 @@ OS_SemPost (OS_SEM* pevent)
  *                     A good practice is to post a semaphore from an ISR.
  */
 OS_SEM_COUNT
-OS_SemPendNonBlocking(OS_SEM* pevent)
+OS_SemPendNonBlocking (OS_SEM* pevent)
 {
     OS_SEM_COUNT count;
     CPU_SR_ALLOC();
@@ -356,7 +366,7 @@ OS_SemPendNonBlocking(OS_SEM* pevent)
  * Note(s)      :   1) This function can be called from a task code or an ISR.
  */
 void
-OS_SemPendAbort(OS_SEM* pevent, CPU_t08U opt, OS_TASK_COUNT* abortedTasksCount)
+OS_SemPendAbort (OS_SEM* pevent, CPU_t08U opt, OS_TASK_COUNT* abortedTasksCount)
 {
     OS_TASK_COUNT nAbortedTasks;
     CPU_SR_ALLOC();
@@ -417,5 +427,50 @@ OS_SemPendAbort(OS_SEM* pevent, CPU_t08U opt, OS_TASK_COUNT* abortedTasksCount)
     OS_ERR_SET(OS_ERR_NONE);
     return;
 }
+
+/*
+ * Function:  OS_SemGetCount
+ * -------------------------
+ * Return the number of semaphore resources.
+ *
+ * Arguments    :   pevent      is a pointer to the OS_EVENT object associated with the semaphore.
+ *
+ * 					pCount		is a pointer to a semaphore count type to hold the number of the semaphore resources[Counts]
+ *
+ * Return(s)	:	OS_ERRNO = { OS_ERR_NONE, OS_ERR_PARAM, OS_ERR_EVENT_PEVENT_NULL, OS_ERR_EVENT_TYPE }
+ *
+ * Note(s)      :   1) This function can be called from a task code or an ISR.
+ */
+void
+OS_SemGetCount (OS_SEM* pevent, OS_SEM_COUNT* pCount)
+{
+    CPU_SR_ALLOC();
+
+    if(pCount == OS_NULL(OS_SEM_COUNT))
+    {
+    	OS_ERR_SET(OS_ERR_PARAM);
+    	return;
+    }
+
+    if (pevent == (OS_EVENT*)0U) {                          /* Validate 'pevent'                                         */
+         OS_ERR_SET(OS_ERR_EVENT_PEVENT_NULL);
+         pCount = OS_NULL(OS_SEM_COUNT);
+         return;
+    }
+
+    if (pevent->OSEventType != OS_EVENT_TYPE_SEM) {         /* Validate event type                                       */
+    	OS_ERR_SET(OS_ERR_EVENT_TYPE);
+    	pCount = OS_NULL(OS_SEM_COUNT);
+    	return;
+    }
+
+    OS_CRTICAL_BEGIN();
+    *pCount = pevent->OSEventCount;
+    OS_CRTICAL_END();
+
+    OS_ERR_SET(OS_ERR_NONE);
+    return;
+}
+
 
 #endif 		/* OS_CONFIG_SEMAPHORE_EN */

@@ -168,32 +168,33 @@ void  OS_CPU_SystemTimerSetup (CPU_t32U ticks)
 
 struct OS_TASK_TCB; /* Forward declaration instead of including the pretty_os.h file as i don't use it here. */
 
-void OS_Init_CPU_Hook (void)
+void OS_CPU_Hook_Init (void)
 {
     /* Init certain CPU module.                                 */
 }
 
-void OS_TaskCreate_CPU_Hook (struct OS_TASK_TCB*   ptcb)
+void OS_CPU_Hook_TaskCreated (struct OS_TASK_TCB*   ptcb)
 {
     /* ...                                                      */
 }
 
-void OS_TaskDelete_CPU_Hook (struct OS_TASK_TCB*   ptcb)
+void OS_CPU_Hook_TaskDeleted (struct OS_TASK_TCB*   ptcb)
 {
     /* ...                                                      */
 }
 
-void OS_Idle_CPU_Hook (void)
+void OS_CPU_Hook_Idle (void)
 {
     /* You may reduce the CPU utilization.                      */
 }
 
-void OS_TaskCtxSW_CPU_Hook (void)
+void OS_CPU_Hook_ContextSwitch (void)
 {
+    /* This function should be called inside the OS_CPU_PendSVHandler() if you desire to do something when context switch is occurred.  */
     /* You may want to count the number of context switches.    */
 }
 
-void OS_TimerTick_CPU_Hook (void)
+void OS_CPU_Hook_TimeTick (void)
 {
     /* You may want to record ticks elapsed here.               */
 }

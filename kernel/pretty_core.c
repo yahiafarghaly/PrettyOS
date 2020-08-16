@@ -38,11 +38,30 @@ SOFTWARE.
 ******************************************************************************/
 
 /*
- * Author   : Yahia Farghaly Ashour
+ * Author   :   Yahia Farghaly Ashour
  *
- * Purpose  : Contains the implementation of various of OS core APIs.
+ * Purpose  :   The heart of prettyOS core functions.
+ *                  Here is where the tasks schedulability live, the ready and blocked tasks status and others.
+ * 
+ *              The scheduler of the prettyOS is a preemptive scheduler based on tasks priorities.
+ *              It execute the higher priority task when it's available to be executed ( i.e not blocked due to delay or an event ).
+ *              
+ *              The scheduler is designed as a higher priority task corresponds to a higher assigned priority number to a task when was created.
+ *                
  *
- * Language:  C
+ * 				List of Available APIs		:	Short Description
+ * 				=================================================
+ * 					- OS_Init ()	        :	Initialize prettyOS internal structures and variables.
+ * 					- OS_IntEnter ()  	    :	Notify prettyOS that we're entering an ISR.
+ * 					- OS_IntExit ()  	    :	Notify prettyOS that we're exiting  an ISR. So, it can schedule a high priority task.
+ * 					- OS_SchedLock ()       :	Lock   the scheduler. i.e disable the preemption. 
+ *                  - OS_SchedUnlock ()     :   Unlock the scheduler.
+ *                  - OS_Sched ()           :   Schedule the high priority task which is in a ready state.
+ *                  - OS_Run()              :   Start Running prettyOS and give it the control over the running application.
+ * 
+ * Language :   C
+ * 
+ * Set 1 tab = 4 spaces for better comments readability.
  */
 
 /*
@@ -147,23 +166,22 @@ OS_TASK_TCB*            OS_tblTCBPrio [OS_CONFIG_TASK_COUNT];
 *******************************************************************************
 */
 
-/*
- * Function:  OS_Hook_onIdle
- * --------------------
- * This function runs in the Idle state of OS.
- *
- * Arguments    : None.
- *
- * Returns      : None.
- */
+/* The Idle Task of prettyOS                                                */
 void
 OS_IdleTask (void* args)
 {
     (void)args;                 /* Prevent compiler warning.                */
     while(1)
     {
-    	OS_Idle_CPU_Hook();		/* Call low level CPU idle routine.			*/
-        OS_Hook_onIdle();       /* Call user's idle function.               */
+
+#if(OS_CONFIG_CPU_IDLE == OS_CONFIG_ENABLE)
+    	OS_CPU_Hook_Idle();		/* Call low level CPU idle routine.			*/
+#endif
+
+#if (OS_CONFIG_APP_TASK_IDLE == OS_CONFIG_ENABLE)
+    	App_Hook_TaskIdle();    /* Call user's idle function.               */
+#endif
+
     }
 }
 
@@ -192,7 +210,9 @@ OS_Init (CPU_tSTK* pStackBaseIdleTask, CPU_tSTK  stackSizeIdleTask)
     OS_tRet ret;
     CPU_t32U idx;
 
-    OS_Init_CPU_Hook();								/* Call port specific initialization code.				  		*/
+#if(OS_CONFIG_CPU_INIT == OS_CONFIG_ENABLE)
+    OS_CPU_Hook_Init();								/* Call port specific initialization code.				  		*/
+#endif
     												/* Initialize Common PrettyOS Global/static to default values.  */
     OS_currentTask      = OS_NULL(OS_TASK_TCB);
     OS_nextTask         = OS_NULL(OS_TASK_TCB);
@@ -652,14 +672,20 @@ OS_TimerTick (void)
     OS_CRTICAL_END();
 #endif
 
+#if(OS_CONFIG_CPU_TIME_TICK == OS_CONFIG_ENABLE)
+    OS_CPU_Hook_TimeTick();											/* Call Port Specific Tick Hook.						  							*/
+#endif
+
+#if (OS_CONFIG_APP_TIME_TICK == OS_CONFIG_ENABLE)
+	App_Hook_TimeTick();  											/* Calls Application specific code when an OS system tick occurs.					*/
+#endif
+
     if(OS_Running == OS_FAlSE)
     {
         return;
     }
 
     OS_CRTICAL_BEGIN();
-
-    OS_TimerTick_CPU_Hook();										/* Call port specific tick hook.						  							*/
 
     for(i = 0; i < OS_AUTO_CONFIG_MAX_PRIO_ENTRIES; i++)
     {

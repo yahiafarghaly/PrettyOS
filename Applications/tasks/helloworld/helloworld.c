@@ -68,7 +68,7 @@ OS_tSTACK stkTask_Idle    [STACK_SIZE];
 *******************************************************************************
 */
 
-void OS_Hook_onIdle(void)
+void App_Hook_TaskIdle(void)
 {
     /*  Application idle routine.    */
 }

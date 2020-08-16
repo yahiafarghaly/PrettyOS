@@ -28,6 +28,8 @@ SOFTWARE.
  * Purpose  :	Implementation of various of time delay functions in prettyOS.
  *
  * Language	:  	C
+ * 
+ * Set 1 tab = 4 spaces for better comments readability.
  */
 
 /*

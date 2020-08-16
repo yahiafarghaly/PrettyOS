@@ -28,6 +28,8 @@ SOFTWARE.
  * Purpose  : Contains the implementation of various of OS_Task*() APIs.
  *
  * Language:  C
+ * 
+ * Set 1 tab = 4 spaces for better comments readability.
  */
 
 /*
@@ -176,7 +178,13 @@ OS_TaskCreate (void (*TASK_Handler)(void* params),
         OS_tblTCBPrio[priority]->TASK_EntryArg  = params;
 #endif
 
-        OS_TaskCreate_CPU_Hook(OS_tblTCBPrio[priority]);						 /* Call port specific task creation code.													  */
+#if(OS_CONFIG_CPU_TASK_CREATED == OS_CONFIG_ENABLE)
+        OS_CPU_Hook_TaskCreated (OS_tblTCBPrio[priority]);						 /* Call port specific task creation code.													  */
+#endif
+
+#if (OS_CONFIG_APP_TASK_CREATED == OS_CONFIG_ENABLE)
+        App_Hook_TaskCreated (OS_tblTCBPrio[priority]);							 /* Calls Application specific code for a successfully created task.						  */
+#endif
 
         OS_SetReady(priority);                                                   /* Put in ready state.                                                                       */
     }
@@ -251,7 +259,6 @@ OS_TaskDelete (OS_PRIO prio)
         OS_UnBlockTime(prio);                                                     /* Remove from the time blocked state.        */
     }
 
-    OS_TaskDelete_CPU_Hook(ptcb);												  /* Call port specific task deletion code.		*/
     ptcb->TASK_Ticks    = 0U;                                                     /* Remove any remaining ticks.                */
 
 #if (OS_AUTO_CONFIG_INCLUDE_EVENTS == OS_CONFIG_ENABLE)
@@ -261,7 +268,16 @@ OS_TaskDelete (OS_PRIO prio)
 #endif
 
     ptcb->TASK_Stat     = OS_TASK_STAT_DELETED;                                   /* Make the task be Dormant.                  */
-    OS_tblTCBPrio[prio] = OS_NULL(OS_TASK_TCB);                                   /* At this prio, the task is no longer exist. */
+
+#if(OS_CONFIG_CPU_TASK_DELETED == OS_CONFIG_ENABLE)
+    OS_CPU_Hook_TaskDeleted (ptcb);												  /* Call port specific task deletion code.		*/
+#endif
+
+#if (OS_CONFIG_APP_TASK_DELETED == OS_CONFIG_ENABLE)
+	App_Hook_TaskDeleted 	(ptcb);												  /* Calls Application specific code.			*/
+#endif
+
+    OS_tblTCBPrio[prio] = OS_NULL(OS_TASK_TCB);                                   /* The task is no longer exist. 				*/
 
     /* At this point, the task is prevented from resuming or made ready from another higher task or an ISR.                     */
     if(OS_TRUE == OS_Running)
@@ -553,8 +569,13 @@ OS_TaskStatus (OS_PRIO prio)
 void
 OS_TaskReturn (void)
 {
-    OS_TaskDelete(OS_currentTask->TASK_priority);       /* Delete a task.            */
-    for(;;)                                             /* If deletion fails.        */
+
+#if (OS_CONFIG_APP_TASK_RETURNED == OS_CONFIG_ENABLE)
+	App_Hook_TaskReturned (OS_currentTask); 			/* Calls Application specific code when a task returns intentionally. 								*/
+#endif
+
+    OS_TaskDelete(OS_currentTask->TASK_priority);       /* Delete a task.            																		*/
+    for(;;)                                             /* If deletion fails, Loop Every OS_CONFIG_TICKS_PER_SEC											*/
     {
         OS_DelayTicks(OS_CONFIG_TICKS_PER_SEC);
     }

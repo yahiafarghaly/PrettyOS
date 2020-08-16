@@ -22,6 +22,16 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ******************************************************************************/
 
+/*
+ * Author   : Yahia Farghaly Ashour
+ *
+ * Purpose  : PrettyOS Configuration File.
+ *
+ * Language:  C
+ * 
+ * Set 1 tab = 4 spaces for better comments readability.
+ */
+
 #ifndef __PRETTY_CONFIG_H_
 #define __PRETTY_CONFIG_H_
 
@@ -74,6 +84,37 @@ SOFTWARE.
 /*=========  Enable/Disable Set/Get functions of current system time. =========*/
 
 #define OS_CONFIG_SYSTEM_TIME_SET_GET_EN	(OS_CONFIG_ENABLE)
+
+
+/******************************************************************************/
+/**********************	  Application Hooks Configs     ***********************/
+/* 					   [Required in Application Level] 						  */
+/******************************************************************************/
+
+
+/*=======  Enable/Disable Application specific code on OS Idle State. =========*/
+
+#define OS_CONFIG_APP_TASK_IDLE				(OS_CONFIG_ENABLE)
+
+/*=======  Enable/Disable Application specific code on OS tasks switches. =====*/
+
+#define OS_CONFIG_APP_TASK_SWITCH			(OS_CONFIG_DISABLE)
+
+/*=======  Enable/Disable Application specific code on OS task creation. ======*/
+
+#define OS_CONFIG_APP_TASK_CREATED			(OS_CONFIG_DISABLE)
+
+/*=======  Enable/Disable Application specific code on OS task deletion. ======*/
+
+#define OS_CONFIG_APP_TASK_DELETED			(OS_CONFIG_DISABLE)
+
+/*=======  Enable/Disable Application specific code on OS task return.   ======*/
+
+#define OS_CONFIG_APP_TASK_RETURNED			(OS_CONFIG_DISABLE)
+
+/*=======  Enable/Disable Application specific code on OS system tick.   ======*/
+
+#define OS_CONFIG_APP_TIME_TICK				(OS_CONFIG_DISABLE)
 
 
 /********************************************************************************/

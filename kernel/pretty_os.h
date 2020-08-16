@@ -22,6 +22,16 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ******************************************************************************/
 
+/*
+ * Author   :   Yahia Farghaly Ashour
+ *
+ * Purpose  :   PrettyOS Public Header APIs.
+ *
+ * Language :   C
+ * 
+ * Set 1 tab = 4 spaces for better comments readability.
+ */
+
 #ifndef __PRETTY_OS_H_
 #define __PRETTY_OS_H_
 
@@ -553,7 +563,7 @@ void OS_SemPost (OS_SEM* pevent);
  *              :   2) It's not recommended to be used within an ISR. An ISR is not supposed to obtain a semaphore.
  *                     A good practice is to post a semaphore from an ISR.
  */
-OS_SEM_COUNT OS_SemPendNonBlocking(OS_SEM* pevent);
+OS_SEM_COUNT OS_SemPendNonBlocking (OS_SEM* pevent);
 
 /*
  * Function:  OS_SemPendAbort
@@ -574,7 +584,22 @@ OS_SEM_COUNT OS_SemPendNonBlocking(OS_SEM* pevent);
  *
  * Note(s)      :   1) This function can be called from a task code or an ISR.
  */
-void OS_SemPendAbort(OS_SEM* pevent, CPU_t08U opt, OS_TASK_COUNT* abortedTasksCount);
+void OS_SemPendAbort (OS_SEM* pevent, CPU_t08U opt, OS_TASK_COUNT* abortedTasksCount);
+
+/*
+ * Function:  OS_SemGetCount
+ * -------------------------
+ * Return the number of semaphore resources.
+ *
+ * Arguments    :   pevent      is a pointer to the OS_EVENT object associated with the semaphore.
+ *
+ * 					pCount		is a pointer to a semaphore count type to hold the number of the semaphore resources[Counts]
+ *
+ * Return(s)	:	OS_ERRNO = { OS_ERR_NONE, OS_ERR_PARAM, OS_ERR_EVENT_PEVENT_NULL, OS_ERR_EVENT_TYPE }
+ *
+ * Note(s)      :   1) This function can be called from a task code or an ISR.
+ */
+void OS_SemGetCount (OS_SEM* pevent, OS_SEM_COUNT* pCount);
 
 /*
 *******************************************************************************
@@ -707,6 +732,22 @@ void* OS_MailBoxPend (OS_MAILBOX* pevent, OS_TICK timeout);
  * Note(s)      :   1) This function can be used from a Task code level or an ISR.
  */
 void OS_MailBoxPost (OS_MAILBOX* pevent, void* p_message);
+
+/*
+ * Function:  OS_MailBoxRead
+ * --------------------
+ * Read the message in the Mailbox without waiting/pending.
+ *
+ * Arguments    :   pevent    	is a pointer to an OS_EVENT object associated with a mailbox object.
+ *
+ * Returns      :  	!= (void*)0 is a pointer to the message which is received.
+ * 					== (void*)0 If no message is received or 'pevent' is a NULL pointer or invalid type of OSEventType.
+ *
+ * 					OS_ERRNO = { OS_ERR_NONE, OS_ERR_EVENT_PEVENT_NULL,OS_ERR_EVENT_TYPE }
+ *
+ * Note(s)      :   1) This function can be used from task level code or an ISR.
+ */
+void* OS_MailBoxRead(OS_MAILBOX* pevent);
 
 /*
 *******************************************************************************
@@ -855,22 +896,36 @@ void OS_MemoryRestoreBlock (OS_MEMORY* pMemoryPart, void* pBlock);
 /*
 *******************************************************************************
 *                                                                             *
-*                         PrettyOS Hook Functions                             *
-*                 REQUIRED: User Implement these functions                    *
+*                      Application Hook Specific Functions                 	  *
+*                [Preferred to do little work as much as possible]		      *
 *                                                                             *
 *******************************************************************************
 */
 
-/*
- * Function:  OS_Hook_onIdle
- * --------------------
- * This function runs in the Idle state of OS.
- *
- * Arguments    : None.
- *
- * Returns      : None.
- */
-extern void OS_Hook_onIdle(void);
+
+#if (OS_CONFIG_APP_TASK_IDLE == OS_CONFIG_ENABLE)
+	void App_Hook_TaskIdle		(void);								/* Calls Application specific code in the idle state of prettyOS. 									*/
+#endif
+
+#if (OS_CONFIG_APP_TASK_SWITCH == OS_CONFIG_ENABLE)
+	void App_Hook_TaskSwitch	(void);								/* Calls Application specific code when task context switch occurs. 								*/
+#endif
+
+#if (OS_CONFIG_APP_TASK_CREATED == OS_CONFIG_ENABLE)
+	void App_Hook_TaskCreated 	(OS_TASK_TCB* ptcb);				/* Calls Application specific code when a task is created. 											*/
+#endif
+
+#if (OS_CONFIG_APP_TASK_DELETED == OS_CONFIG_ENABLE)
+	void App_Hook_TaskDeleted 	(OS_TASK_TCB* ptcb);				/* Calls Application specific code when a task is deleted. 											*/
+#endif
+
+#if (OS_CONFIG_APP_TASK_RETURNED == OS_CONFIG_ENABLE)
+	void App_Hook_TaskReturned	(OS_TASK_TCB* ptcb); 				/* Calls Application specific code when a task returns intentionally. 								*/
+#endif
+
+#if (OS_CONFIG_APP_TIME_TICK == OS_CONFIG_ENABLE)
+	void App_Hook_TimeTick 		(void);  							/* Calls Application specific code when an OS system tick occurs. (i.e the single tick ! )			*/
+#endif
 
 
 
@@ -884,18 +939,30 @@ extern void OS_Hook_onIdle(void);
 *******************************************************************************
 */
 
+#if(OS_CONFIG_CPU_INIT == OS_CONFIG_ENABLE)
+	extern void OS_CPU_Hook_Init 			(void);					/* Hooked with OS_Init() and is called once before OS_Init() does a thing.						*/
+#endif
 
-extern void OS_Init_CPU_Hook 		(void);					/* Hooked with OS_Init()				*/
+#if(OS_CONFIG_CPU_IDLE == OS_CONFIG_ENABLE)
+	extern void OS_CPU_Hook_Idle		(void);						/* A low level CPU idle routine in the idle state of prettyOS.									*/
+#endif
 
-extern void OS_TaskCreate_CPU_Hook 	(OS_TASK_TCB*	ptcb);	/* Hooked with OS_TaskCreate()			*/
+#if(OS_CONFIG_CPU_TASK_CREATED == OS_CONFIG_ENABLE)
+	extern void OS_CPU_Hook_TaskCreated 	(OS_TASK_TCB*	ptcb);	/* A low level CPU routine when a task is created.												*/
+#endif
 
-extern void OS_TaskDelete_CPU_Hook	(OS_TASK_TCB*	ptcb);	/* Hooked with OS_TaskDelete()			*/
+#if(OS_CONFIG_CPU_TASK_DELETED == OS_CONFIG_ENABLE)
+	extern void OS_CPU_Hook_TaskDeleted		(OS_TASK_TCB*	ptcb);	/* A low level CPU routine when a task is deleted.												*/
+#endif
 
-extern void OS_TaskCtxSW_CPU_Hook   (void);					/* Hooked with OS_CPU_ContexSwitch()	*/
+#if(OS_CONFIG_CPU_CONTEXT_SWITCH == OS_CONFIG_ENABLE)
+	extern void OS_CPU_Hook_ContextSwitch 	(void);					/* A low level CPU routine when a context switch occurs.										*/
+#endif
 
-extern void OS_TimerTick_CPU_Hook   (void);					/* Hooked with OS_TimerTick()			*/
+#if(OS_CONFIG_CPU_TIME_TICK == OS_CONFIG_ENABLE)
+	extern void OS_CPU_Hook_TimeTick     	(void);					/* A low level CPU routine when an OS system tick occurs. (i.e the single tick ! )				*/
+#endif
 
-extern void OS_Idle_CPU_Hook		(void);					/* Hooked with OS_IdleTask				*/
 
 /*
 *******************************************************************************

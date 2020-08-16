@@ -82,7 +82,7 @@ static inline void App_printStat()
 *                              OS Hooks functions                             *
 *******************************************************************************
 */
-void OS_Hook_onIdle(void)
+void App_Hook_TaskIdle(void)
 {
     BSP_LED_GreenOff();
     BSP_LED_BlueOff();

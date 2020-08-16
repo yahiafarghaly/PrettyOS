@@ -23,6 +23,16 @@ SOFTWARE.
 ******************************************************************************/
 
 /*
+ * Author   : Yahia Farghaly Ashour
+ *
+ * Purpose  : Contains the APIs implemenation related to OS_ERRNO global variable.
+ *
+ * Language:  C
+ * 
+ * Set 1 tab = 4 spaces for better comments readability.
+ */
+
+/*
 *******************************************************************************
 *                               Includes Files                                *
 *******************************************************************************

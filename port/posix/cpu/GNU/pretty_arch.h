@@ -239,6 +239,42 @@ typedef CPU_t32U	CPU_tSTK_SIZE; 	/* Define CPU stack size data type.		  */
 
 #endif
 
+
+/*
+*******************************************************************************
+*                    CPU Low Level APIs Hooks Configurations                  *
+*******************************************************************************
+*/
+
+#define 	OS_CONFIG_ENABLE				(1U)		/* TRUE  value for Enabling  a macro.		*/
+#define 	OS_CONFIG_DISABLE				(0U)		/* FALSE value for Disabling a macro. 		*/
+
+
+/*=======  Enable/Disable CPU Hook for doing CPU initialization before OS_Init()   ======*/
+
+#define OS_CONFIG_CPU_INIT					(OS_CONFIG_ENABLE)
+
+/*=======  			Enable/Disable CPU Hook idle routine  ====================*/
+
+#define OS_CONFIG_CPU_IDLE					(OS_CONFIG_ENABLE)
+
+/*=======  		Enable/Disable CPU Hook when Context Switch occurs. ==========*/
+
+#define OS_CONFIG_CPU_CONTEXT_SWITCH		(OS_CONFIG_ENABLE)
+
+/*=======  		Enable/Disable CPU Hook when a task is created ===============*/
+
+#define OS_CONFIG_CPU_TASK_CREATED			(OS_CONFIG_ENABLE)
+
+/*=======  		Enable/Disable CPU Hook when a task is deleted. ==============*/
+
+#define OS_CONFIG_CPU_TASK_DELETED			(OS_CONFIG_ENABLE)
+
+/*=======  		Enable/Disable CPU Hook when a CPU timer tick occurs  ========*/
+
+#define OS_CONFIG_CPU_TIME_TICK				(OS_CONFIG_ENABLE)
+
+
 /*
 *******************************************************************************
 *                      CPU Specific Functions Prototypes                      *
