@@ -46,6 +46,7 @@ extern "C" {
 */
 #include <pretty_arch.h>
 #include "pretty_config.h"
+#include "pretty_types.h"
 
 /*
 *******************************************************************************
@@ -106,17 +107,24 @@ extern OS_ERR OS_ERRNO;                           /* Holds the last error code r
 *                               OS Macros                                     *
 *******************************************************************************
 */
+
 #define OS_NULL(T)                    ((T*)0U)
+
 #define OS_TRUE                         (1U)
+
 #define OS_FAlSE                        (0U)
 
 #define OS_HIGHEST_PRIO_LEVEL           (OS_CONFIG_TASK_COUNT - 1U)
+
 #define OS_LOWEST_PRIO_LEVEL            (0U)
+
 #define OS_TCB_MUTEX_RESERVED           ((OS_TASK_TCB*)1U)
 
 /**************************** OS Reserved Priorities *************************/
 /********* Your Application should not assign any of these priorities ********/
+
 #define OS_IDLE_TASK_PRIO_LEVEL         (OS_LOWEST_PRIO_LEVEL)
+
 #define OS_PRIO_RESERVED_MUTEX          (1U)
 
 #define OS_IS_VALID_PRIO(_prio)     ((_prio >= OS_LOWEST_PRIO_LEVEL) && (_prio <= OS_HIGHEST_PRIO_LEVEL))
@@ -128,11 +136,17 @@ extern OS_ERR OS_ERRNO;                           /* Holds the last error code r
 *              OS Task Status (Status codes for TASK_Stat)                    *
 *******************************************************************************
 */
+
 #define OS_TASK_STAT_READY          (0x00U)                      /* Ready.                        */
+
 #define OS_TASK_STAT_DELAY          (0x01U)                      /* Delayed or Timeout.           */
+
 #define OS_TASK_STAT_SUSPENDED      (0x02U)                      /* Suspended.                    */
+
 #define OS_TASK_STATE_PEND_SEM      (0x04U)                      /* Pend on semaphore.            */
+
 #define OS_TASK_STATE_PEND_MUTEX    (0x08U)                      /* Pend on mutex.                */
+
 #define OS_TASK_STATE_PEND_MAILBOX	(0x10U)						 /* Pend on message arrival.	  */
 
 #define OS_TASK_STAT_DELETED        (0xFFU)                      /* A deleted task or not created.*/
@@ -144,8 +158,11 @@ extern OS_ERR OS_ERRNO;                           /* Holds the last error code r
 *             TASK PEND STATUS (Status codes for TASK_PendStat)               *
 *******************************************************************************
 */
+
 #define  OS_STAT_PEND_OK            (0U)  /* Pending status OK, not pending, or pending complete     */
+
 #define  OS_STAT_PEND_TIMEOUT       (1U)  /* Pending timed out                                       */
+
 #define  OS_STAT_PEND_ABORT         (2U)  /* Pending aborted                                         */
 
 /*
@@ -153,141 +170,51 @@ extern OS_ERR OS_ERRNO;                           /* Holds the last error code r
 *                             OS Events types                                 *
 *******************************************************************************
 */
+
 #define  OS_EVENT_TYPE_UNUSED           (0U)
+
 #define  OS_EVENT_TYPE_SEM              (1U)
+
 #define  OS_EVENT_TYPE_MUTEX            (2U)
+
 #define  OS_EVENT_TYPE_MAILBOX			(3U)
+
+#define  OS_EVENT_TYPE_FLAG				(4U)
+
+/*
+*******************************************************************************
+*                        	OS Event Flag Wait types                          *
+*******************************************************************************
+*/
+
+#define  OS_FLAG_WAIT_CLEAR_ALL			(1U)
+
+#define	 OS_FLAG_WAIT_CLEAR_ANY			(2U)
+
+#define	 OS_FLAG_WAIT_SET_ALL			(4U)
+
+#define	 OS_FLAG_WAIT_SET_ANY			(8U)
 
 /*
 *******************************************************************************
 *                               OS options                                    *
 *******************************************************************************
 */
+
 #define  OS_OPT_DEFAULT             (0U)                /* Default option of any services of PrettyOS opt        */
 
 /***************************** Semaphores opt *********************************/
+
 #define  OS_SEM_ABORT_HPT           (OS_OPT_DEFAULT)    /* Abort only higher priority waiting task.              */
+
 #define  OS_SEM_ABORT_ALL           (1U)                /* Abort all waiting priority tasks.                     */
 
 /*******************   Mutual Exclusion Semaphore opt *************************/
+
 #define OS_MUTEX_PRIO_CEIL_DISABLE  (OS_OPT_DEFAULT)    /* Disable priority ceiling promotion for mutex.         */
+
 #define OS_MUTEX_PRIO_CEIL_ENABLE   (1U)                /* Enable priority ceiling promotion for mutex.          */
 
-
-/*
-*******************************************************************************
-*                                OS Typedefs                                  *
-*******************************************************************************
-*/
-
-#if   (OS_CONFIG_TASK_COUNT - 1) <= (0x00000000000000FF)         /* Fit tasks priority to the correct data type. */
-    typedef CPU_t08U        OS_PRIO;
-#elif (OS_CONFIG_TASK_COUNT - 1) <= (0x000000000000FFFF)
-    typedef CPU_t16U        OS_PRIO;
-#elif (OS_CONFIG_TASK_COUNT - 1) <= (0x00000000FFFFFFFF)
-    typedef CPU_t32U        OS_PRIO;
-#elif (OS_CONFIG_TASK_COUNT - 1) <= (0xFFFFFFFFFFFFFFFF)
-    typedef CPU_t64U        OS_PRIO;
-#endif
-
-typedef OS_PRIO                      OS_TASK_COUNT;              /* By analogy as #max priority level >= #tasks.  */
-typedef CPU_t08U                     OS_BOOLEAN;                 /* For true/false values.                        */
-typedef CPU_t08U                     OS_OPT;                     /* For options values.                           */
-typedef CPU_t08U                     OS_STATUS;                  /* For status values.                            */
-typedef CPU_t32U                     OS_TICK;                    /* Clock tick counter.                           */
-
-typedef CPU_tWORD                    OS_tRet;                    /* Fit to the easiest type of memory for CPU.    */
-typedef CPU_tSTK                   	 OS_tSTACK;                  /* OS task stack which is word aligned.          */
-
-                                                                 /* OS various structures.                        */
-typedef struct      os_task_event    OS_EVENT;
-typedef struct      os_task_tcb      OS_TASK_TCB;
-typedef struct      os_task_time     OS_TIME;
-typedef struct		os_memory		 OS_MEMORY;
-                                                                 /* OS services based on OS_EVENT structure.      */
-typedef             OS_EVENT         OS_SEM;
-typedef             OS_EVENT         OS_MUTEX;
-typedef				OS_EVENT		 OS_MAILBOX;
-
-
-/*
-*******************************************************************************
-*                           OS Structures Definition                          *
-*******************************************************************************
-*/
-struct os_task_tcb
-{
-    CPU_tPtr    TASK_SP;        			/* Current Thread's Stack Pointer 												*/
-
-    OS_TICK     TASK_Ticks;     			/* Current Thread's Time out 													*/
-
-    OS_PRIO     TASK_priority;  			/* Task Priority 																*/
-
-    OS_STATUS   TASK_Stat;      			/* Task Status 																	*/
-
-#if (OS_AUTO_CONFIG_INCLUDE_EVENTS 		== OS_CONFIG_ENABLE)
-
-    OS_STATUS   TASK_PendStat;  			/* Task pend status 															*/
-
-    OS_EVENT*   TASK_Event;     			/* Pointer to this TCB event 													*/
-
-    OS_TASK_TCB* OSTCB_NextPtr;      		/* Pointer to a TCB (In case of multiple events on the same event object).		*/
-
-#endif
-
-#if (OS_CONFIG_TCB_TASK_ENTRY_STORE_EN 	== OS_CONFIG_ENABLE)
-
-    void (*TASK_EntryAddr)(void*);
-    void*  TASK_EntryArg;
-
-#endif
-
-#if (OS_CONFIG_TCB_EXTENSION_EN 		== OS_CONFIG_ENABLE)
-
-    void*		OSTCBExtension; 			/* Pointer to user definable data for TCB extension.		 			   		*/
-
-#endif
-
-};
-
-struct os_task_event
-{
-    CPU_t08U        OSEventType;            /* Event type                                                         			*/
-
-    OS_EVENT*       OSEventPtr;             /* Pointer to 1) Queue structure of Free Events.
-     	 	 	 	 	 	 	 	 	 	 	 	 	  2) or to a mailbox message [ (void*)0 means an Empty mailbox. ]
-     	 	 	 	 	 	 	 	 	 	 	 	 	  3) or to a OS_TASK_TCB object which is owning a mutex. 			*/
-
-    OS_TASK_TCB*    OSEventsTCBHead;        /* Pointer to the List of waited TCBs depending on this event.        			*/
-
-    union{
-        OS_SEM_COUNT    OSEventCount;       /* Semaphore Count                                                    			*/
-        struct{
-            OS_PRIO    OSMutexPrio;         /* The original priority task that owning the Mutex.
-            									or 'OS_PRIO_RESERVED_MUTEX' if no task is owning the Mutex.                 */
-
-            OS_PRIO    OSMutexPrioCeilP;    /* The raised priority to reduce the priority inversion bug.
-            								 	 or 'OS_PRIO_RESERVED_MUTEX' if priority ceiling promotion is disabled.		*/
-        };
-    };
-};
-
-struct os_memory {
-    void*	  		partitionBaseAddr;			/* The base address of a partition from which memory blocks will be allocated.	*/
-    void*	  		nextFreeBlock;				/* Points to the next OS_MEMORY Block or the next free memory block.			*/
-    OS_MEMORY_BLOCK blockSize;					/* Block memory size.															*/
-    OS_MEMORY_BLOCK blockCount;					/* Total number of the memory blocks inside the partition.						*/
-    OS_MEMORY_BLOCK blockFreeCount;				/* The number of the memory blocks which is currently available from partition. */
-    											/* The number of used memory blocks is equal to (blockCount - blockFreeCount).	*/
-};
-
-struct os_task_time
-{
-    CPU_t08U hours;
-    CPU_t08U minutes;
-    CPU_t08U seconds;
-    CPU_t16U milliseconds;
-};
 
 /*
 *******************************************************************************
@@ -498,6 +425,7 @@ extern void OS_TimeGet (OS_TIME* ptime);
 *                   OS Semaphore function Prototypes                          *
 *******************************************************************************
 */
+
 /*
  * Function:  OS_SemCreate
  * --------------------
@@ -990,6 +918,10 @@ void OS_MemoryRestoreBlock (OS_MEMORY* pMemoryPart, void* pBlock);
 	#error "Missing  OS_CONFIG_MAILBOX_EN "
 #endif
 
+#ifndef OS_CONFIG_FLAG_EN
+	#error "Missing  OS_CONFIG_FLAG_EN "
+#endif
+
 #ifndef OS_CONFIG_ERRNO_EN
 	#error "Missing  OS_CONFIG_ERRNO_EN "
 #endif
@@ -1026,7 +958,53 @@ void OS_MemoryRestoreBlock (OS_MEMORY* pMemoryPart, void* pBlock);
     #error  "Missing OS_AUTO_CONFIG_INCLUDE_EVENTS"
 #endif
 
+#ifndef OS_CONFIG_APP_TASK_IDLE
+    #error  "Missing OS_CONFIG_APP_TASK_IDLE"
+#endif
 
+#ifndef OS_CONFIG_APP_TASK_SWITCH
+    #error  "Missing OS_CONFIG_APP_TASK_SWITCH"
+#endif
+
+#ifndef OS_CONFIG_APP_TASK_CREATED
+    #error  "Missing OS_CONFIG_APP_TASK_CREATED"
+#endif
+
+#ifndef OS_CONFIG_APP_TASK_DELETED
+    #error  "Missing OS_CONFIG_APP_TASK_DELETED"
+#endif
+
+#ifndef OS_CONFIG_APP_TASK_RETURNED
+    #error  "Missing OS_CONFIG_APP_TASK_RETURNED"
+#endif
+
+#ifndef OS_CONFIG_APP_TIME_TICK
+    #error  "Missing OS_CONFIG_APP_TIME_TICK"
+#endif
+
+#ifndef OS_CONFIG_CPU_INIT
+    #error  "Missing OS_CONFIG_CPU_INIT"
+#endif
+
+#ifndef OS_CONFIG_CPU_IDLE
+    #error  "Missing OS_CONFIG_CPU_IDLE"
+#endif
+
+#ifndef OS_CONFIG_CPU_CONTEXT_SWITCH
+    #error  "Missing OS_CONFIG_CPU_CONTEXT_SWITCH"
+#endif
+
+#ifndef OS_CONFIG_CPU_TASK_CREATED
+    #error  "Missing OS_CONFIG_CPU_TASK_CREATED"
+#endif
+
+#ifndef OS_CONFIG_CPU_TASK_DELETED
+    #error  "Missing OS_CONFIG_CPU_TASK_DELETED"
+#endif
+
+#ifndef OS_CONFIG_CPU_TIME_TICK
+    #error  "Missing OS_CONFIG_CPU_TIME_TICK"
+#endif
 
 #ifdef __cplusplus
 }

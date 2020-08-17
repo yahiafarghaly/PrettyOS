@@ -65,6 +65,10 @@ SOFTWARE.
 
 #define 	OS_CONFIG_MAILBOX_EN			(OS_CONFIG_ENABLE)
 
+/*===============  Enable/Disable Event Flag service in the code. 	===========*/
+
+#define		OS_CONFIG_FLAG_EN				(OS_CONFIG_ENABLE)
+
 /*===============  Enable/Disable Memory Management service in the code. ======*/
 
 #define		OS_CONFIG_MEMORY_EN				(OS_CONFIG_ENABLE)
@@ -133,6 +137,10 @@ SOFTWARE.
 /*=================== Max Number of Possible Created Events. ===================*/
 
 #define OS_CONFIG_MAX_EVENTS         								(10U)     	/* Max. of Event Objects				*/
+
+/*============= Number of bits of OS_FLAGS data type (8, 16 or 32). ============*/
+
+#define OS_FLAGS_NBITS           									(8U)   		/* 8, 16, 32 or 64 bits.            	*/
 
 /*=================== Max Number of Possible Memory Partition. =================*/
 

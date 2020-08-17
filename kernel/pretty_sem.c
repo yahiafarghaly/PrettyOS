@@ -81,17 +81,18 @@ static const unsigned long OS_SemMaxCount (void)
 	switch(sizeof(OS_SEM_COUNT))
 	{
 	case 1:
-		return	0x00FFU;
+		return	(0x00000000000000FF);
 	case 2:
-		return 0x00FFU;
+		return  (0x000000000000FFFF);
 	case 4:
-		return 0x0000FFFFFFFFU;
+		return  (0x00000000FFFFFFFF);
 	case 8:
-		return 0xFFFFFFFFFFFFFFFFU;
+		return  (0xFFFFFFFFFFFFFFFF);
 	default:
 		break;
 	}
-	return 0x0000FFFFFFFFU;
+
+	return      (0x00000000FFFFFFFF);
 }
 
 /*
