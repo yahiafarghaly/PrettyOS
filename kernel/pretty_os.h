@@ -94,7 +94,8 @@ typedef enum {
 	OS_ERR_MEM_FULL_PARTITION		=(0x30U),	  /* Memory Partition is full of free memory blocks. */
 
 	OS_ERR_FLAG_GRP_POOL_EMPTY		=(0x31U),	  /* No more space for OS_EVENT_FLAG_GRP object.     */
-
+	OS_ERR_FLAG_PGROUP_NULL			=(0x32U),	  /* OS_EVENT_FLAG_GRP is a NULL Pointer.			 */
+	OS_ERR_FLAG_WAIT_TYPE			=(0x33U),	  /* Invalid wait type.								 */
 
 	OS_ERR_END						= (-1)
 }OS_ERR;
@@ -142,21 +143,26 @@ extern OS_ERR OS_ERRNO;                           /* Holds the last error code r
 *******************************************************************************
 */
 
-#define OS_TASK_STAT_READY          (0x00U)                      /* Ready.                        */
+#define OS_TASK_STAT_READY          (0x00U)                     /* Ready.                        	*/
 
-#define OS_TASK_STAT_DELAY          (0x01U)                      /* Delayed or Timeout.           */
+#define OS_TASK_STAT_DELAY          (0x01U)                     /* Delayed or Timeout.           	*/
 
-#define OS_TASK_STAT_SUSPENDED      (0x02U)                      /* Suspended.                    */
+#define OS_TASK_STAT_SUSPENDED      (0x02U)                     /* Suspended.                    	*/
 
-#define OS_TASK_STATE_PEND_SEM      (0x04U)                      /* Pend on semaphore.            */
+#define OS_TASK_STATE_PEND_SEM      (0x04U)                     /* Pend on semaphore.            	*/
 
-#define OS_TASK_STATE_PEND_MUTEX    (0x08U)                      /* Pend on mutex.                */
+#define OS_TASK_STATE_PEND_MUTEX    (0x08U)                     /* Pend on mutex.                	*/
 
-#define OS_TASK_STATE_PEND_MAILBOX	(0x10U)						 /* Pend on message arrival.	  */
+#define OS_TASK_STATE_PEND_MAILBOX	(0x10U)						/* Pend on message arrival.	  		*/
 
-#define OS_TASK_STAT_DELETED        (0xFFU)                      /* A deleted task or not created.*/
+#define OS_TASK_STATE_PEND_FLAG		(0x20U)						/* Pend on Event Flag.				*/
 
-#define OS_TASK_STATE_PEND_ANY      (OS_TASK_STATE_PEND_SEM | OS_TASK_STATE_PEND_MUTEX | OS_TASK_STATE_PEND_MAILBOX)
+#define OS_TASK_STAT_DELETED        (0xFFU)                     /* A deleted task or not created.	*/
+
+#define OS_TASK_STATE_PEND_ANY      (OS_TASK_STATE_PEND_SEM | \
+									 OS_TASK_STATE_PEND_MUTEX | \
+									 OS_TASK_STATE_PEND_MAILBOX | \
+										OS_TASK_STATE_PEND_FLAG)
 
 /*
 *******************************************************************************

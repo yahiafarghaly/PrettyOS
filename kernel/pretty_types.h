@@ -104,8 +104,9 @@ typedef CPU_t08U					 OS_FLAG_WAIT;				 /* OS Flag wait type for holding type of
 
 /* ------------------------ OS Task TCB Structure --------------------------- */
 
-typedef struct os_task_event    OS_EVENT;
-typedef struct os_task_tcb      OS_TASK_TCB;
+typedef struct os_task_event    		OS_EVENT;
+typedef struct os_event_flag_node 		OS_EVENT_FLAG_NODE;
+typedef struct os_task_tcb      		OS_TASK_TCB;
 struct os_task_tcb
 {
     CPU_tPtr    TASK_SP;        			/* Current Task's Stack Pointer 												*/
@@ -124,6 +125,10 @@ struct os_task_tcb
 
     OS_TASK_TCB* OSTCB_NextPtr;      		/* Pointer to a TCB, In case of multiple TCBs pending on the same event object.	*/
 
+#endif
+
+#if (OS_CONFIG_FLAG_EN 					== OS_CONFIG_ENABLE)
+    OS_EVENT_FLAG_NODE*	pEventFlagNode;
 #endif
 
 #if (OS_CONFIG_TCB_TASK_ENTRY_STORE_EN 	== OS_CONFIG_ENABLE)
@@ -176,7 +181,6 @@ typedef	OS_EVENT		            		OS_MAILBOX;
 /* -------------------------- OS Event Flag Structure ---------------------- */
 
 typedef struct os_event_flag_group 			OS_EVENT_FLAG_GRP;
-typedef struct os_event_flag_node 			OS_EVENT_FLAG_NODE;
 
 struct os_event_flag_group
 {
