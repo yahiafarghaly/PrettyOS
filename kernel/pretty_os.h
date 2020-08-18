@@ -91,7 +91,12 @@ typedef enum {
 	OS_ERR_MEM_INVALID_ADDR			=(0x27U),	  /* Invalid Memory Address to work with.			 */
 	OS_ERR_MEM_INVALID_BLOCK_SIZE	=(0x28U),	  /* Invalid Memory Block size.						 */
 	OS_ERR_MEM_NO_FREE_BLOCKS		=(0x29U),	  /* No free blocks in a memory partition.			 */
-	OS_ERR_MEM_FULL_PARTITION		=(0x30U)	  /* Memory Partition is full of free memory blocks. */
+	OS_ERR_MEM_FULL_PARTITION		=(0x30U),	  /* Memory Partition is full of free memory blocks. */
+
+	OS_ERR_FLAG_GRP_POOL_EMPTY		=(0x31U),	  /* No more space for OS_EVENT_FLAG_GRP object.     */
+
+
+	OS_ERR_END						= (-1)
 }OS_ERR;
 
 extern OS_ERR OS_ERRNO;                           /* Holds the last error code returned by the last executed prettyOS function. */

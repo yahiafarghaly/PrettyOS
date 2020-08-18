@@ -73,6 +73,7 @@ extern OS_ERR                       OS_ERRNO;
 extern void OS_Sched (void);
 extern void OS_MemoryByteClear (CPU_t08U* pdest, CPU_t32U size);
 
+extern void OS_Event_Flag_FreeListInit (void);
 extern void OS_Event_FreeListInit (void);
 
 extern void OS_EVENT_allocate   (OS_EVENT** pevent);

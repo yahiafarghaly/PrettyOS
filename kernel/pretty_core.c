@@ -239,6 +239,10 @@ OS_Init (CPU_tSTK* pStackBaseIdleTask, CPU_tSTK  stackSizeIdleTask)
 
 #endif
 
+#if(OS_CONFIG_FLAG_EN == OS_CONFIG_ENABLE)
+    OS_Event_Flag_FreeListInit();
+#endif
+
     ret = OS_TaskCreate(OS_IdleTask,
                         OS_NULL(void),
                         pStackBaseIdleTask,

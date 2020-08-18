@@ -173,6 +173,27 @@ typedef OS_EVENT                    		OS_MUTEX;
 
 typedef	OS_EVENT		            		OS_MAILBOX;
 
+/* -------------------------- OS Event Flag Structure ---------------------- */
+
+typedef struct os_event_flag_group 			OS_EVENT_FLAG_GRP;
+typedef struct os_event_flag_node 			OS_EVENT_FLAG_NODE;
+
+struct os_event_flag_group
+{
+    CPU_t08U        	OSEventType;        /* Event type  ( Should be OS_EVENT_TYPE_FLAG )                                 */
+    OS_FLAG				OSFlagBits;			/* Is a series of flags (i.e. bits) that holds the current status of events. 	*/
+    OS_EVENT_FLAG_NODE*	pFlagNodeHead;		/* Pointer to the list of waited tasks of flags nodes for events.				*/
+};
+
+struct os_event_flag_node
+{
+	OS_EVENT_FLAG_GRP* 	pFlagGroup;			/* Pointer to the event flag group object related to this flag node. 			*/
+	OS_EVENT_FLAG_NODE*	pFlagNodeNext;		/* Next flag node in this event flag group.										*/
+	OS_TASK_TCB*		pTCBFlagNode;		/* Pointer to the TCB attached to this event flag node.							*/
+	OS_FLAG				OSFlagBits;			/* Flags (i.e bits) which are waited to meet to trigger the event flag.			*/
+	OS_FLAG_WAIT		OSFlagWaitType;		/* Type of Flags (i.e bits) action to trigger the event flag.					*/
+};
+
 /* --------------------------- OS Memory Structure -------------------------- */
 
 typedef struct os_memory        			OS_MEMORY;
@@ -195,27 +216,6 @@ struct os_task_time
     CPU_t08U minutes;
     CPU_t08U seconds;
     CPU_t16U milliseconds;
-};
-
-/* -------------------------- OS Event Flag Structure ---------------------- */
-
-typedef struct os_event_flag_group 			OS_EVENT_FLAG_GRP;
-typedef struct os_event_flag_node 			OS_EVENT_FLAG_NODE;
-
-struct os_event_flag_group
-{
-    CPU_t08U        OSEventType;            /* Event type                                                         			*/
-    void*			OSFlagWaitList;			/* Pointer to the list of waited tasks of flags nodes for events.				*/
-    OS_FLAG			OSFlagBits;				/* Is a series of flags (i.e. bits) that holds the current status of events. 	*/
-};
-
-struct os_event_flag_node
-{
-	OS_EVENT_FLAG_GRP* 	pFlagGroup;
-	OS_EVENT_FLAG_NODE*	pFlagNodeNext;
-	OS_TASK_TCB*		pTCBFlagNode;
-	OS_FLAG				OSFlagBits;
-	OS_FLAG_WAIT		OSFlagWaitType;
 };
 
 #endif /* __PRETTY_TYPES_H_ */

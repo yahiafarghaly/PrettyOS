@@ -138,6 +138,10 @@ SOFTWARE.
 
 #define OS_CONFIG_MAX_EVENTS         								(10U)     	/* Max. of Event Objects				*/
 
+/*=================== Max Number of Possible Created Events. ===================*/
+
+#define OS_CONFIG_MAX_EVENT_FLAGS         							(10U)     	/* Max. of Event Flag Objects			*/
+
 /*============= Number of bits of OS_FLAGS data type (8, 16 or 32). ============*/
 
 #define OS_FLAGS_NBITS           									(8U)   		/* 8, 16, 32 or 64 bits.            	*/
