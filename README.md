@@ -32,10 +32,10 @@
 - **Hooks APIs** at Application and CPU port level.
 
 #### 💻 Porting availability
-| System      			| BSP / CPU Port 		| Notes         |
-| ----------------------|:-------------:|:-------------:|:-------------:|
-| TI Stellaris LM4F120 	|✔️ 			|               |
-| Linux machine         | ✔️             |Requires POSIX.1b standards as minimal |
+| System      			    | BSP / CPU Port 		| Notes                                 |
+| ----------------------|:-----------------:|:-------------------------------------:|
+| TI Stellaris LM4F120 	|✔️ 			           |                                       |
+| Linux machine         | ✔️                 |Requires POSIX.1b standards as minimal |
 
 To add another port, Please read this [porting guide](port/porting_guide.md) first.
 
