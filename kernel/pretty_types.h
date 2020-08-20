@@ -128,7 +128,8 @@ struct os_task_tcb
 #endif
 
 #if (OS_CONFIG_FLAG_EN 					== OS_CONFIG_ENABLE)
-    OS_EVENT_FLAG_NODE*	pEventFlagNode;
+    OS_FLAG		OSFlagReady;				/* Flags which made this TCB ready.												*/
+//    OS_EVENT_FLAG_NODE*	pEventFlagNode;
 #endif
 
 #if (OS_CONFIG_TCB_TASK_ENTRY_STORE_EN 	== OS_CONFIG_ENABLE)
@@ -185,7 +186,7 @@ typedef struct os_event_flag_group 			OS_EVENT_FLAG_GRP;
 struct os_event_flag_group
 {
     CPU_t08U        	OSEventType;        /* Event type  ( Should be OS_EVENT_TYPE_FLAG )                                 */
-    OS_FLAG				OSFlagBits;			/* Is a series of flags (i.e. bits) that holds the current status of events. 	*/
+    OS_FLAG				OSFlagCurrent;		/* Is a series of flags (i.e. bits) that holds the current status of events. 	*/
     OS_EVENT_FLAG_NODE*	pFlagNodeHead;		/* Pointer to the list of waited tasks of flags nodes for events.				*/
 };
 
@@ -194,7 +195,7 @@ struct os_event_flag_node
 	OS_EVENT_FLAG_GRP* 	pFlagGroup;			/* Pointer to the event flag group object related to this flag node. 			*/
 	OS_EVENT_FLAG_NODE*	pFlagNodeNext;		/* Next flag node in this event flag group.										*/
 	OS_TASK_TCB*		pTCBFlagNode;		/* Pointer to the TCB attached to this event flag node.							*/
-	OS_FLAG				OSFlagBits;			/* Flags (i.e bits) which are waited to meet to trigger the event flag.			*/
+	OS_FLAG				OSFlagWaited;		/* Flags (i.e bits) which are waited to meet to trigger the event flag.			*/
 	OS_FLAG_WAIT		OSFlagWaitType;		/* Type of Flags (i.e bits) action to trigger the event flag.					*/
 };
 

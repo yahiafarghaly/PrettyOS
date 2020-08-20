@@ -96,6 +96,7 @@ typedef enum {
 	OS_ERR_FLAG_GRP_POOL_EMPTY		=(0x31U),	  /* No more space for OS_EVENT_FLAG_GRP object.     */
 	OS_ERR_FLAG_PGROUP_NULL			=(0x32U),	  /* OS_EVENT_FLAG_GRP is a NULL Pointer.			 */
 	OS_ERR_FLAG_WAIT_TYPE			=(0x33U),	  /* Invalid wait type.								 */
+    OS_ERR_FLAG_OPT_TYPE            =(0x34U),     /* Invalid flag option type.                       */
 
 	OS_ERR_END						= (-1)
 }OS_ERR;
@@ -226,6 +227,11 @@ extern OS_ERR OS_ERRNO;                           /* Holds the last error code r
 
 #define OS_MUTEX_PRIO_CEIL_ENABLE   (1U)                /* Enable priority ceiling promotion for mutex.          */
 
+/*******************   Event Flag opt *************************/
+
+#define OS_FLAG_SET                 (1U)                /* Set Flags (i.e bits) to 1 in the desired location.    */
+
+#define OS_FLAG_CLEAR               (2U)                /* Clear Flags (i.e bits) to 1 in the desired location.  */
 
 /*
 *******************************************************************************
