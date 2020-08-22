@@ -50,14 +50,14 @@ SOFTWARE.
                                                               XXXXX XXX XXX XXXX                 XX      X XXXXXXX| .OSFlagBits
                                                               +----------------+                 +----------------+
                                                               |                |                 |                |
-                                                              |   ^     +      |                 |   ^     +      | .pTCBFlagNode
+                                                              |         +      |                 |         +      | .pTCBFlagNode
                                                               +----------------+                 +----------------+
-                                                                  |     |                            |     |
-                                                                  |     |                            |     |
-                                                                  |     |                            |     |
-                                                                  |     |                            |     |
-                                                                  |     |                            |     |
-                                                                  |     |                            |     |
+                                                                        |                                  |
+                                                                        |                                  |
+                                                                        |                                  |
+                                                                        |                                  |
+                                                                        |                                  |
+                                                                        |                                  |
                                                               +-----------------+                +-----------------+
                                                               |   |     |       |                |   |     |       |
                                                               |   |     |       |                |   |     |       |
@@ -141,8 +141,6 @@ static inline void OS_EventFlag_PendCurrentTask(OS_EVENT_FLAG_GRP* pflagGrp, OS_
         OS_BlockTime(OS_currentTask->TASK_priority);		/* Add time delay block.								*/
         OS_currentTask->TASK_Stat |= OS_TASK_STAT_DELAY;
     }
-
-    //OS_currentTask->pEventFlagNode = pflagNode;				/* Link TCB to its Event Flag Node.						*/
 
     pflagNode->OSFlagWaited 	= flags_pattern_wait;		/* Save the flags we're waiting for.					*/
     pflagNode->OSFlagWaitType 	= wait_type;				/* Save the type of wait.								*/
@@ -306,6 +304,12 @@ OS_EVENT_FlagCreate (OS_FLAG initial_flags)
  *											OS_FLAG_WAIT_SET_ALL	:	waits for ALL bits in the 'flags_pattern_wait' position to be Set. 	   (i.e become 1).
  *											OS_FLAG_WAIT_SET_ANY	:	waits for ANY bits in the 'flags_pattern_wait' position to be Set. 	   (i.e become 1).
  *
+ *					clear_flags_on_exit		If it's set to OS_TRUE, then any bit defined in the 'flags_pattern_wait' will be cleared in the event flag group
+ *											before this call is ended.
+ *
+ *											If it's set to OS_FALSE, then non of bits in the ' flags_pattern_wait' will be altered when the call returns.
+ *
+ *
  * 					timeout					is an optional timeout period (in clock ticks).  If non-zero, your task will wait for the event to the amount of
  * 											time specified in the argument. If it's zero, it will wait forever till the event occurred.
  *
@@ -318,7 +322,7 @@ OS_EVENT_FlagCreate (OS_FLAG initial_flags)
  * Notes        :   1) This function is called only from a task level code.
  */
 OS_FLAG
-OS_EVENT_FlagPend (OS_EVENT_FLAG_GRP* pflagGrp, OS_FLAG flags_pattern_wait, OS_FLAG_WAIT wait_type, OS_TICK timeout)
+OS_EVENT_FlagPend (OS_EVENT_FLAG_GRP* pflagGrp, OS_FLAG flags_pattern_wait, OS_FLAG_WAIT wait_type, OS_BOOLEAN reset_flags_on_exit, OS_TICK timeout)
 {
 	OS_EVENT_FLAG_NODE	flag_node;							/* Allocate the event node on the task's stack.				*/
 	OS_FLAG				flags_pattern_ready;
@@ -348,12 +352,10 @@ OS_EVENT_FlagPend (OS_EVENT_FLAG_GRP* pflagGrp, OS_FLAG flags_pattern_wait, OS_F
 
     OS_CRTICAL_BEGIN();
     														/* Check which flags are ready. 							*/
-    flags_pattern_ready = (OS_FLAG)(pflagGrp->OSFlagCurrent & flags_pattern_wait);
+    flags_pattern_ready = (OS_FLAG)(pflagGrp->OSFlagCurrent & flags_pattern_wait);	/* YOU SHOULD Switch cases here ؟!  */
     if(flags_pattern_ready == flags_pattern_wait)			/* Are flags matching to be ready ?							*/
     {
-    	OS_CRTICAL_END();
-    	OS_ERR_SET(OS_ERR_NONE);
-    	return (flags_pattern_ready);						/* Yes, no need to continue. Return to the caller.			*/
+    	goto RESET_FLAGS_ON_EXIT;							/* Yes, Reset flags if necessary and return.				*/
     }
     														/* No, Check the wait type and pend ...						*/
     switch(wait_type)
@@ -375,43 +377,64 @@ OS_EVENT_FlagPend (OS_EVENT_FLAG_GRP* pflagGrp, OS_FLAG flags_pattern_wait, OS_F
 
     OS_Sched();												/* Preempt another HPT.										*/
 
-    OS_CRTICAL_BEGIN();										/* We are back again ... ----------------------------------------------------->  */
-    																																	/* | */
-    pend_ok = OS_FAlSE;																													/* | */
-    switch (OS_currentTask->TASK_PendStat) {                /* ... See if it was timed-out or aborted.                  */				/* | */
-    																																	/* | */
-        case OS_STAT_PEND_ABORT:																										/* | */
-        	OS_ERR_SET(OS_ERR_EVENT_PEND_ABORT);            /* Indicate that we aborted.                                */				/* | */
-            pend_ok = OS_FAlSE;																											/* | */
-        	break;																														/* | */
-        																																/* | */
-        case OS_STAT_PEND_TIMEOUT:																										/* | */
-            OS_ERR_SET(OS_ERR_EVENT_TIMEOUT);				/* Indicate that we didn't get event within Time out.       */				/* | */
-            pend_ok = OS_FAlSE;																											/* | */
-            break;																														/* | */
-            																															/* | */
-        case OS_STAT_PEND_OK:								/* Indicate that we get the desired flags event.			*/				/* | */
-        default:																														/* | */
-        	pend_ok = OS_TRUE;																											/* | */
-        	OS_ERR_SET(OS_ERR_NONE);																									/* | */
-        	break;																														/* | */
-    }																																	/* | */
-    														/* Clear Pending & Task' status bits.			 			*/				/* | */
-    OS_currentTask->TASK_Stat     &= ~(OS_TASK_STATE_PEND_FLAG);																		/* | */
-    OS_currentTask->TASK_PendStat  =  OS_STAT_PEND_OK;																					/* | */
-    																																	/* | */
-    if(pend_ok == OS_FAlSE)									/* Check if it's Okay ?										*/				/* | */
-    {														/* No, the event is aborted or timeout. So unlink the event.*/				/* | */
-    	OS_EventFlag_UnlinkFlagNodeFromList(&flag_node);	/* Unlink the node from the wait list.						*/				/* Long time for disabling interrupts ? mm ... */
-    	flags_pattern_ready = (OS_FLAG)0U;					/* Zeros returned flags since it wasn't ready.				*/				/* | */
-    }																																	/* | */
-    else													/* Yes, Event(s) has occurred.								*/ 				/* | */
-    { 																																	/* | */
-    	flags_pattern_ready = OS_currentTask->OSFlagReady;	/* Get the ready flags which task was waiting for.			*/ 				/* | */
-    }																																	/* | */
-																																		/* | */
-	OS_CRTICAL_END();										/* < ------------------------------------------------------------------------ */
+    OS_CRTICAL_BEGIN();										/* We are back again -------------------------------------------------------->  */
 
+    pend_ok = OS_FAlSE;
+    switch (OS_currentTask->TASK_PendStat) {                /* ... See if it was timed-out or aborted.                  */
+
+        case OS_STAT_PEND_ABORT:
+        	OS_ERR_SET(OS_ERR_EVENT_PEND_ABORT);            /* Indicate that we aborted.                                */
+            pend_ok = OS_FAlSE;
+        	break;
+
+        case OS_STAT_PEND_TIMEOUT:
+            OS_ERR_SET(OS_ERR_EVENT_TIMEOUT);				/* Indicate that we didn't get event within Time out.       */
+            pend_ok = OS_FAlSE;
+            break;
+
+        case OS_STAT_PEND_OK:								/* Indicate that we get the desired flags event.			*/
+        default:
+        	pend_ok = OS_TRUE;
+        	OS_ERR_SET(OS_ERR_NONE);
+        	break;
+    }
+    														/* Clear Pending & Task' status bits.			 			*/
+    OS_currentTask->TASK_Stat     &= ~(OS_TASK_STATE_PEND_FLAG);
+    OS_currentTask->TASK_PendStat  =  OS_STAT_PEND_OK;
+
+    if(pend_ok == OS_FAlSE)									/* Check if it's Okay ?										*/
+    {														/* No, the event is aborted or timeout. So unlink the event.*/
+    	OS_EventFlag_UnlinkFlagNodeFromList(&flag_node);	/* Unlink the node from the wait list.						*/				/* Long time for disabling interrupts ? mm ... */
+    	flags_pattern_ready = (OS_FLAG)0U;					/* Zeros returned flags since it wasn't ready.				*/
+    }
+    else													/* Yes, Event(s) has occurred.								*/
+    {
+    	flags_pattern_ready = OS_currentTask->OSFlagReady;	/* Get the ready flags which task was waiting for.			*/
+    }
+
+RESET_FLAGS_ON_EXIT:
+    if(reset_flags_on_exit == OS_TRUE)
+    {
+        switch(wait_type)									/* Reset the flags to the opposite of what's posted.		*/
+        {
+        case OS_FLAG_WAIT_CLEAR_ALL:
+        case OS_FLAG_WAIT_CLEAR_ANY:
+        	pflagGrp->OSFlagCurrent |= (flags_pattern_ready);
+        	break;
+
+        case OS_FLAG_WAIT_SET_ALL:
+        case OS_FLAG_WAIT_SET_ANY:
+        	pflagGrp->OSFlagCurrent &= ~(flags_pattern_ready);
+            break;
+        default:
+        	OS_CRTICAL_END();
+    		OS_ERR_SET(OS_ERR_FLAG_WAIT_TYPE);
+    		return ((OS_FLAG)0U);
+        }
+    }
+
+	OS_CRTICAL_END();										/* < ------------------------------------------------------------------------ */
+	OS_ERR_SET(OS_ERR_NONE);
 	return (flags_pattern_ready);							/* Return the flags which caused task to be ready.			*/
 }
 
@@ -434,7 +457,7 @@ OS_EVENT_FlagPend (OS_EVENT_FLAG_GRP* pflagGrp, OS_FLAG flags_pattern_wait, OS_F
  *
  *                 OS_ERRNO = { OS_ERR_NONE, OS_ERR_FLAG_PGROUP_NULL, OS_ERR_FLAG_WAIT_TYPE, OS_ERR_EVENT_TYPE }
  *
- * Notes        :   1) This function is called from a task code or an ISR code
+ * Notes        :   1) This function is called from a task code or an ISR code.
  */
 OS_FLAG
 OS_EVENT_FlagPost (OS_EVENT_FLAG_GRP* pflagGrp, OS_FLAG flags_pattern_wait, OS_OPT flags_options)

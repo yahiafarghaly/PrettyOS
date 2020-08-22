@@ -129,7 +129,6 @@ struct os_task_tcb
 
 #if (OS_CONFIG_FLAG_EN 					== OS_CONFIG_ENABLE)
     OS_FLAG		OSFlagReady;				/* Flags which made this TCB ready.												*/
-//    OS_EVENT_FLAG_NODE*	pEventFlagNode;
 #endif
 
 #if (OS_CONFIG_TCB_TASK_ENTRY_STORE_EN 	== OS_CONFIG_ENABLE)

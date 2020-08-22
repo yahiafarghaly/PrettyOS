@@ -22,9 +22,12 @@
 - **Semaphores** Support.
 
 - **Mutex** Support. 
-    - Support **OCPP** ( [Original Ceiling Priority Protocol](https://en.wikipedia.org/wiki/Priority_ceiling_protocol) ) to overcome priority inversion scenarios.
+    - Including **OCPP** ( [Original Ceiling Priority Protocol](https://en.wikipedia.org/wiki/Priority_ceiling_protocol) ) to overcome priority inversion scenarios.
 
 - **Message Mailboxes** Support.
+
+- **Event Flags** Support.
+    - Still under development and testing.
 
 - **Memory Management** Support.
     - Using a simple memory parition manager.    

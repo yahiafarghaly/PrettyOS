@@ -199,13 +199,13 @@ extern OS_ERR OS_ERRNO;                           /* Holds the last error code r
 *******************************************************************************
 */
 
-#define  OS_FLAG_WAIT_CLEAR_ALL			(1U)
+#define  OS_FLAG_WAIT_CLEAR_ALL			(0x01U)			/* Waits for ALL bits in an Event flag group to be CLEAR.					*/
 
-#define	 OS_FLAG_WAIT_CLEAR_ANY			(2U)
+#define	 OS_FLAG_WAIT_CLEAR_ANY			(0x02U)			/* Waits for ANY bits in an Event flag group to be CLEAR.					*/
 
-#define	 OS_FLAG_WAIT_SET_ALL			(4U)
+#define	 OS_FLAG_WAIT_SET_ALL			(0x04U)			/* Waits for ALL bits in an Event flag group to be SET.						*/
 
-#define	 OS_FLAG_WAIT_SET_ANY			(8U)
+#define	 OS_FLAG_WAIT_SET_ANY			(0x08U)			/* Waits for ANY bits in an Event flag group to be SET.						*/
 
 /*
 *******************************************************************************
@@ -616,6 +616,82 @@ void OS_MutexPost (OS_MUTEX* pevent);
 
 /*
 *******************************************************************************
+*                       OS Event Flags function Prototypes                    *
+*******************************************************************************
+*/
+/*
+ * Function:  OS_EVENT_FlagCreate
+ * ------------------------------
+ * Creates an event flag group.
+ *
+ * Arguments    : initial_flags    is the initial value for the event flags (i.e bits).
+ *
+ * Returns      :  != (OS_EVENT_FLAG_GRP*)0U  is a pointer to an event flag group.
+ *                 == (OS_EVENT_FLAG_GRP*)0U  if no more event flag group is available.
+ *
+ *                 OS_ERRNO = { OS_ERR_NONE, OS_ERR_FLAG_GRP_POOL_EMPTY, OS_ERR_EVENT_CREATE_ISR }
+ *
+ * Notes        :   1) This function is called only from a task level code.
+ */
+OS_EVENT_FLAG_GRP* OS_EVENT_FlagCreate (OS_FLAG initial_flags);
+
+/*
+ * Function:  OS_EVENT_FlagPend
+ * ------------------------------
+ * Wait for a combination of bits (i.e flags) to be happened. Whether these combinations are SET of ANY/ALL bits or
+ * CLEAR of ANY/ALL bits.
+ *
+ * Arguments    :	pflagGrp				is a pointer to the desired event flag group.
+ *
+ * 					flags_pattern_wait		is the pattern of bits (i.e flags) positions which the function will wait for according to
+ * 											wait type. If the desired bits to wait for is bit no.1 and bit no.2	then 'flags_pattern_wait'
+ * 											is 0x06 (000110).
+ *
+ * 					wait_type				is the type of waiting for the bits pattern :
+ *
+ *											OS_FLAG_WAIT_CLEAR_ALL	:	waits for ALL bits in the 'flags_pattern_wait' position to be Cleared. (i.e become 0).
+ *											OS_FLAG_WAIT_CLEAR_ANY	:	waits for ANY bits in the 'flags_pattern_wait' position to be Cleared. (i.e become 0).
+ *											OS_FLAG_WAIT_SET_ALL	:	waits for ALL bits in the 'flags_pattern_wait' position to be Set. 	   (i.e become 1).
+ *											OS_FLAG_WAIT_SET_ANY	:	waits for ANY bits in the 'flags_pattern_wait' position to be Set. 	   (i.e become 1).
+ *
+ * 					timeout					is an optional timeout period (in clock ticks).  If non-zero, your task will wait for the event to the amount of
+ * 											time specified in the argument. If it's zero, it will wait forever till the event occurred.
+ *
+ * Returns      :	The flag(s) (i.e bit(s)) which caused the event flag group to be triggered and meet the the desired event flag.
+ * 					or (0) in case of timeout or the event is aborted.
+ *
+ *                 OS_ERRNO = { OS_ERR_NONE, OS_ERR_EVENT_PEND_ISR, OS_ERR_EVENT_PEND_LOCKED, OS_ERR_FLAG_PGROUP_NULL,
+ *                 				OS_ERR_FLAG_WAIT_TYPE, OS_ERR_EVENT_PEND_ABORT, OS_ERR_EVENT_TIMEOUT, OS_ERR_EVENT_TYPE }
+ *
+ * Notes        :   1) This function is called only from a task level code.
+ */
+OS_FLAG OS_EVENT_FlagPend (OS_EVENT_FLAG_GRP* pflagGrp, OS_FLAG flags_pattern_wait, OS_FLAG_WAIT wait_type, OS_BOOLEAN reset_flags_on_exit, OS_TICK timeout);
+
+/*
+ * Function:  OS_EVENT_FlagPost
+ * ------------------------------
+ * Post a combination of bits (i.e flags) to an event flag group. Whether these combinations are SET of ANY/ALL bits or
+ * CLEAR of ANY/ALL bits.
+ *
+ * Arguments    :	pflagGrp				is a pointer to the desired event flag group.
+ *
+ * 					flags_pattern_wait		is the pattern of bits (i.e flags) positions which the function will POST according to
+ * 											'flags_options' type.
+ *
+ * 					flags_options			OS_FLAG_SET		Set the bits in the positions of 'flags_pattern_wait'
+ * 											OS_FLAG_CLEAR	Clear the bits in the positions of 'flags_pattern_wait'
+ *
+ *
+ * Returns      :	The new value of the bits which are changed in the event flag group.
+ *
+ *                 OS_ERRNO = { OS_ERR_NONE, OS_ERR_FLAG_PGROUP_NULL, OS_ERR_FLAG_WAIT_TYPE, OS_ERR_EVENT_TYPE }
+ *
+ * Notes        :   1) This function is called from a task code or an ISR code.
+ */
+OS_FLAG OS_EVENT_FlagPost (OS_EVENT_FLAG_GRP* pflagGrp, OS_FLAG flags_pattern_wait, OS_OPT flags_options);
+
+/*
+*******************************************************************************
 *                       OS Mailbox function Prototypes                        *
 *******************************************************************************
 */
@@ -780,6 +856,17 @@ OS_tRet OS_TaskResume (OS_PRIO prio);
  * Returns      :   OS_STATUS
  */
 OS_STATUS OS_TaskStatus (OS_PRIO prio);
+
+/*
+ * Function:  OS_TaskRunningPriorityGet
+ * -----------------------------------
+ * Return The current running task priority.
+ *
+ * Arguments    :   None.
+ *
+ * Returns      :   The current running task priority.
+ */
+OS_PRIO OS_TaskRunningPriorityGet (void);
 
 /*
 *******************************************************************************
