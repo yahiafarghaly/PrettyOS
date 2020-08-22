@@ -112,7 +112,7 @@ void ResponseTask(void* args)
 
     while(1)
     {
-    	flags = OS_EVENT_FlagPend(eflagGrp_set,(OS_FLAG)(BIT_0 | BIT_2),OS_FLAG_WAIT_SET_ANY,OS_FAlSE,10);
+    	flags = OS_EVENT_FlagPend(eflagGrp_set,(OS_FLAG)(BIT_0 | BIT_2),OS_FLAG_WAIT_SET_ANY,OS_TRUE,10);
 
     	if((flags & (BIT_0 | BIT_2)) == (BIT_0 | BIT_2))
     	{
@@ -129,6 +129,7 @@ void ResponseTask(void* args)
     	else
     	{
     		printf("Neither BIT_0 nor BIT_2 has been SET due to a timeout\n");
+    		OS_TaskDelete(PRIO_Response_TASK);
     	}
 
         OS_DelayTime(&period);

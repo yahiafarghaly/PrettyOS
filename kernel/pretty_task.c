@@ -269,14 +269,6 @@ OS_TaskDelete (OS_PRIO prio)
 
     ptcb->TASK_Stat     = OS_TASK_STAT_DELETED;                                   /* Make the task be Dormant.                  */
 
-#if(OS_CONFIG_CPU_TASK_DELETED == OS_CONFIG_ENABLE)
-    OS_CPU_Hook_TaskDeleted (ptcb);												  /* Call port specific task deletion code.		*/
-#endif
-
-#if (OS_CONFIG_APP_TASK_DELETED == OS_CONFIG_ENABLE)
-	App_Hook_TaskDeleted 	(ptcb);												  /* Calls Application specific code.			*/
-#endif
-
     OS_tblTCBPrio[prio] = OS_NULL(OS_TASK_TCB);                                   /* The task is no longer exist. 				*/
 
     /* At this point, the task is prevented from resuming or made ready from another higher task or an ISR.                     */
@@ -284,6 +276,14 @@ OS_TaskDelete (OS_PRIO prio)
     {
         OS_Sched();                                                               /* Schedule a new higher priority task.       */
     }
+
+#if(OS_CONFIG_CPU_TASK_DELETED == OS_CONFIG_ENABLE)
+    OS_CPU_Hook_TaskDeleted (ptcb);												  /* Call port specific task deletion code.		*/
+#endif
+
+#if (OS_CONFIG_APP_TASK_DELETED == OS_CONFIG_ENABLE)
+	App_Hook_TaskDeleted 	(ptcb);												  /* Calls Application specific code.			*/
+#endif
 
     OS_CRTICAL_END();
 
@@ -552,6 +552,30 @@ OS_STATUS inline
 OS_TaskStatus (OS_PRIO prio)
 {
     return (OS_TblTask[prio].TASK_Stat);
+}
+
+/*
+ * Function:  OS_TaskRunningPriorityGet
+ * -----------------------------------
+ * Return The current running task priority.
+ *
+ * Arguments    :   None.
+ *
+ * Returns      :   The current running task priority.
+ */
+OS_PRIO
+OS_TaskRunningPriorityGet (void)
+{
+	OS_PRIO running_prio;
+	CPU_SR_ALLOC();
+
+	OS_CRTICAL_BEGIN();
+
+	running_prio = OS_currentTask->TASK_priority;
+
+	OS_CRTICAL_END();
+
+	return (running_prio);
 }
 
 /*

@@ -318,6 +318,8 @@ void OS_CPU_Hook_TaskCreated (OS_TASK_TCB*	ptcb)
     ERROR_CHECK(pthread_attr_setschedpolicy(&attr, SCHED_RR));				/* Set Round-Robin Scheduler for the created Thread.										*/
     ERROR_CHECK(pthread_attr_setschedparam(&attr, &param_sched));			/* Set the scheduling attributes from &param object.										*/
 
+    ERROR_CHECK(pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL));		/* Enable the receiving of cancellation request for the created thread.						*/
+
     ERROR_CHECK(pthread_create(&ptcbPosix->thread, &attr,					/* Create a POSIX thread for the created OS_TASK_TCB object.								*/
     		OS_TaskPosixWrapper, (void*)ptcb));
 
@@ -351,6 +353,7 @@ void OS_CPU_Hook_TaskDeleted (OS_TASK_TCB*	ptcb)
 	 }
 
 	free(ptcb->OSTCBExtension);												/* Deallocate the object from the memory.													*/
+	sleep(1000);        													/* Should get canceled while we sleep 														*/
 }
 
 /*
