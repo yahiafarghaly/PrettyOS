@@ -17,20 +17,15 @@
 
 - **Lock/Unlock** Scheduler.
 
-- **Suspend/Resume** Tasks
-
-- **Semaphores** Support.
+- **Suspend/Resume** Tasks.
 
 - **Mutex** Support. 
     - Including **OCPP** ( [Original Ceiling Priority Protocol](https://en.wikipedia.org/wiki/Priority_ceiling_protocol) ) to overcome priority inversion scenarios.
 
-- **Message Mailboxes** Support.
+- Support **Semaphores**, **Message Mailboxes** and **EventFlags** .
 
-- **Event Flags** Support.
-    - Still under development and testing.
-
-- **Memory Management** Support.
-    - Using a simple memory parition manager.    
+- Support **Memory Management** .
+    - Using a basic memory manager for fixed-sized allocatable objects in a memory partition (i.e region).    
 
 - **Hooks APIs** at Application and CPU port level.
 

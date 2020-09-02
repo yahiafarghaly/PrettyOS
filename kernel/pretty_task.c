@@ -138,6 +138,7 @@ OS_TaskCreate (void (*TASK_Handler)(void* params),
     if(TASK_Handler == OS_NULL(void) || pStackBase == OS_NULL(CPU_tWORD) ||
             stackSize == 0U )
     {
+    	OS_ERR_SET(OS_ERR_PARAM);
         return (OS_ERR_PARAM);
     }
 
@@ -146,6 +147,7 @@ OS_TaskCreate (void (*TASK_Handler)(void* params),
     if(OS_IntNestingLvl > 0U)                                                     /* Don't Create a task from an ISR.                                                        */
     {
         OS_CRTICAL_END();
+    	OS_ERR_SET(OS_ERR_TASK_CREATE_ISR);
         return (OS_ERR_TASK_CREATE_ISR);
     }
 
@@ -158,6 +160,7 @@ OS_TaskCreate (void (*TASK_Handler)(void* params),
         if(OS_tblTCBPrio[priority]->TASK_Stat != OS_TASK_STAT_DELETED)            /* Check that the task is not in use.                                                      */
         {
             OS_CRTICAL_END();
+            OS_ERR_SET(OS_ERR_TASK_CREATE_EXIST);
             return (OS_ERR_TASK_CREATE_EXIST);
         }
 
@@ -191,6 +194,7 @@ OS_TaskCreate (void (*TASK_Handler)(void* params),
     else
     {
         OS_CRTICAL_END();
+        OS_ERR_SET(OS_ERR_PRIO_INVALID);
         return (OS_ERR_PRIO_INVALID);
     }
 
@@ -201,6 +205,7 @@ OS_TaskCreate (void (*TASK_Handler)(void* params),
 
     OS_CRTICAL_END();
 
+    OS_ERR_SET(OS_ERR_NONE);
     return (OS_ERR_NONE);
 }
 
@@ -222,14 +227,17 @@ OS_TaskDelete (OS_PRIO prio)
 
     if(OS_IntNestingLvl > 0U)                                                      /* Don't delete from an ISR.                 */
     {
+    	OS_ERR_SET(OS_ERR_TASK_DELETE_ISR);
         return (OS_ERR_TASK_DELETE_ISR);
     }
     if(prio == OS_IDLE_TASK_PRIO_LEVEL)                                            /* Don't delete the Idle task.               */
     {
+    	OS_ERR_SET(OS_ERR_TASK_DELETE_IDLE);
         return (OS_ERR_TASK_DELETE_IDLE);
     }
     if(!OS_IS_VALID_PRIO(prio))                                                    /* Valid priority ?                          */
     {
+    	OS_ERR_SET(OS_ERR_PRIO_INVALID);
         return (OS_ERR_PRIO_INVALID);
     }
 
@@ -240,6 +248,7 @@ OS_TaskDelete (OS_PRIO prio)
     if(ptcb == OS_NULL(OS_TASK_TCB) || ptcb->TASK_Stat == OS_TASK_STAT_DELETED)   /* Task must exist.                           */
     {
         OS_CRTICAL_END();
+        OS_ERR_SET(OS_ERR_TASK_NOT_EXIST);
         return (OS_ERR_TASK_NOT_EXIST);
     }
 
@@ -287,6 +296,7 @@ OS_TaskDelete (OS_PRIO prio)
 
     OS_CRTICAL_END();
 
+    OS_ERR_SET(OS_ERR_NONE);
     return (OS_ERR_NONE);
 }
 
@@ -309,21 +319,25 @@ OS_TaskChangePriority (OS_PRIO oldPrio, OS_PRIO newPrio)
 
     if(oldPrio == newPrio)                                                    /* Don't waste more cycles.                     */
     {
+    	OS_ERR_SET(OS_ERR_PRIO_EXIST);
         return (OS_ERR_PRIO_EXIST);
     }
 
     if(OS_IS_RESERVED_PRIO(oldPrio))                                          /* Don't Change an OS reserved priority.        */
     {
+    	OS_ERR_SET(OS_ERR_PRIO_EXIST);
         return (OS_ERR_PRIO_EXIST);
     }
 
     if(OS_IS_RESERVED_PRIO(newPrio))                                         /* Don't Change to an OS reserved priority.      */
     {
+    	OS_ERR_SET(OS_ERR_PRIO_EXIST);
         return (OS_ERR_PRIO_EXIST);
     }
 
     if(!OS_IS_VALID_PRIO(oldPrio) && !OS_IS_VALID_PRIO(newPrio))             /* Priority within our acceptable range.         */
     {
+    	OS_ERR_SET(OS_ERR_PRIO_INVALID);
         return (OS_ERR_PRIO_INVALID);
     }
 
@@ -332,30 +346,35 @@ OS_TaskChangePriority (OS_PRIO oldPrio, OS_PRIO newPrio)
     if(OS_tblTCBPrio[oldPrio] == OS_NULL(OS_TASK_TCB))                       /* Check that the old task is Created.          */
     {
         OS_CRTICAL_END();
+        OS_ERR_SET(OS_ERR_TASK_NOT_EXIST);
         return OS_ERR_TASK_NOT_EXIST;
     }
 
     if(OS_tblTCBPrio[oldPrio] == OS_TCB_MUTEX_RESERVED)
     {
         OS_CRTICAL_END();                                                  /* old prio should not be reserved for a mutex.   */
+        OS_ERR_SET(OS_ERR_TASK_NOT_EXIST);
         return OS_ERR_TASK_NOT_EXIST;
     }
 
     if(OS_tblTCBPrio[oldPrio]->TASK_Stat == OS_TASK_STAT_DELETED)          /* Be dummy in the checks !                       */
     {
         OS_CRTICAL_END();
+        OS_ERR_SET(OS_ERR_TASK_NOT_EXIST);
         return OS_ERR_TASK_NOT_EXIST;
     }
 
     if(OS_tblTCBPrio[newPrio] != OS_NULL(OS_TASK_TCB))                      /* The new priority must be available.           */
     {
         OS_CRTICAL_END();
+        OS_ERR_SET(OS_ERR_TASK_CREATE_EXIST);
         return OS_ERR_TASK_CREATE_EXIST;
     }
 
     if(OS_tblTCBPrio[newPrio] == OS_TCB_MUTEX_RESERVED)
     {
         OS_CRTICAL_END();                                                  /* new prio should not be reserved for a mutex.   */
+        OS_ERR_SET(OS_ERR_TASK_NOT_EXIST);
         return OS_ERR_TASK_NOT_EXIST;
     }
 
@@ -405,6 +424,7 @@ OS_TaskChangePriority (OS_PRIO oldPrio, OS_PRIO newPrio)
         OS_Sched();                                                      /* Call the scheduler, it may be a higher priority task.   */
     }
 
+    OS_ERR_SET(OS_ERR_NONE);
     return (OS_ERR_NONE);
 }
 
@@ -427,6 +447,7 @@ OS_TaskSuspend (OS_PRIO prio)
 
     if(OS_IDLE_TASK_PRIO_LEVEL == prio)                     /* Don't suspend idle task                                                 */
     {
+    	OS_ERR_SET(OS_ERR_TASK_SUSPEND_IDLE);
         return (OS_ERR_TASK_SUSPEND_IDLE);
     }
 
@@ -449,12 +470,14 @@ OS_TaskSuspend (OS_PRIO prio)
           thisTask->TASK_Stat == OS_TASK_STAT_DELETED)     /* Check that the suspended task is actually exist.                         */
         {
             OS_CRTICAL_END();
+            OS_ERR_SET(OS_ERR_TASK_SUSPEND_PRIO);
             return (OS_ERR_TASK_SUSPEND_PRIO);
         }
 
         if(thisTask->TASK_Stat & OS_TASK_STAT_SUSPENDED)   /* If it's in a suspend state, why do extra work !                           */
         {
             OS_CRTICAL_END();
+            OS_ERR_SET(OS_ERR_TASK_SUSPENDED);
             return (OS_ERR_TASK_SUSPENDED);
         }
 
@@ -469,9 +492,11 @@ OS_TaskSuspend (OS_PRIO prio)
             OS_Sched();
         }
 
+        OS_ERR_SET(OS_ERR_NONE);
         return OS_ERR_NONE;
     }
 
+    OS_ERR_SET(OS_ERR_PRIO_INVALID);
     return (OS_ERR_PRIO_INVALID);
 }
 
@@ -492,6 +517,7 @@ OS_TaskResume (OS_PRIO prio)
 
     if(OS_IDLE_TASK_PRIO_LEVEL == prio)                                             /* Resume an suspended task !                                                 */
     {
+    	OS_ERR_SET(OS_ERR_PRIO_INVALID);
         return (OS_ERR_PRIO_INVALID);
     }
 
@@ -502,6 +528,7 @@ OS_TaskResume (OS_PRIO prio)
         if(prio == OS_currentTask->TASK_priority)                                   /* Resume self !                                                              */
         {
             OS_CRTICAL_END();
+            OS_ERR_SET(OS_ERR_TASK_RESUME_PRIO);
             return (OS_ERR_TASK_RESUME_PRIO);
         }
 
@@ -511,6 +538,7 @@ OS_TaskResume (OS_PRIO prio)
           thisTask->TASK_Stat == OS_TASK_STAT_DELETED)                              /* Check that the resumed task is actually exist.                             */
         {
             OS_CRTICAL_END();
+            OS_ERR_SET(OS_ERR_TASK_RESUME_PRIO);
             return (OS_ERR_TASK_RESUME_PRIO);
         }
 
@@ -532,10 +560,10 @@ OS_TaskResume (OS_PRIO prio)
         }
 
         OS_CRTICAL_END();
-
+        OS_ERR_SET(OS_ERR_NONE);
         return (OS_ERR_NONE);
     }
-
+    OS_ERR_SET(OS_ERR_PRIO_INVALID);
     return (OS_ERR_PRIO_INVALID);
 }
 
@@ -551,7 +579,12 @@ OS_TaskResume (OS_PRIO prio)
 OS_STATUS inline
 OS_TaskStatus (OS_PRIO prio)
 {
-    return (OS_TblTask[prio].TASK_Stat);
+	if(OS_tblTCBPrio[prio] == OS_NULL(OS_TASK_TCB))
+	{
+		return OS_TASK_STAT_DELETED;
+	}
+
+	return OS_tblTCBPrio[prio]->TASK_Stat;
 }
 
 /*

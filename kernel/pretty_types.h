@@ -35,6 +35,12 @@ SOFTWARE.
 #ifndef __PRETTY_TYPES_H_
 #define __PRETTY_TYPES_H_
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 /*
 *******************************************************************************
 *                               Includes Files                                *
@@ -221,5 +227,9 @@ struct os_task_time
     CPU_t08U seconds;
     CPU_t16U milliseconds;
 };
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __PRETTY_TYPES_H_ */
