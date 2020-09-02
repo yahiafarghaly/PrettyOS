@@ -23,11 +23,11 @@ SOFTWARE.
 ******************************************************************************/
 
 /*
- * Author   : Yahia Farghaly Ashour
+ * Author   : 	Yahia Farghaly Ashour
  *
- * Purpose  :
+ * Purpose  :	This example demonstrate the usage of prettyOS event flags.
  *
- * Language:  C
+ * Language	:  	C
  */
 
 /*
@@ -46,7 +46,7 @@ SOFTWARE.
 */
 #define STACK_SIZE   		(60U)
 #define PRIO_Master_TASK  	(15U)
-#define PRIO_Set_TASK  		(6U)
+#define PRIO_Set_TASK  		(5U)
 #define PRIO_Clr_TASK  		(7U)
 #define PRIO_Response_TASK  (10U)
 
@@ -75,7 +75,7 @@ OS_tSTACK stkTask_Idle  		[STACK_SIZE];
 *******************************************************************************
 *                                 Globals                                     *
 *******************************************************************************
-*/\
+*/
 
 OS_EVENT_FLAG_GRP* eflagGrp_set;
 OS_EVENT_FLAG_GRP* eflagGrp_clr;
@@ -104,6 +104,8 @@ void App_Hook_TaskIdle(void)
 *******************************************************************************
 */
 
+int clr_flag_test = 0;
+
 void ResponseTask(void* args)
 {
     OS_TIME period = { 0, 0, 1U, 0};
@@ -112,97 +114,169 @@ void ResponseTask(void* args)
 
     while(1)
     {
-    	flags = OS_EVENT_FlagPend(eflagGrp_set,(OS_FLAG)(BIT_0 | BIT_2),OS_FLAG_WAIT_SET_ANY,OS_TRUE,10);
+    	printf("[ T: %d ] EventFlag Pend\n",OS_TickTimeGet());
 
-    	if((flags & (BIT_0 | BIT_2)) == (BIT_0 | BIT_2))
+    	if(clr_flag_test == 0)
     	{
-    		printf("Both BIT_0 & BIT_2 have been SET.\n");
-    	}
-    	else if ((flags & BIT_0) != 0U)
-    	{
-    		printf("BIT_0 has been SET\n");
-    	}
-    	else if ((flags & BIT_2) != 0U)
-    	{
-    		printf("BIT_2 has been SET\n");
+			flags = OS_EVENT_FlagPend(eflagGrp_set,(OS_FLAG)(BIT_0 | BIT_2),OS_FLAG_WAIT_SET_ANY,OS_TRUE,10);
+    		printf("[ T: %d ] EventFlag After Pend\n",OS_TickTimeGet());
+
+			if((flags & (BIT_0 | BIT_2)) == (BIT_0 | BIT_2))
+			{
+				printf("[ T: %d ] Both BIT_0 & BIT_2 have been SET.\n",OS_TickTimeGet());
+			}
+			else if ((flags & BIT_0) != 0U)
+			{
+				printf("[ T: %d ] BIT_0 has been SET\n",OS_TickTimeGet());
+			}
+			else if ((flags & BIT_2) != 0U)
+			{
+				printf("[ T: %d ] BIT_2 has been SET\n",OS_TickTimeGet());
+			}
+			else
+			{
+				printf("[ T: %d ] Neither BIT_0 nor BIT_2 has been SET due to a timeout\n",OS_TickTimeGet());
+			}
     	}
     	else
     	{
-    		printf("Neither BIT_0 nor BIT_2 has been SET due to a timeout\n");
-    		OS_TaskDelete(PRIO_Response_TASK);
+			flags = OS_EVENT_FlagPend(eflagGrp_clr,(OS_FLAG)(BIT_0 | BIT_2),OS_FLAG_WAIT_CLEAR_ANY,OS_TRUE,0);
+    		printf("[ T: %d ] EventFlag After Pend\n",OS_TickTimeGet());
+
+			if((flags & (BIT_0 | BIT_2)) == (BIT_0 | BIT_2))
+			{
+				printf("[ T: %d ] Both BIT_0 & BIT_2 have been Cleared.\n",OS_TickTimeGet());
+			}
+			else if ((flags & BIT_0) == BIT_0)
+			{
+				printf("[ T: %d ] BIT_0 has been Cleared\n",OS_TickTimeGet());
+			}
+			else if ((flags & BIT_2) == BIT_2)
+			{
+				printf("[ T: %d ] BIT_2 has been Cleared\n",OS_TickTimeGet());
+			}
+			else
+			{
+				printf("[ T: %d ] Neither BIT_0 nor BIT_2 has been Cleared due to a timeout\n",OS_TickTimeGet());
+				OS_TaskDelete(OS_TaskRunningPriorityGet());
+			}
     	}
+
+    	OS_DelayTime(&period);
+    }
+}
+
+
+void CLR_Task(void* args)
+{
+    OS_TIME period = { 0, 0, 1U, 0};
+    volatile CPU_t08U test_number = 0;
+    OS_BOOLEAN Cont = 1;
+
+    printf("%s Started !\n\n",(char*)args);
+
+    while(Cont)
+    {
+    	printf("[ T: %d ] Test#%d : Clr ",OS_TickTimeGet(),test_number);
+    	switch(test_number)
+    	{
+    	/* 						Testing Clr BIT_0												*/
+    	case 0:
+    		printf(" %d \n",BIT_0);
+    		OS_EVENT_FlagPost(eflagGrp_clr,BIT_0,OS_FLAG_CLEAR);
+    		break;
+
+    	/* 						Testing Clr BIT_2												*/
+    	case 1:
+    		printf(" %d \n",BIT_2);
+    		OS_EVENT_FlagPost(eflagGrp_clr,BIT_2,OS_FLAG_CLEAR);
+    		break;
+
+    	/* 						Testing Clr both BIT_0 & BIT_2									*/
+    	case 2:
+    		printf(" %d \n",BIT_0 | BIT_2);
+    		OS_EVENT_FlagPost(eflagGrp_clr,BIT_0 | BIT_2,OS_FLAG_CLEAR);
+    		Cont = 0;
+    		break;
+    	/* 						Finally, Ignore doing more tests.								*/
+    	default:
+    		Cont = 0;
+    		break;
+    	}
+
+        ++test_number;
 
         OS_DelayTime(&period);
     }
+    printf("\n%s Ended !\n\n",(char*)args);
 }
+
 
 void SET_Task(void* args)
 {
     OS_TIME period = { 0, 0, 1U, 0};
     volatile CPU_t08U test_number = 0;
-    volatile OS_FLAG posted_flags;
+    OS_BOOLEAN Cont = 1;
     printf("%s Started !\n\n",(char*)args);
 
-    while(1)
+    while(Cont)
     {
-
+    	printf("[ T: %d ] Test#%d : SET ",OS_TickTimeGet(),test_number);
     	switch(test_number)
     	{
     	/* 						Testing Set BIT_0												*/
     	case 0:
-    		posted_flags = OS_EVENT_FlagPost(eflagGrp_set,BIT_0,OS_FLAG_SET);
-        	printf("[ %d ] Test#%d : SET Flags [ 0x%x ].\n",OS_TickTimeGet(),test_number,posted_flags);
+    		printf(" %d \n",BIT_0);
+    		OS_EVENT_FlagPost(eflagGrp_set,BIT_0,OS_FLAG_SET);
     		break;
 
     	/* 						Testing Set BIT_2												*/
     	case 1:
-    		posted_flags = OS_EVENT_FlagPost(eflagGrp_set,BIT_2,OS_FLAG_SET);
-        	printf("[ %d ] Test#%d : SET Flags [ 0x%x ].\n",OS_TickTimeGet(),test_number,posted_flags);
+    		printf(" %d \n",BIT_2);
+    		OS_EVENT_FlagPost(eflagGrp_set,BIT_2,OS_FLAG_SET);
     		break;
 
     	/* 						Testing Set both BIT_0 & BIT_2									*/
     	case 2:
-    		posted_flags = OS_EVENT_FlagPost(eflagGrp_set,BIT_0 | BIT_2,OS_FLAG_SET);
-        	printf("[ %d ] Test#%d : SET Flags [ 0x%x ].\n",OS_TickTimeGet(),test_number,posted_flags);
+    		printf(" %d \n",BIT_0 | BIT_2);
+    		OS_EVENT_FlagPost(eflagGrp_set,BIT_0 | BIT_2,OS_FLAG_SET);
+    		Cont = 0;
+    		clr_flag_test = 1;
     		break;
-
-    	/* 						Testing Not setting BIT_0 or BIT_2 timeout						*/
-    	case 3:
-    		posted_flags = 0;
-        	printf("[ %d ] Test#%d : Ignore SET Flags [ 0x%x ].\n",OS_TickTimeGet(),test_number,posted_flags);
-            OS_DelayTime(&period);
-    		break;
-
-    	/* 						Finally, Ignore other tests the test.							*/
+    	/* 						Finally, Ignore doing more tests.								*/
     	default:
+    		Cont = 0;
     		break;
     	}
 
-    	posted_flags = 0;
         ++test_number;
 
         OS_DelayTime(&period);
     }
+    printf("\n%s Ended !\n\n",(char*)args);
 }
-
-void CLR_TASK(void* args)
-{
-    OS_TIME period = { 0, 0, 1U, 0};
-
-    while(1)
-    {
-        OS_DelayTime(&period);
-    }
-}
-
 
 void MasterTask(void* args)
 {
-    OS_TIME period = { 0, 0, 4U, 0};
+    OS_TIME period = { 0, 0, 6U, 0};
     OS_FLAG set_pattern = 0;
-    OS_FLAG clr_pattern = 0;
+    OS_FLAG clr_pattern = BIT_0 | BIT_2;
 
     printf("%s Started !\n",(char*)args);
+
+    eflagGrp_set = OS_EVENT_FlagCreate(set_pattern);
+    if(eflagGrp_set == OS_NULL(OS_EVENT_FLAG_GRP))
+    {
+        printf("\nError Creating `eflagGrp_set` \n");
+        printf("Error message: %s\n",OS_StrError(OS_ERRNO));
+    }
+
+    eflagGrp_clr = OS_EVENT_FlagCreate(clr_pattern);
+    if(eflagGrp_clr == OS_NULL(OS_EVENT_FLAG_GRP))
+    {
+        printf("\nError Creating `eflagGrp_clr` \n");
+        printf("Error message: %s\n",OS_StrError(OS_ERRNO));
+    }
 
     OS_TaskCreate(&ResponseTask,
                   "ResponseTask",
@@ -215,32 +289,21 @@ void MasterTask(void* args)
                   stkTask_Set,
                   sizeof(stkTask_Set),
                   PRIO_Set_TASK);
-//
-//    OS_TaskCreate(&CLR_TASK,
-//                  "CLR_TASK",
-//                  stkTask_Clr,
-//                  sizeof(stkTask_Clr),
-//                  PRIO_Clr_TASK);
-
-    eflagGrp_set = OS_EVENT_FlagCreate(set_pattern);
-    if(eflagGrp_set == OS_NULL(OS_EVENT_FLAG_GRP))
-    {
-        printf("\nError Creating `eflagGrp_set` \n");
-        printf("Error message: %s\n",OS_StrError(OS_ERRNO));
-    }
-
-    eflagGrp_clr = OS_EVENT_FlagCreate(set_pattern);
-    if(eflagGrp_clr == OS_NULL(OS_EVENT_FLAG_GRP))
-    {
-        printf("\nError Creating `eflagGrp_clr` \n");
-        printf("Error message: %s\n",OS_StrError(OS_ERRNO));
-    }
 
     printf(".................\n");
     while(1)
     {
-        printf(" Master Call \n");
-        OS_DelayTime(&period);
+    	if(clr_flag_test)
+    	{
+    		OS_TaskCreate(&CLR_Task,
+					  "CLR_Task",
+					  stkTask_Clr,
+					  sizeof(stkTask_Clr),
+					  PRIO_Clr_TASK);
+    		break;
+    	}
+
+		OS_DelayTime(&period);
     }
 }
 

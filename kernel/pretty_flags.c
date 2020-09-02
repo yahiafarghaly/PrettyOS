@@ -41,13 +41,13 @@ SOFTWARE.
                      |                              |         +----------------+                 +----------------+
                      +------------------------------+         |                |                 |                |
                      |         OSFlagBits           |         +----------------+                 +----------------+
-                     |          XXXX XXXXXXXXXXXXXXX|         |                +-------------->  |.pFlagNodeNext  +------------>  NULL
+                     |          00000101			|         |                +-------------->  |.pFlagNodeNext  +------------>  NULL
                      +------------------------------+         +----------------+                 +----------------+
                      |        pFlagNodeHead         |         |                |                 |                |
                      |                              +-------> |                |                 |                |
                      +------------------------------+         |                |                 |                |
                                                               +----------------+                 +----------------+
-                                                              XXXXX XXX XXX XXXX                 XX      X XXXXXXX| .OSFlagBits
+                                                              |		00001010   |                 |		00000000  | .OSFlagBits
                                                               +----------------+                 +----------------+
                                                               |                |                 |                |
                                                               |         +      |                 |         +      | .pTCBFlagNode
@@ -130,7 +130,9 @@ static inline void OS_EventFlagGroup_deallocate (OS_EVENT_FLAG_GRP* peventFlagGr
 
 /*
  * Pend the current running task + Setup the node member variables.				*/
-static inline void OS_EventFlag_PendCurrentTask(OS_EVENT_FLAG_GRP* pflagGrp, OS_EVENT_FLAG_NODE* pflagNode, OS_FLAG flags_pattern_wait, OS_FLAG_WAIT wait_type, OS_TICK timeout)
+static inline void OS_EventFlag_PendCurrentTask(OS_EVENT_FLAG_GRP* pflagGrp, OS_EVENT_FLAG_NODE* pflagNode,
+												OS_FLAG flags_pattern_wait, OS_FLAG_WAIT wait_type,
+												OS_TICK timeout)
 {
     OS_currentTask->TASK_Stat |= OS_TASK_STATE_PEND_FLAG;
     OS_currentTask->TASK_PendStat = OS_STAT_PEND_OK;
@@ -304,8 +306,8 @@ OS_EVENT_FlagCreate (OS_FLAG initial_flags)
  *											OS_FLAG_WAIT_SET_ALL	:	waits for ALL bits in the 'flags_pattern_wait' position to be Set. 	   (i.e become 1).
  *											OS_FLAG_WAIT_SET_ANY	:	waits for ANY bits in the 'flags_pattern_wait' position to be Set. 	   (i.e become 1).
  *
- *					clear_flags_on_exit		If it's set to OS_TRUE, then any bit defined in the 'flags_pattern_wait' will be cleared in the event flag group
- *											before this call is ended.
+ *					reset_flags_on_exit		If it's set to OS_TRUE, then any bit defined in the 'flags_pattern_wait' will be reset
+ *											in the event flag group to the value before posting the event.
  *
  *											If it's set to OS_FALSE, then non of bits in the ' flags_pattern_wait' will be altered when the call returns.
  *
@@ -351,20 +353,50 @@ OS_EVENT_FlagPend (OS_EVENT_FLAG_GRP* pflagGrp, OS_FLAG flags_pattern_wait, OS_F
     }
 
     OS_CRTICAL_BEGIN();
-    														/* Check which flags are ready. 							*/
-    flags_pattern_ready = (OS_FLAG)(pflagGrp->OSFlagCurrent & flags_pattern_wait);	/* YOU SHOULD Switch cases here ؟!  */
-    if(flags_pattern_ready == flags_pattern_wait)			/* Are flags matching to be ready ?							*/
-    {
-    	goto RESET_FLAGS_ON_EXIT;							/* Yes, Reset flags if necessary and return.				*/
-    }
-    														/* No, Check the wait type and pend ...						*/
+
+
+    														/* Check the wait type and pend ...							*/
     switch(wait_type)
     {
+
     case OS_FLAG_WAIT_CLEAR_ALL:
+
+    	flags_pattern_ready = (OS_FLAG)(~pflagGrp->OSFlagCurrent & flags_pattern_wait);
+        if(flags_pattern_ready == flags_pattern_wait)		/* Are flags matching to be ready ?							*/
+        {
+        	goto RESET_FLAGS_ON_EXIT;						/* Yes, Reset flags if necessary and return.				*/
+        }
+
+    	break;
+
     case OS_FLAG_WAIT_CLEAR_ANY:
+
+    	flags_pattern_ready = (OS_FLAG)(~pflagGrp->OSFlagCurrent & flags_pattern_wait);
+        if(flags_pattern_ready != (OS_FLAG)0U)				/* Are flags matching to be ready ?							*/
+        {
+        	goto RESET_FLAGS_ON_EXIT;						/* Yes, Reset flags if necessary and return.				*/
+        }
+
+    	break;
+
     case OS_FLAG_WAIT_SET_ALL:
+    														/* Check which flags are ready. 							*/
+    	flags_pattern_ready = (OS_FLAG)(pflagGrp->OSFlagCurrent & flags_pattern_wait);
+    	if(flags_pattern_ready == flags_pattern_wait)		/* Are flags matching to be ready ?							*/
+    	{
+    		goto RESET_FLAGS_ON_EXIT;						/* Yes, Reset flags if necessary and return.				*/
+    	}
+    	break;
+
     case OS_FLAG_WAIT_SET_ANY:
-        break;
+    														/* Check which flags are ready. 							*/
+		flags_pattern_ready = (OS_FLAG)(pflagGrp->OSFlagCurrent & flags_pattern_wait);
+		if(flags_pattern_ready != (OS_FLAG)0U)				/* Are flags matching to be ready ?							*/
+		{
+			goto RESET_FLAGS_ON_EXIT;						/* Yes, Reset flags if necessary and return.				*/
+		}
+		break;
+
     default:
     	OS_CRTICAL_END();
 		OS_ERR_SET(OS_ERR_FLAG_WAIT_TYPE);
@@ -377,7 +409,7 @@ OS_EVENT_FlagPend (OS_EVENT_FLAG_GRP* pflagGrp, OS_FLAG flags_pattern_wait, OS_F
 
     OS_Sched();												/* Preempt another HPT.										*/
 
-    OS_CRTICAL_BEGIN();										/* We are back again -------------------------------------------------------->  */
+    OS_CRTICAL_BEGIN();										/* We are back again ------------------------------------>  */
 
     pend_ok = OS_FAlSE;
     switch (OS_currentTask->TASK_PendStat) {                /* ... See if it was timed-out or aborted.                  */
@@ -404,7 +436,7 @@ OS_EVENT_FlagPend (OS_EVENT_FLAG_GRP* pflagGrp, OS_FLAG flags_pattern_wait, OS_F
 
     if(pend_ok == OS_FAlSE)									/* Check if it's Okay ?										*/
     {														/* No, the event is aborted or timeout. So unlink the event.*/
-    	OS_EventFlag_UnlinkFlagNodeFromList(&flag_node);	/* Unlink the node from the wait list.						*/				/* Long time for disabling interrupts ? mm ... */
+    	OS_EventFlag_UnlinkFlagNodeFromList(&flag_node);	/* Unlink the node from the wait list. [O(n) time ]			*/
     	flags_pattern_ready = (OS_FLAG)0U;					/* Zeros returned flags since it wasn't ready.				*/
     }
     else													/* Yes, Event(s) has occurred.								*/
@@ -433,7 +465,7 @@ RESET_FLAGS_ON_EXIT:
         }
     }
 
-	OS_CRTICAL_END();										/* < ------------------------------------------------------------------------ */
+	OS_CRTICAL_END();										/* < ------------------------------------------------------ */
 	OS_ERR_SET(OS_ERR_NONE);
 	return (flags_pattern_ready);							/* Return the flags which caused task to be ready.			*/
 }

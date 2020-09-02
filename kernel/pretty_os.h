@@ -654,6 +654,12 @@ OS_EVENT_FLAG_GRP* OS_EVENT_FlagCreate (OS_FLAG initial_flags);
  *											OS_FLAG_WAIT_SET_ALL	:	waits for ALL bits in the 'flags_pattern_wait' position to be Set. 	   (i.e become 1).
  *											OS_FLAG_WAIT_SET_ANY	:	waits for ANY bits in the 'flags_pattern_wait' position to be Set. 	   (i.e become 1).
  *
+ *					reset_flags_on_exit		If it's set to OS_TRUE, then any bit defined in the 'flags_pattern_wait' will be reset
+ *											in the event flag group to the value before posting the event.
+ *
+ *											If it's set to OS_FALSE, then non of bits in the ' flags_pattern_wait' will be altered when the call returns.
+ *
+ *
  * 					timeout					is an optional timeout period (in clock ticks).  If non-zero, your task will wait for the event to the amount of
  * 											time specified in the argument. If it's zero, it will wait forever till the event occurred.
  *
