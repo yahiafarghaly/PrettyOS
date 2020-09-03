@@ -44,7 +44,7 @@ SOFTWARE.
 *                                   Macros                                    *
 *******************************************************************************
 */
-#define STACK_SIZE   		(40U)
+#define STACK_SIZE   		(60U)
 #define PRIO_BASE			(8U)
 
 
@@ -102,22 +102,22 @@ void Task_1(void* args)
 {
     OS_TIME period = { 0, 0, 1U, 0};
     OS_FLAG flags;
-    printf("Task_1 Started !\n");
+    printf("[+%d]: Task_1 Started !\n",OS_TickTimeGet());
 
     OS_DelayTime(&period);
     flags = OS_EVENT_FlagPost(event_bits,BIT_0,OS_FLAG_SET);
-    printf("Task_1 sets 0x%x\n",flags);
+    printf("[+%d]: Task_1 sets 0x%x\n",OS_TickTimeGet(),flags);
 }
 
 void Task_2(void* args)
 {
     OS_TIME period = { 0, 0, 1U, 0};
     OS_FLAG flags;
-    printf("Task_2 Started !\n");
+    printf("[+%d]: Task_2 Started !\n",OS_TickTimeGet());
 
     OS_DelayTime(&period);
     flags = OS_EVENT_FlagPost(event_bits,BIT_1,OS_FLAG_SET);
-    printf("Task_2 sets 0x%x\n",flags);
+    printf("[+%d]: Task_2 sets 0x%x\n",OS_TickTimeGet(),flags);
 }
 
 
@@ -125,12 +125,12 @@ void Task_3(void* args)
 {
     OS_TIME period = { 0, 0, 3U, 0};
     OS_FLAG flags;
-    printf("Task_3 Started !\n");
+    printf("[+%d]: Task_3 Started !\n",OS_TickTimeGet());
 
     OS_DelayTime(&period);
 
 	flags = OS_EVENT_FlagPost(event_bits,BIT_2,OS_FLAG_SET);
-	printf("Task_3 sets 0x%x\n",flags);
+	printf("[+%d]: Task_3 sets 0x%x\n",OS_TickTimeGet(),flags);
 }
 
 
@@ -138,12 +138,12 @@ void Task_4(void* args)
 {
     OS_TIME period = { 0, 0, 4U, 0};
     OS_FLAG flags;
-    printf("Task_4 Started !\n");
+    printf("[+%d]: Task_4 Started !\n",OS_TickTimeGet());
 
 	OS_DelayTime(&period);
 
 	flags = OS_EVENT_FlagPost(event_bits,BIT_3,OS_FLAG_SET);
-	printf("Task_4 sets 0x%x\n",flags);
+	printf("[+%d]: Task_4 sets 0x%x\n",OS_TickTimeGet(),flags);
 }
 
 void Task_sum(void* args)
@@ -151,7 +151,7 @@ void Task_sum(void* args)
     OS_TIME period = { 0, 0, 1U, 0};
     OS_FLAG waited_bits;
 
-    printf("%s Started !\n\n",(char*)args);
+    printf("[+%d]: Task_Sum Started !\n",OS_TickTimeGet());
 
     event_bits = OS_EVENT_FlagCreate(0);
 
@@ -176,7 +176,7 @@ void Task_sum(void* args)
     while(1)
     {
     	waited_bits = OS_EVENT_FlagPend(event_bits,BIT_0 | BIT_1 | BIT_2 | BIT_3,OS_FLAG_WAIT_SET_ALL,OS_TRUE,0);
-    	printf("[Task_sum]: 0x%x has been occurred\n",waited_bits);
+    	printf("[+%d]: [Task_sum]: 0x%x has been occurred\n",OS_TickTimeGet(),waited_bits);
     	printf("----------------------------------\n");
 
         OS_DelayTime(&period);
