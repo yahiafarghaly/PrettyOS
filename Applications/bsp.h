@@ -184,6 +184,12 @@ extern inline void BSP_CPU_ISB (void);
  */
 extern inline void BSP_CPU_DSB (void);
 
+/*
+ * Function:  BSP_CPU_Reset
+ * ----------------------
+ * Reset the CPU like it will restart the system board.
+ */
+extern inline void BSP_CPU_Reset (void);
 
 /*========================== BSP Failure functions =======================*/
 

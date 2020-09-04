@@ -199,3 +199,9 @@ void OS_CPU_Hook_TimeTick (void)
     /* You may want to record ticks elapsed here.               */
 }
 
+#if (OS_CONFIG_CPU_STACK_OVERFLOW == OS_CONFIG_ENABLE)
+void OS_CPU_Hook_StackOverflow_Detected (void)
+{
+    /* You may reset the CPU.                                   */
+}
+#endif

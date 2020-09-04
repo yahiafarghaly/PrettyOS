@@ -63,7 +63,11 @@ SOFTWARE.
 *                              Tasks Stacks                                   *
 *******************************************************************************
 */
-OS_tSTACK stkTask 		 [5][STACK_SIZE];
+OS_tSTACK stkTask_sum   [STACK_SIZE];
+OS_tSTACK stkTask_1     [STACK_SIZE];
+OS_tSTACK stkTask_2     [STACK_SIZE];
+OS_tSTACK stkTask_3     [STACK_SIZE];
+OS_tSTACK stkTask_4     [STACK_SIZE];
 OS_tSTACK stkTask_Idle		[20];
 
 /*
@@ -163,13 +167,14 @@ void Task_sum(void* args)
     }
 
     void (*task[4])(void*) = { Task_1, Task_2, Task_3, Task_4};
+    OS_tSTACK* stkTask[4]  = { &stkTask_1[0], &stkTask_2[0], &stkTask_3[0], &stkTask_4[0]};
 
     for(int i = 0; i < 4; i++)
     {
         OS_TaskCreate(task[i],
         			   (void*)0,
-                      stkTask[i+1],
-                      sizeof(stkTask[i+1]),
+                      stkTask[i],
+                      sizeof(OS_tSTACK)*STACK_SIZE,
                       PRIO_BASE + i + 5);
     }
 
@@ -205,8 +210,8 @@ int main (void)
     /* Create the tasks.                    */
     OS_TaskCreate(Task_sum,
                   "Task_sum",
-                  stkTask[0],
-                  sizeof(stkTask[0]),
+                  stkTask_sum,
+                  sizeof(stkTask_sum),
                   PRIO_BASE);
 
     printf("[Info]: OS Starts !\n\n");

@@ -238,10 +238,15 @@ BSP_CPU_FrequencyGet(void)
 void
 BSP_onFailure(char const *module, int location)
 {
-    //NVIC_SystemReset();
     extern void UARTprintf(const char *pcString, ...);
     UARTprintf("\n%s %d\n",module,location);
     for(;;);
+}
+
+void
+BSP_CPU_Reset (void)
+{
+    NVIC_SystemReset();
 }
 
 void

@@ -41,6 +41,7 @@ SOFTWARE.
 .equ NVIC_SYSPRI3,		0xE000ED22     	 	 /* System priority register (priority 3), advanced with 2 bytes. */
 .equ NVIC_PENDSV_PRI,	0xFF        		 /* PendSV priority value (lowest = 0xFF). */
 .equ NVIC_PENDSVSET,	0x10000000   	 	 /* Value to trigger PendSV exception. */
+.equ OS_CONFIG_CPU_SOFT_STK_OVERFLOW_DETECTION,	1	/* Enable Software stack overflow detection.				*/
 
 /*------------------------- Public Functions ---------------------*/
 
@@ -51,6 +52,7 @@ SOFTWARE.
 	.global OS_CPU_PendSVHandler
 	.global CPU_SR_Save
 	.global CPU_SR_Restore
+	.global OS_StackOverflow_Detected
 
 /*----------------------------------------------------------------*/
 
@@ -203,11 +205,20 @@ OS_CPU_PendSVHandler:
 	cpsid	i
 	/* Skip saving the registers the first time. */
 	ldr		r0,=OS_currentTask
-	ldr		r0,[r0,#0]							/* OS_currentTask->TASK_SP */
-	cbz		r0,OS_CPU_PendSV_resume
-	/* If not the first time, then suspend the current task:
-	   - Push The current task registers into the memory stack.
-	   - Update the current task stack pointer to the new value due to stack push. */
+	ldr		r0,[r0,#0]							/* OS_currentTask->TASK_SP 									*/
+	cbz		r0,OS_CPU_PendSV_resume				/* If it's first time, then Jump to OS_CPU_PendSV_resume 	*/
+.if OS_CONFIG_CPU_SOFT_STK_OVERFLOW_DETECTION == 1
+	/* If not the first time, then :
+		1) Check a possible stack overflow. 																*/
+	ldr 	r1,[r0,#4]							/* OS_currentTask->TASK_SP_Limit																		*/
+	SUB		r2,r13,#32							/*Move Current SP address by 8 pushed words (R4-R11) i.e 32 bytes ( ARM stacks grows from High to Low) 	*/
+	CMP		r1,r2								/* Is SP_Limit >= Future SP ? ( ARM SP moves from High address to Low ).								*/
+	bge		OS_CPU_STACK_OVERFLOW_DETECT		/*If SP_Limit >= SP, Jump to OS_CPU_STACK_OVERFLOW_DETECT												*/
+.endif
+												/*Else, The push will be fine within the memory stack area.	*/
+	/*	2) Suspend the current task :
+	   		- Push The current task registers into the memory stack.
+	   		- Update the current task stack pointer to the new value due to stack push. 					*/
 	push	{r4-r11}							/* Push from R4 to R11 */
 	str		sp,[r0,#0] 							/* OS_currentTask->TASK_SP = SP */
 	/* Resume another task. */
@@ -227,4 +238,8 @@ OS_CPU_PendSV_resume:
 	cpsie	i
 	/* Exception return will restore remaining registers. */
 	bx		lr
-
+.if OS_CONFIG_CPU_SOFT_STK_OVERFLOW_DETECTION == 1
+OS_CPU_STACK_OVERFLOW_DETECT:
+	ldr		r0,=OS_currentTask				/* Pass the task TCB which will cause a stack overflow.			*/
+	bl 		OS_StackOverflow_Detected		/* Call PrettyOS' function for post operation of stack overflow */
+.endif

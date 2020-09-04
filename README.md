@@ -29,6 +29,8 @@
 
 - **Hooks APIs** at Application and CPU port level.
 
+- Software based Tasks' **stack overflow detection**.
+
 #### 💻 Porting availability
 | System      			    | BSP / CPU Port 		| Notes                                 |
 | ----------------------|:-----------------:|:-------------------------------------:|

@@ -115,7 +115,11 @@ typedef struct os_event_flag_node 		OS_EVENT_FLAG_NODE;
 typedef struct os_task_tcb      		OS_TASK_TCB;
 struct os_task_tcb
 {
-    CPU_tPtr    TASK_SP;        			/* Current Task's Stack Pointer 												*/
+    CPU_tPtr    TASK_SP;        			/* Current Task's Stack Pointer (Must be at offset 0x0 from struct base address)*/
+
+#if (OS_CONFIG_CPU_SOFT_STK_OVERFLOW_DETECTION == OS_CONFIG_ENABLE)
+    void*       TASK_SP_Limit;              /* Task's stack pointer limit to for stack overflow detection.                  */
+#endif
 
     OS_TICK     TASK_Ticks;     			/* Current Task's timeout    													*/
 

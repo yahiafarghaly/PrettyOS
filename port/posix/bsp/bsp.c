@@ -301,6 +301,12 @@ BSP_onFailure(char const *module, int location)
 }
 
 void
+BSP_CPU_Reset (void)
+{
+	/* 	EMPTY	*/
+}
+
+void
 BSP_CPU_WFI (void)
 {
 	/* 	EMPTY	*/

@@ -731,3 +731,39 @@ OS_TimerTick (void)
 
     OS_CRTICAL_END();
 }
+
+
+#if (OS_CONFIG_CPU_SOFT_STK_OVERFLOW_DETECTION == OS_CONFIG_ENABLE)
+
+/*
+ * Function:  OS_StackOverflow_Detected
+ * --------------------
+ * This function should be called when an stack overflow is detected whether the detection is done
+ * in software-based using water-marks or stack-limit variable (Currently Used in prettyOS code).
+ * or in hardware-based as MPU or stack-limit hardware register such the one exist in CPUs based on ARMv8-M
+ *
+ * Arguments    : ptcb          is a pointer to the task TCB (OS_TASK_TCB) which caused or will cause a task stack overflow.
+ *
+ * Returns      : None.
+ *
+ * Notes        : 1) This function must be called from the port level code.
+ *                2) This function must not be called by the Application level code.
+ */
+void
+OS_StackOverflow_Detected ( void* ptcb )
+{
+    for(;;)
+    {
+
+#if (OS_CONFIG_CPU_STACK_OVERFLOW == OS_CONFIG_ENABLE)
+        OS_CPU_Hook_StackOverflow_Detected();
+#endif
+
+#if (OS_CONFIG_APP_STACK_OVERFLOW == OS_CONFIG_ENABLE)
+        App_Hook_StackOverflow_Detected ((OS_TASK_TCB*)ptcb);       /* Calls Application specific code for a possible event of a task's stack overflow is detected. */
+#endif
+
+    }
+}
+
+#endif

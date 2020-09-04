@@ -165,6 +165,10 @@ OS_TaskCreate (void (*TASK_Handler)(void* params),
         }
 
         OS_tblTCBPrio[priority]->TASK_SP       = stack_top;
+
+#if (OS_CONFIG_CPU_SOFT_STK_OVERFLOW_DETECTION == OS_CONFIG_ENABLE)
+        OS_tblTCBPrio[priority]->TASK_SP_Limit = (void*)pStackBase;
+#endif
         OS_tblTCBPrio[priority]->TASK_priority = priority;
         OS_tblTCBPrio[priority]->TASK_Stat     = OS_TASK_STAT_READY;
 
@@ -637,4 +641,5 @@ OS_TaskReturn (void)
         OS_DelayTicks(OS_CONFIG_TICKS_PER_SEC);
     }
 }
+
 

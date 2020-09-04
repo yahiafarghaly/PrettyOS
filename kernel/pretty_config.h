@@ -120,6 +120,9 @@ SOFTWARE.
 
 #define OS_CONFIG_APP_TIME_TICK				(OS_CONFIG_DISABLE)
 
+/*= Enable/Disable Application specific code on OS POST operation of stack overflow detection. =*/
+
+#define OS_CONFIG_APP_STACK_OVERFLOW        (OS_CONFIG_ENABLE)
 
 /********************************************************************************/
 /**********************	      Parameterized Configs	      ***********************/

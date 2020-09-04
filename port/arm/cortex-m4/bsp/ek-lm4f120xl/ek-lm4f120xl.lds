@@ -150,3 +150,7 @@ SECTIONS {
         libgcc.a ( * )
     }
 }
+
+ /* Check if FLASH usage exceeds FLASH size */
+ASSERT( LENGTH(FLASH) >= (_etext + SIZEOF(.data)), "FLASH memory overflowed !")
+ASSERT( STACK_SIZE >= (__stack_start__ - __stack_end__), "STACK memory overflowed !")

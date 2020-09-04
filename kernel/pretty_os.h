@@ -942,29 +942,32 @@ void OS_MemoryRestoreBlock (OS_MEMORY* pMemoryPart, void* pBlock);
 
 
 #if (OS_CONFIG_APP_TASK_IDLE == OS_CONFIG_ENABLE)
-	void App_Hook_TaskIdle		(void);								/* Calls Application specific code in the idle state of prettyOS. 									*/
+	void App_Hook_TaskIdle		(void);								/* Calls Application specific code in the idle state of prettyOS. 								*/
 #endif
 
 #if (OS_CONFIG_APP_TASK_SWITCH == OS_CONFIG_ENABLE)
-	void App_Hook_TaskSwitch	(void);								/* Calls Application specific code when task context switch occurs. 								*/
+	void App_Hook_TaskSwitch	(void);								/* Calls Application specific code when task context switch occurs. 							*/
 #endif
 
 #if (OS_CONFIG_APP_TASK_CREATED == OS_CONFIG_ENABLE)
-	void App_Hook_TaskCreated 	(OS_TASK_TCB* ptcb);				/* Calls Application specific code when a task is created. 											*/
+	void App_Hook_TaskCreated 	(OS_TASK_TCB* ptcb);				/* Calls Application specific code when a task is created. 										*/
 #endif
 
 #if (OS_CONFIG_APP_TASK_DELETED == OS_CONFIG_ENABLE)
-	void App_Hook_TaskDeleted 	(OS_TASK_TCB* ptcb);				/* Calls Application specific code when a task is deleted. 											*/
+	void App_Hook_TaskDeleted 	(OS_TASK_TCB* ptcb);				/* Calls Application specific code when a task is deleted. 										*/
 #endif
 
 #if (OS_CONFIG_APP_TASK_RETURNED == OS_CONFIG_ENABLE)
-	void App_Hook_TaskReturned	(OS_TASK_TCB* ptcb); 				/* Calls Application specific code when a task returns intentionally. 								*/
+	void App_Hook_TaskReturned	(OS_TASK_TCB* ptcb); 				/* Calls Application specific code when a task returns intentionally. 							*/
 #endif
 
 #if (OS_CONFIG_APP_TIME_TICK == OS_CONFIG_ENABLE)
-	void App_Hook_TimeTick 		(void);  							/* Calls Application specific code when an OS system tick occurs. (i.e the single tick ! )			*/
+	void App_Hook_TimeTick 		(void);  							/* Calls Application specific code when an OS system tick occurs. (i.e the single tick ! )		*/
 #endif
 
+#if (OS_CONFIG_APP_STACK_OVERFLOW == OS_CONFIG_ENABLE)
+	void App_Hook_StackOverflow_Detected (OS_TASK_TCB* ptcb);       /* Calls Application specific code for a possible event of a task's stack overflow is detected. */
+#endif
 
 
 /*
@@ -1001,6 +1004,9 @@ void OS_MemoryRestoreBlock (OS_MEMORY* pMemoryPart, void* pBlock);
 	extern void OS_CPU_Hook_TimeTick     	(void);					/* A low level CPU routine when an OS system tick occurs. (i.e the single tick ! )				*/
 #endif
 
+#if(OS_CONFIG_CPU_SOFT_STK_OVERFLOW_DETECTION == OS_CONFIG_ENABLE)
+	extern void OS_CPU_Hook_StackOverflow_Detected (void);          /* A low level CPU routine called when a task stack overflow is detected.                       */
+#endif
 
 /*
 *******************************************************************************
@@ -1092,6 +1098,10 @@ void OS_MemoryRestoreBlock (OS_MEMORY* pMemoryPart, void* pBlock);
     #error  "Missing OS_CONFIG_APP_TIME_TICK"
 #endif
 
+#ifndef OS_CONFIG_APP_STACK_OVERFLOW
+    #error "Missing OS_CONFIG_APP_STACK_OVERFLOW"
+#endif
+
 #ifndef OS_CONFIG_CPU_INIT
     #error  "Missing OS_CONFIG_CPU_INIT"
 #endif
@@ -1112,8 +1122,16 @@ void OS_MemoryRestoreBlock (OS_MEMORY* pMemoryPart, void* pBlock);
     #error  "Missing OS_CONFIG_CPU_TASK_DELETED"
 #endif
 
+#ifndef OS_CONFIG_CPU_STACK_OVERFLOW
+    #error  "Missing OS_CONFIG_CPU_STACK_OVERFLOW"
+#endif
+
 #ifndef OS_CONFIG_CPU_TIME_TICK
     #error  "Missing OS_CONFIG_CPU_TIME_TICK"
+#endif
+
+#ifndef OS_CONFIG_CPU_SOFT_STK_OVERFLOW_DETECTION
+    #error "Missing OS_CONFIG_CPU_SOFT_STK_OVERFLOW_DETECTION"
 #endif
 
 #ifdef __cplusplus
