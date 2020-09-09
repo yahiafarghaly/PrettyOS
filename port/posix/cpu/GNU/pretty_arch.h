@@ -286,7 +286,7 @@ typedef CPU_t32U	CPU_tSTK_SIZE; 	/* Define CPU stack size data type.		  */
 
 /*=========  Enable/Disable OS Software Stack Overflow Detection. =========*/
 
-#define OS_CONFIG_CPU_SOFT_STK_OVERFLOW_DETECTION   (OS_CONFIG_ENABLE)
+#define OS_CONFIG_CPU_SOFT_STK_OVERFLOW_DETECTION   (OS_CONFIG_DISABLE)
 
 /*
 *******************************************************************************

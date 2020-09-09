@@ -46,12 +46,9 @@ SOFTWARE.
 *******************************************************************************
 */
 
-/* Array of TCBs, Each TCB Containing the task internal data.
- * This Table can be accessed by task priority. However, this is not the
- * right way. Instead you should you OS_tblTCBPrio[] pointers which will
- * point to the right TCB for the current execution.                         */
-static OS_TASK_TCB OS_TblTask[OS_CONFIG_TASK_COUNT]      = { 0U };
-
+/* Array of TCBs, Each TCB Containing the task internal data.*/
+static OS_TASK_TCB OS_TblTask[OS_CONFIG_TASK_COUNT];
+static OS_TASK_TCB* volatile pTCBFreeList;
 
 
 /*
@@ -59,6 +56,26 @@ static OS_TASK_TCB OS_TblTask[OS_CONFIG_TASK_COUNT]      = { 0U };
 *                               static functions                              *
 *******************************************************************************
 */
+
+static OS_TASK_TCB*
+OS_TCB_allocate (void)
+{
+	OS_TASK_TCB* ptcb;
+	ptcb = pTCBFreeList;
+	if(pTCBFreeList != OS_NULL(OS_TASK_TCB))
+	{
+		pTCBFreeList = pTCBFreeList->OSTCB_NextPtr;
+	}
+	return (ptcb);
+}
+
+static void
+OS_TCB_free (OS_TASK_TCB* ptcb)
+{
+	ptcb->OSTCB_NextPtr 		= pTCBFreeList;
+	pTCBFreeList 					= ptcb;
+}
+
 
 /*
 *******************************************************************************
@@ -82,7 +99,7 @@ OS_TCB_ListInit (void)
 {
     CPU_t32U idx;
 
-    for(idx = 0; idx < OS_CONFIG_TASK_COUNT; ++idx)
+    for(idx = 0; idx < OS_CONFIG_TASK_COUNT - 1; ++idx)
     {
         OS_TblTask[idx].TASK_Stat   = OS_TASK_STAT_DELETED;
         OS_TblTask[idx].TASK_Ticks  = 0U;
@@ -90,12 +107,26 @@ OS_TCB_ListInit (void)
 #if (OS_AUTO_CONFIG_INCLUDE_EVENTS == OS_CONFIG_ENABLE)
 
         OS_TblTask[idx].TASK_Event    = OS_NULL(OS_EVENT);
-        OS_TblTask[idx].OSTCB_NextPtr = OS_NULL(OS_TASK_TCB);
+        OS_TblTask[idx].OSTCB_NextPtr = &OS_TblTask[idx + 1];
 
 #endif
 
         OS_tblTCBPrio[idx]          = OS_NULL(OS_TASK_TCB);
     }
+
+    OS_TblTask[OS_CONFIG_TASK_COUNT - 1].TASK_Stat   	= OS_TASK_STAT_DELETED;
+    OS_TblTask[OS_CONFIG_TASK_COUNT - 1].TASK_Ticks  	= 0U;
+
+#if (OS_AUTO_CONFIG_INCLUDE_EVENTS == OS_CONFIG_ENABLE)
+
+    OS_TblTask[OS_CONFIG_TASK_COUNT - 1].TASK_Event    	= OS_NULL(OS_EVENT);
+    OS_TblTask[OS_CONFIG_TASK_COUNT - 1].OSTCB_NextPtr 	= &OS_TblTask[idx + 1];
+
+#endif
+
+    OS_tblTCBPrio[OS_CONFIG_TASK_COUNT - 1]          	= OS_NULL(OS_TASK_TCB);
+
+    pTCBFreeList = &OS_TblTask[0];						/* Point to the first free TCB's task object.	*/
 }
 
 /*
@@ -155,14 +186,15 @@ OS_TaskCreate (void (*TASK_Handler)(void* params),
 
     if(OS_IS_VALID_PRIO(priority))
     {
-        OS_tblTCBPrio[priority] = &OS_TblTask[priority];
 
-        if(OS_tblTCBPrio[priority]->TASK_Stat != OS_TASK_STAT_DELETED)            /* Check that the task is not in use.                                                      */
+        if(OS_tblTCBPrio[priority] != OS_NULL(OS_TASK_TCB))            				 	/* Check that the task is not in use.                                                      */
         {
             OS_CRTICAL_END();
             OS_ERR_SET(OS_ERR_TASK_CREATE_EXIST);
             return (OS_ERR_TASK_CREATE_EXIST);
         }
+
+        OS_tblTCBPrio[priority] = OS_TCB_allocate();
 
         OS_tblTCBPrio[priority]->TASK_SP       = stack_top;
 
@@ -297,6 +329,8 @@ OS_TaskDelete (OS_PRIO prio)
 #if (OS_CONFIG_APP_TASK_DELETED == OS_CONFIG_ENABLE)
 	App_Hook_TaskDeleted 	(ptcb);												  /* Calls Application specific code.			*/
 #endif
+
+    OS_TCB_free(ptcb);															  /* Return the TCB object to the Tasks pool.	*/
 
     OS_CRTICAL_END();
 

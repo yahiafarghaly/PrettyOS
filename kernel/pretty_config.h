@@ -122,7 +122,7 @@ SOFTWARE.
 
 /*= Enable/Disable Application specific code on OS POST operation of stack overflow detection. =*/
 
-#define OS_CONFIG_APP_STACK_OVERFLOW        (OS_CONFIG_ENABLE)
+#define OS_CONFIG_APP_STACK_OVERFLOW        (OS_CONFIG_DISABLE)
 
 /********************************************************************************/
 /**********************	      Parameterized Configs	      ***********************/
