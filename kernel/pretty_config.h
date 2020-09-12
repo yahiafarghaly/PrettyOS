@@ -53,6 +53,10 @@ SOFTWARE.
 #define 	OS_CONFIG_ENABLE				(1U)		/* TRUE  value for Enabling  a macro.		*/
 #define 	OS_CONFIG_DISABLE				(0U)		/* FALSE value for Disabling a macro. 		*/
 
+/*===============  Enable/Disable Using EDF Scheduler in the code.  ===========*/
+
+#define		OS_CONFIG_EDF_EN				(OS_CONFIG_ENABLE)
+
 /*===============  Enable/Disable   Mutex 	 service in the code.   ===========*/
 
 #define 	OS_CONFIG_MUTEX_EN				(OS_CONFIG_ENABLE)
@@ -159,6 +163,8 @@ SOFTWARE.
 /******************************************************************************/
 
 #define OS_AUTO_CONFIG_INCLUDE_EVENTS	(OS_CONFIG_SEMAPHORE_EN || OS_CONFIG_MUTEX_EN || OS_CONFIG_MAILBOX_EN)
+
+#define OS_AUTO_CONFIG_INCLUDE_LIST		(OS_CONFIG_EDF_EN)
 
 
 /******************************************************************************/

@@ -69,6 +69,7 @@ typedef enum {
     OS_ERR_TASK_NOT_EXIST			=(0x10U),     /* The task is not valid/exist.                    */
     OS_ERR_TASK_DELETE_ISR			=(0x11U),     /* Cannot delete a task from an ISR.               */
     OS_ERR_TASK_DELETE_IDLE		    =(0x12U),     /* Cannot delete the Idle task.                    */
+	OS_ERR_TASK_POOL_EMPTY			=(0x50U),	  /* No more available TCB objects.					 */
 
     OS_ERR_EVENT_PEVENT_NULL		=(0x13U),     /* OS_EVENT* is a  NULL pointer.                   */
     OS_ERR_EVENT_TYPE				=(0x14U),     /* Invalid event type.                             */
@@ -227,11 +228,19 @@ extern OS_ERR OS_ERRNO;                           /* Holds the last error code r
 
 #define OS_MUTEX_PRIO_CEIL_ENABLE   (1U)                /* Enable priority ceiling promotion for mutex.          */
 
-/*******************   Event Flag opt *************************/
+/*****************************   Event Flag opt *******************************/
 
 #define OS_FLAG_SET                 (1U)                /* Set Flags (i.e bits) to 1 in the desired location.    */
 
 #define OS_FLAG_CLEAR               (2U)                /* Clear Flags (i.e bits) to 1 in the desired location.  */
+
+/******************************* Task Type ************************************/
+
+#define OS_TASK_PERIODIC			(1U)				/* Used with EDF scheduler, typical in real-time and control applications. 		 */
+
+#define OS_TASK_SPORADIC			(2U)				/* Used with EDF scheduler, typical in soft real-time and multimedia applications*/
+
+#define OS_TASK_APERIODIC			(3U)
 
 /*
 *******************************************************************************
@@ -781,7 +790,7 @@ void* OS_MailBoxRead(OS_MAILBOX* pevent);
 *                         PrettyOS Task functions                             *
 *******************************************************************************
 */
-
+#if (OS_CONFIG_EDF_EN == OS_CONFIG_DISABLE)
 /*
  * Function:  OS_TaskCreate
  * --------------------
@@ -805,6 +814,7 @@ OS_tRet OS_TaskCreate (void (*TASK_Handler)(void* params),
                              CPU_tSTK* pStackBase,
                              CPU_tSTK_SIZE  stackSize,
                              OS_PRIO    priority);
+#endif
 /*
  * Function:  OS_TaskDelete
  * -------------------------
@@ -931,6 +941,37 @@ void* OS_MemoryAllocateBlock (OS_MEMORY* pMemoryPart);
  */
 void OS_MemoryRestoreBlock (OS_MEMORY* pMemoryPart, void* pBlock);
 
+/*
+ * ============================================================================
+ * ============================================================================
+ *
+ * 							 	PrettyOS' EDF APIs
+ *
+ * ============================================================================
+ * ============================================================================
+ * */
+#if (OS_CONFIG_EDF_EN == OS_CONFIG_ENABLE)
+
+void OS_TaskCreate (void (*TASK_Handler)(void* params),
+                             void *params,
+                             CPU_tSTK* pStackBase,
+                             CPU_tSTK_SIZE  stackSize,
+                             OS_OPT task_type, OS_TICK task_relative_deadline, OS_TICK task_period );
+
+/*
+ * Function:  OS_TaskYield
+ * --------------------
+ * Give up the current task execution from the CPU & schedule another task.
+ *
+ * Arguments    :   None.
+ *
+ * Returns      :   None.
+ *
+ * Note(s)		:	1) This Function should be used @ the end of task execution.
+ */
+void OS_TaskYield (void);
+
+#endif
 /*
 *******************************************************************************
 *                                                                             *

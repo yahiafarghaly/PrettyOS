@@ -108,6 +108,35 @@ typedef CPU_t08U					 OS_FLAG_WAIT;				 /* OS Flag wait type for holding type of
 *******************************************************************************
 */
 
+/* ------------------- OS Generic Doubly Linked List ---------------------- */
+typedef struct LIST_ITEM
+{
+  CPU_tWORD itemVal;                    /* The value being listed. This is used to sort the list in Ascending order. 					*/
+  void * pOwner;                        /* Pointer to the object (Usually a TCB) that contains the list item.  							*/
+  void * pList;                    		/* Pointer to the list in which this list item is placed (if any). 								*/
+  volatile struct LIST_ITEM * next;     /* Pointer to the next 		ListItem in the list.  												*/
+  volatile struct LIST_ITEM * prev;   	/* Pointer to the previous 	ListItem in the list. 												*/
+}List_Item;
+
+typedef struct LIST
+{
+  volatile List_Item* head;				/* The head of the list item linked list.														*/
+  volatile List_Item* end;				/* The tail of the list item linked list.														*/
+  volatile CPU_tWORD  itemsCnt;			/* The Number of Items in the list items.														*/
+} List;
+
+/* ---------------------- OS EDF Scheduler Params --------------------------- */
+
+typedef struct os_edf_sched_params		OS_EDF_SCHED_PARAMS;
+struct os_edf_sched_params
+{
+	OS_TICK	tick_arrive;
+	OS_TICK tick_relative_deadline;
+	OS_TICK tick_absolate_deadline;
+	OS_OPT	task_type;
+	OS_TICK task_period;
+};
+
 /* ------------------------ OS Task TCB Structure --------------------------- */
 
 typedef struct os_task_event    		OS_EVENT;
@@ -123,7 +152,12 @@ struct os_task_tcb
 
     OS_TICK     TASK_Ticks;     			/* Current Task's timeout    													*/
 
-    OS_PRIO     TASK_priority;  			/* Task Priority 																*/
+    OS_PRIO     TASK_priority;  			/* Task Priority
+    																*/
+#if (OS_CONFIG_EDF_EN == OS_CONFIG_ENABLE)
+    OS_EDF_SCHED_PARAMS	EDF_params;
+    List_Item* 			pListItemOwner;
+#endif
 
     OS_STATUS   TASK_Stat;      			/* Task Status 																	*/
 

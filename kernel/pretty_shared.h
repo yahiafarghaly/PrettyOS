@@ -63,6 +63,11 @@ extern OS_TICK		volatile		OS_TickTime;
 
 extern OS_ERR                       OS_ERRNO;
 
+#if(OS_CONFIG_EDF_EN == OS_CONFIG_ENABLE)
+	extern List OS_ReadyList;
+	extern List OS_PendingList;
+	extern List_Item OS_TCBList [OS_CONFIG_TASK_COUNT];
+#endif
 
 /*
 *******************************************************************************
@@ -96,5 +101,11 @@ extern void OS_UnBlockTime (OS_PRIO prio);
 extern void OS_TCB_ListInit (void);
 
 extern void OS_Memory_Init (void);
+
+extern void list_Init(List * const list);
+extern void listItem_Init(List_Item * const listItem);
+extern void listItemInsert (List * const list, List_Item * const listItem);
+extern CPU_tWORD ListItemRemove( List_Item * const pItemToRemove );
+
 
 #endif /* __PRETTY_SHARED_H_ */

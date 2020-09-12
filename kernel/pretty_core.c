@@ -120,7 +120,7 @@ static CPU_tWORD OS_TblTimeBlocked	[OS_AUTO_CONFIG_MAX_PRIO_ENTRIES] = { 0U };
 *******************************************************************************
 */
 
-static void         OS_ScheduleHighest(void);
+static void         OS_ScheduleNext(void);
 static OS_PRIO      OS_PriorityHighestGet(void);
 static CPU_tWORD    OS_Log2(const CPU_tWORD x);
 
@@ -157,6 +157,11 @@ OS_TICK		   volatile OS_TickTime;
  *  */
 OS_TASK_TCB*            OS_tblTCBPrio [OS_CONFIG_TASK_COUNT];
 
+#if(OS_CONFIG_EDF_EN == OS_CONFIG_ENABLE)
+	List OS_ReadyList;
+	List OS_PendingList;
+	List_Item OS_TCBList [OS_CONFIG_TASK_COUNT];
+#endif
 
 /*
 *******************************************************************************
@@ -181,7 +186,7 @@ OS_IdleTask (void* args)
 #if (OS_CONFIG_APP_TASK_IDLE == OS_CONFIG_ENABLE)
     	App_Hook_TaskIdle();    /* Call user's idle function.               */
 #endif
-
+    	OS_TaskYield();
     }
 }
 
@@ -223,6 +228,18 @@ OS_Init (CPU_tSTK* pStackBaseIdleTask, CPU_tSTK  stackSizeIdleTask)
 #endif
     OS_Running          = OS_FAlSE;
 
+#if (OS_AUTO_CONFIG_INCLUDE_LIST == OS_CONFIG_ENABLE)
+
+    list_Init(&OS_ReadyList);
+    list_Init(&OS_PendingList);
+
+    for(idx = 0; idx < OS_CONFIG_TASK_COUNT; idx++)
+    {
+    	listItem_Init(&OS_TCBList[idx]);
+    }
+
+#endif
+
     OS_TCB_ListInit();
 
     OS_Memory_Init();
@@ -243,11 +260,32 @@ OS_Init (CPU_tSTK* pStackBaseIdleTask, CPU_tSTK  stackSizeIdleTask)
     OS_Event_Flag_FreeListInit();
 #endif
 
+#if (OS_CONFIG_EDF_EN == OS_CONFIG_DISABLE)
+
     ret = OS_TaskCreate(OS_IdleTask,
                         OS_NULL(void),
                         pStackBaseIdleTask,
                         stackSizeIdleTask,
                         OS_IDLE_TASK_PRIO_LEVEL);
+
+#else
+
+    OS_TaskCreate(OS_IdleTask,
+            OS_NULL(void),
+            pStackBaseIdleTask,
+            stackSizeIdleTask,
+			OS_TASK_PERIODIC,
+			(CPU_tWORD)0xFFFFFFFF,
+			OS_CONFIG_TICKS_PER_SEC);
+
+#if(OS_CONFIG_ERRNO_EN == OS_CONFIG_ENABLE)
+    ret = OS_ERRNO;
+#else
+    ret = OS_ERR_NONE;
+#endif
+
+#endif
+
     return (ret);
 }
 
@@ -312,7 +350,7 @@ OS_IntExit (void)
         {
             if(0U == OS_LockSchedNesting)               /* ... and not locked                                          */
             {
-                OS_ScheduleHighest();                   /* Determine the next high task to run.                        */
+                OS_ScheduleNext();                   	/* Determine the next high task to run.                        */
                 if(OS_nextTask != OS_currentTask)       /* No context switch if the current task is the highest.       */
                 {
                     OS_CPU_InterruptContexSwitch();     /* Perform a CPU specific code for interrupt context switch.   */
@@ -423,7 +461,7 @@ OS_Sched (void)
     {
         if(0U == OS_LockSchedNesting)               /* Re-schedule if it's not locked.                             */
         {
-            OS_ScheduleHighest();                   /* Determine the next high task to run.                        */
+            OS_ScheduleNext();                   	/* Determine the next high task to run.                        */
             if(OS_nextTask != OS_currentTask)       /* No context switch if the current task is the highest.       */
             {
                 OS_CPU_ContexSwitch();              /* Perform a CPU specific code for task context switch.        */
@@ -435,7 +473,7 @@ OS_Sched (void)
 }
 
 /*
- * Function:  OS_ScheduleHighest
+ * Function:  OS_ScheduleNext
  * --------------------
  * Determine the next highest priority task that is ready to run.
  * The global variable `OS_nextTask` is changed accordingly.
@@ -448,9 +486,13 @@ OS_Sched (void)
  *                2) This function is internal to PrettyOS functions.
  */
 void
-OS_ScheduleHighest (void)
+OS_ScheduleNext (void)
 {
-    OS_PRIO OS_HighPrio =  OS_PriorityHighestGet();
+#if(OS_CONFIG_EDF_EN == OS_CONFIG_DISABLE)
+
+	/* 							Static Priority Scheduling.						*/
+
+	OS_PRIO OS_HighPrio =  OS_PriorityHighestGet();
 
     if(OS_IDLE_TASK_PRIO_LEVEL == OS_HighPrio)
     {
@@ -460,6 +502,29 @@ OS_ScheduleHighest (void)
     {
         OS_nextTask = OS_tblTCBPrio[OS_HighPrio];
     }
+#else
+
+    /* 							Earliest Deadline Scheduling.					*/
+
+    if(OS_ReadyList.itemsCnt != 0U)
+    {
+        /* If a ready task with right time arrival, Schedule it first.          */
+    	if(OS_TickTime == 0U || OS_ReadyList.head->itemVal <= OS_TickTime)
+		{
+			OS_nextTask = (OS_TASK_TCB*)OS_ReadyList.head->pOwner;
+			(void)ListItemRemove(OS_ReadyList.head);
+		}
+    }
+    else
+    {
+    	// if(OS_currentTask == (OS_TASK_TCB*)OS_TCBList[0].pOwner)
+    	// {
+        // 	OS_nextTask = OS_currentTask;
+    	// }
+        OS_nextTask = OS_currentTask;
+    }
+
+#endif
 }
 
 /*
@@ -486,7 +551,7 @@ OS_Run (CPU_t32U cpuClockFreq)
 
         OS_CRTICAL_BEGIN();
 
-        OS_ScheduleHighest();                      /* Find the highest priority task to be scheduled.                        */
+        OS_ScheduleNext();                         /* Find the highest priority task to be scheduled.                        */
         OS_CPU_FirstStart();                       /* Start the highest task.                                                */
 
         OS_CRTICAL_END();                          /* Enable the processor interrupt in case accidentally it is not enabled. */
@@ -651,6 +716,66 @@ OS_MemoryByteClear (CPU_t08U* pdest, CPU_t32U size)
     }
 }
 
+#if(OS_CONFIG_EDF_EN == OS_CONFIG_ENABLE)
+/*
+ * Function:  OS_TaskYield
+ * --------------------
+ * Give up the current task execution from the CPU & schedule another task.
+ *
+ * Arguments    :   None.
+ *
+ * Returns      :   None.
+ *
+ * Note(s)		:	1) This Function should be used @ the end of task execution.
+ */
+void
+OS_TaskYield (void)
+{
+	CPU_SR_ALLOC();
+
+	OS_CRTICAL_BEGIN();
+
+	if(OS_currentTask != (OS_TASK_TCB*)OS_TCBList[0].pOwner)
+	{
+		if(OS_currentTask->EDF_params.task_type == OS_TASK_PERIODIC)
+		{
+			if(OS_currentTask->EDF_params.tick_arrive < OS_TickTime)
+			{
+				OS_currentTask->EDF_params.tick_arrive += OS_currentTask->EDF_params.task_period;
+				OS_currentTask->EDF_params.tick_absolate_deadline = OS_currentTask->EDF_params.tick_arrive + OS_currentTask->EDF_params.tick_relative_deadline;
+				OS_currentTask->pListItemOwner->itemVal = OS_currentTask->EDF_params.tick_arrive;
+				listItemInsert(&OS_PendingList,OS_currentTask->pListItemOwner);						/* Insert by arrival time.	*/
+			}
+		}
+
+		OS_Sched();
+	}
+	else
+	{
+        OS_TASK_COUNT tskcnt = 1;
+        OS_TASK_TCB* ptcb = OS_tblTCBPrio[1];
+        /* Here I am not sure what i am doing :/ */
+        while(ptcb->pListItemOwner)
+        {
+            if(ptcb->EDF_params.tick_arrive <= OS_TickTime)
+            {
+            	listItemInsert(&OS_ReadyList,ptcb->pListItemOwner);
+            }
+
+            ++tskcnt;
+            ptcb = OS_tblTCBPrio[tskcnt];
+        }
+
+		OS_ScheduleNext();
+		if(OS_currentTask != OS_nextTask)
+		{
+			OS_CPU_ContexSwitch();
+		}
+	}
+    OS_CRTICAL_END();
+}
+#endif
+
 /*
  * Function:  OS_TimerTick
  * --------------------
@@ -691,6 +816,7 @@ OS_TimerTick (void)
 
     OS_CRTICAL_BEGIN();
 
+#if(OS_CONFIG_EDF_EN == OS_CONFIG_DISABLE)
     for(i = 0; i < OS_AUTO_CONFIG_MAX_PRIO_ENTRIES; i++)
     {
         if(OS_TblTimeBlocked[i] != 0U)
@@ -728,6 +854,26 @@ OS_TimerTick (void)
             }
         }
     }
+#else
+
+    if(OS_PendingList.itemsCnt != 0U)
+    {
+        List_Item* pIterator = OS_PendingList.head;
+        while(pIterator != OS_NULL(List_Item))
+        {
+        	OS_TASK_TCB* tsk = (OS_TASK_TCB*)pIterator->pOwner;
+				if(pIterator->itemVal <= OS_TickTime)				/* if(Task'arrival time == current system tick)	*/
+				{
+		        	tsk->TASK_Stat &= ~(OS_TASK_STAT_DELAY);
+					ListItemRemove(tsk->pListItemOwner);
+					pIterator->itemVal = tsk->EDF_params.tick_absolate_deadline;
+					listItemInsert(&OS_ReadyList,pIterator);		/* Insert by absolute deadline time.			*/
+				}
+        	pIterator = pIterator->next;
+        }
+    }
+
+#endif
 
     OS_CRTICAL_END();
 }
