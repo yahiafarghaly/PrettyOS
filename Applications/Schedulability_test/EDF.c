@@ -100,8 +100,8 @@ void App_Hook_StackOverflow_Detected (OS_TASK_TCB* ptcb)
 
 void App_Hook_TaskIdle(void)
 {
-    printf("*************** Idle ************ \n");
-    BSP_DelayMilliseconds(1000);
+    printf("t[+%05d] | Idle\n",OS_TickTimeGet());
+    BSP_DelayMilliseconds(500);
 }
 
 /*
@@ -121,8 +121,8 @@ task_1(void* args) {
 
     	BSP_DelayMilliseconds(t->C*1000);
 
-    	printf("t[+%05d] | Ends %s \n",OS_TickTimeGet(),t->name);
-    	printf("===============================\n\n");
+    	printf("t[+%05d] | Ends   %s \n",OS_TickTimeGet(),t->name);
+    	printf("===============================\n");
 
     	OS_TaskYield();
     }
@@ -139,8 +139,8 @@ task_2(void* args) {
 
     	BSP_DelayMilliseconds(t->C*1000);
 
-    	printf("t[+%05d] | Ends %s \n",OS_TickTimeGet(),t->name);
-    	printf("===============================\n\n");
+    	printf("t[+%05d] | Ends   %s \n",OS_TickTimeGet(),t->name);
+    	printf("===============================\n");
 
     	OS_TaskYield();
     }
@@ -157,8 +157,8 @@ task_3(void* args) {
 
     	BSP_DelayMilliseconds(t->C*1000);
 
-    	printf("t[+%05d] | Ends %s \n",OS_TickTimeGet(),t->name);
-    	printf("===============================\n\n");
+    	printf("t[+%05d] | Ends   %s \n",OS_TickTimeGet(),t->name);
+    	printf("===============================\n");
 
     	OS_TaskYield();
     }
@@ -179,12 +179,12 @@ int main() {
     tskdata t2 = { "T_2" ,Task_2_P, Task_2_C};
     tskdata t3 = { "T_3" ,Task_3_P, Task_3_C};
 
-//    OS_TaskCreate(&task_1,
-//                  (void*)&t1,
-//                  &stkTask_1[0],
-//                  sizeof(stkTask_1),
-//				  OS_TASK_PERIODIC,
-//				  Task_1_D*OS_CONFIG_TICKS_PER_SEC,Task_1_P*OS_CONFIG_TICKS_PER_SEC);
+    OS_TaskCreate(&task_1,
+                  (void*)&t1,
+                  &stkTask_1[0],
+                  sizeof(stkTask_1),
+				  OS_TASK_PERIODIC,
+				  Task_1_D*OS_CONFIG_TICKS_PER_SEC,Task_1_P*OS_CONFIG_TICKS_PER_SEC);
 
     OS_TaskCreate(&task_2,
     			(void*)&t2,
@@ -193,12 +193,12 @@ int main() {
 				  OS_TASK_PERIODIC,
 				  Task_2_D*OS_CONFIG_TICKS_PER_SEC,Task_2_P*OS_CONFIG_TICKS_PER_SEC);
 
-//    OS_TaskCreate(&task_3,
-//    			(void*)&t3,
-//                  &stkTask_3[0],
-//                  sizeof(stkTask_3),
-//				  OS_TASK_PERIODIC,
-//				  Task_3_D*OS_CONFIG_TICKS_PER_SEC,Task_3_P*OS_CONFIG_TICKS_PER_SEC);
+    OS_TaskCreate(&task_3,
+    			(void*)&t3,
+                  &stkTask_3[0],
+                  sizeof(stkTask_3),
+				  OS_TASK_PERIODIC,
+				  Task_3_D*OS_CONFIG_TICKS_PER_SEC,Task_3_P*OS_CONFIG_TICKS_PER_SEC);
 
     /* Some applications logs.              */
     printf("\n\n");

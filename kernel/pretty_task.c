@@ -310,6 +310,7 @@ OS_TaskCreate (void (*TASK_Handler)(void* params),
 	ptcb->EDF_params.tick_relative_deadline = task_relative_deadline;
 	ptcb->EDF_params.task_period			= task_period;
 	ptcb->EDF_params.task_type				= task_type;
+	ptcb->EDF_params.task_yield				= OS_FAlSE;
 
 	if(task_type == OS_TASK_PERIODIC)
 	{
@@ -320,6 +321,7 @@ OS_TaskCreate (void (*TASK_Handler)(void* params),
 	OS_TCBList[tasksCntCreated].pOwner  = (void*)ptcb;
 
 	ptcb->pListItemOwner = &OS_TCBList[tasksCntCreated];
+	ptcb->TASK_priority	 = tasksCntCreated;
     OS_tblTCBPrio[tasksCntCreated] = ptcb;
 
 	if(tasksCntCreated != 0U)		/* No Need to insert the Idle Task in the Ready List, It will be called when necessary. */

@@ -186,7 +186,12 @@ OS_IdleTask (void* args)
 #if (OS_CONFIG_APP_TASK_IDLE == OS_CONFIG_ENABLE)
     	App_Hook_TaskIdle();    /* Call user's idle function.               */
 #endif
+
+#if(OS_CONFIG_EDF_EN == OS_CONFIG_ENABLE)
+
     	OS_TaskYield();
+
+#endif
     }
 }
 
@@ -350,11 +355,13 @@ OS_IntExit (void)
         {
             if(0U == OS_LockSchedNesting)               /* ... and not locked                                          */
             {
+#if(OS_CONFIG_EDF_EN == OS_CONFIG_DISABLE)
                 OS_ScheduleNext();                   	/* Determine the next high task to run.                        */
                 if(OS_nextTask != OS_currentTask)       /* No context switch if the current task is the highest.       */
                 {
                     OS_CPU_InterruptContexSwitch();     /* Perform a CPU specific code for interrupt context switch.   */
                 }
+#endif
             }
         }
 
@@ -505,23 +512,54 @@ OS_ScheduleNext (void)
 #else
 
     /* 							Earliest Deadline Scheduling.					*/
+    
+    OS_TASK_COUNT tskcnt = 1;
+    OS_TASK_TCB* ptcb = OS_tblTCBPrio[1];
+
+    while(ptcb)
+    {
+    	if(ptcb->pListItemOwner->pList == OS_NULL(List))		/* Make Sure it doesn't belong to a List. */
+    	{
+			if((ptcb->EDF_params.tick_absolate_deadline - ptcb->EDF_params.tick_arrive) <= OS_TickTime)
+			{
+				ptcb->pListItemOwner->itemVal = ptcb->EDF_params.tick_absolate_deadline;
+				listItemInsert(&OS_ReadyList,ptcb->pListItemOwner);
+			}
+    	}
+
+        ++tskcnt;
+        ptcb = OS_tblTCBPrio[tskcnt];
+    }
 
     if(OS_ReadyList.itemsCnt != 0U)
     {
-        /* If a ready task with right time arrival, Schedule it first.          */
-    	if(OS_TickTime == 0U || OS_ReadyList.head->itemVal <= OS_TickTime)
+    	OS_TASK_TCB* rdy_tsk = (OS_TASK_TCB*)OS_ReadyList.head->pOwner;
+        /* If a ready task with right time arrival, Schedule it first.          			*/
+    	if(rdy_tsk->EDF_params.tick_arrive <= OS_TickTime)
 		{
-			OS_nextTask = (OS_TASK_TCB*)OS_ReadyList.head->pOwner;
+			OS_nextTask = rdy_tsk;
+			OS_nextTask->EDF_params.task_yield = OS_FAlSE;
 			(void)ListItemRemove(OS_ReadyList.head);
 		}
+    	else
+    	{
+    	/* Else, Ready tasks are ready but not in the right time, so schedule Idle Task. 	*/
+    		OS_nextTask = (OS_TASK_TCB*)OS_TCBList[0].pOwner;
+    	}
     }
     else
     {
-    	// if(OS_currentTask == (OS_TASK_TCB*)OS_TCBList[0].pOwner)
-    	// {
-        // 	OS_nextTask = OS_currentTask;
-    	// }
-        OS_nextTask = OS_currentTask;
+    	/* No Ready Tasks are available. 													*/
+    	if(OS_currentTask->EDF_params.task_yield == OS_TRUE)
+    	{
+    		/* The Current Task wants to yield & No Ready Tasks. So, schedule Idle Task.	*/
+    		OS_nextTask = (OS_TASK_TCB*)OS_TCBList[0].pOwner;
+    	}
+    	else
+    	{
+    		/* Continue the current task execution.											*/
+    		OS_nextTask = OS_currentTask;
+    	}
     }
 
 #endif
@@ -744,35 +782,15 @@ OS_TaskYield (void)
 				OS_currentTask->EDF_params.tick_arrive += OS_currentTask->EDF_params.task_period;
 				OS_currentTask->EDF_params.tick_absolate_deadline = OS_currentTask->EDF_params.tick_arrive + OS_currentTask->EDF_params.tick_relative_deadline;
 				OS_currentTask->pListItemOwner->itemVal = OS_currentTask->EDF_params.tick_arrive;
+				OS_currentTask->EDF_params.task_yield	= OS_TRUE;
 				listItemInsert(&OS_PendingList,OS_currentTask->pListItemOwner);						/* Insert by arrival time.	*/
 			}
 		}
-
-		OS_Sched();
 	}
-	else
-	{
-        OS_TASK_COUNT tskcnt = 1;
-        OS_TASK_TCB* ptcb = OS_tblTCBPrio[1];
-        /* Here I am not sure what i am doing :/ */
-        while(ptcb->pListItemOwner)
-        {
-            if(ptcb->EDF_params.tick_arrive <= OS_TickTime)
-            {
-            	listItemInsert(&OS_ReadyList,ptcb->pListItemOwner);
-            }
 
-            ++tskcnt;
-            ptcb = OS_tblTCBPrio[tskcnt];
-        }
-
-		OS_ScheduleNext();
-		if(OS_currentTask != OS_nextTask)
-		{
-			OS_CPU_ContexSwitch();
-		}
-	}
     OS_CRTICAL_END();
+
+	OS_Sched();
 }
 #endif
 
@@ -862,11 +880,12 @@ OS_TimerTick (void)
         while(pIterator != OS_NULL(List_Item))
         {
         	OS_TASK_TCB* tsk = (OS_TASK_TCB*)pIterator->pOwner;
-				if(pIterator->itemVal <= OS_TickTime)				/* if(Task'arrival time == current system tick)	*/
+				if(tsk->EDF_params.tick_arrive <= OS_TickTime)				/* if(Task'arrival time == current system tick)	*/
 				{
 		        	tsk->TASK_Stat &= ~(OS_TASK_STAT_DELAY);
 					ListItemRemove(tsk->pListItemOwner);
 					pIterator->itemVal = tsk->EDF_params.tick_absolate_deadline;
+					tsk->EDF_params.task_yield = OS_FAlSE;
 					listItemInsert(&OS_ReadyList,pIterator);		/* Insert by absolute deadline time.			*/
 				}
         	pIterator = pIterator->next;

@@ -135,6 +135,7 @@ struct os_edf_sched_params
 	OS_TICK tick_absolate_deadline;
 	OS_OPT	task_type;
 	OS_TICK task_period;
+	OS_BOOLEAN task_yield;
 };
 
 /* ------------------------ OS Task TCB Structure --------------------------- */
