@@ -108,6 +108,36 @@ typedef CPU_t08U					 OS_FLAG_WAIT;				 /* OS Flag wait type for holding type of
 *******************************************************************************
 */
 
+/* ------------------- OS Generic Doubly Linked List ---------------------- */
+typedef struct LIST_ITEM
+{
+  CPU_tWORD itemVal;                    /* The value being listed. This is used to sort the list in Ascending order. 	*/
+  void * pOwner;                        /* Pointer to the object (Usually a TCB) that contains the list item.  			*/
+  void * pList;                    		/* Pointer to the list in which this list item is placed (if any). 				*/
+  struct LIST_ITEM * next;     			/* Pointer to the next 		ListItem in the list.  								*/
+  struct LIST_ITEM * prev;   			/* Pointer to the previous 	ListItem in the list. 								*/
+}List_Item;
+
+typedef struct LIST
+{
+  List_Item* head;						/* The head of the list item linked list.										*/
+  List_Item* end;						/* The tail of the list item linked list.										*/
+  CPU_tWORD  itemsCnt;					/* The Number of Items in the list items.										*/
+} List;
+
+/* ---------------------- OS EDF Scheduler Params --------------------------- */
+
+typedef struct os_edf_sched_params		OS_EDF_SCHED_PARAMS;
+struct os_edf_sched_params
+{
+	OS_TICK	tick_arrive;				/* The arrival tick time of a task.												*/
+	OS_TICK tick_relative_deadline; 	/* The relative deadline tick time of a task (= absolute - arrive)'times.		*/
+	OS_TICK tick_absolute_deadline;		/* The absolute deadline tick time of a task.									*/
+	OS_OPT	task_type;					/* The task type ( OS_TASK_[PERIODIC/SPORADIC/APERIODIC]						*/
+	OS_TICK task_period;				/* The task periodicity in Ticks if it's periodic task.							*/
+	OS_BOOLEAN task_yield;				/* A True/False value for indicating that this Task should be yielding the CPU. */
+};
+
 /* ------------------------ OS Task TCB Structure --------------------------- */
 
 typedef struct os_task_event    		OS_EVENT;
@@ -116,42 +146,41 @@ typedef struct os_task_tcb      		OS_TASK_TCB;
 struct os_task_tcb
 {
     CPU_tPtr    TASK_SP;        			/* Current Task's Stack Pointer (Must be at offset 0x0 from struct base address)*/
+    OS_TASK_TCB* OSTCB_NextPtr;      		/* Pointer to a TCB, In case of multiple TCBs pending on the same event object.	*/
+    OS_STATUS   TASK_Stat;      			/* Task Status 																	*/
+
+#if (OS_CONFIG_EDF_EN == OS_CONFIG_ENABLE)
+    OS_EDF_SCHED_PARAMS	EDF_params;
+    List_Item* 			pListItemOwner;
+#else
+    OS_PRIO     TASK_priority;  			/* Task Priority																*/
+    OS_TICK     TASK_Ticks;     			/* Current Task's timeout    													*/
+#endif
+
 
 #if (OS_CONFIG_CPU_SOFT_STK_OVERFLOW_DETECTION == OS_CONFIG_ENABLE)
     void*       TASK_SP_Limit;              /* Task's stack pointer limit to for stack overflow detection.                  */
 #endif
 
-    OS_TICK     TASK_Ticks;     			/* Current Task's timeout    													*/
-
-    OS_PRIO     TASK_priority;  			/* Task Priority 																*/
-
-    OS_STATUS   TASK_Stat;      			/* Task Status 																	*/
 
 #if (OS_AUTO_CONFIG_INCLUDE_EVENTS 		== OS_CONFIG_ENABLE)
-
     OS_STATUS   TASK_PendStat;  			/* Task Pend Status 															*/
-
     OS_EVENT*   TASK_Event;     			/* Pointer to the attached event to this TCB. 									*/
-
-    OS_TASK_TCB* OSTCB_NextPtr;      		/* Pointer to a TCB, In case of multiple TCBs pending on the same event object.	*/
-
 #endif
+
 
 #if (OS_CONFIG_FLAG_EN 					== OS_CONFIG_ENABLE)
     OS_FLAG		OSFlagReady;				/* Flags which made this TCB ready.												*/
 #endif
 
-#if (OS_CONFIG_TCB_TASK_ENTRY_STORE_EN 	== OS_CONFIG_ENABLE)
 
+#if (OS_CONFIG_TCB_TASK_ENTRY_STORE_EN 	== OS_CONFIG_ENABLE)
     void (*TASK_EntryAddr)(void*);
     void*  TASK_EntryArg;
-
 #endif
 
 #if (OS_CONFIG_TCB_EXTENSION_EN 		== OS_CONFIG_ENABLE)
-
     void*		OSTCBExtension; 			/* Pointer to user definable data for TCB extension.		 			   		*/
-
 #endif
 
 };

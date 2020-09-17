@@ -544,7 +544,9 @@ static void* OS_TaskPosixWrapper (void  *p_arg_tcb)
 
 #ifdef __DEBUG_CPU_PORT
 	ptcbPosix->thread_pid 	= sysconf(SYS_gettid);
+#if(OS_CONFIG_EDF_EN == OS_CONFIG_DISABLE)
 	ptcbPosix->thread_prio 	= ptcb->TASK_priority;
+#endif
 #endif
 
 	ERROR_CHECK(sem_post(&ptcbPosix->sem_TaskCreated));		/* Ends the creation of the task's critical section.													*/
@@ -562,10 +564,12 @@ static void* OS_TaskPosixWrapper (void  *p_arg_tcb)
 	CPU_InterruptEnable();									/* Enable Interrupts for the calling thread for the first context switch.								*/
 															/* Call the real user task.																				*/
 	((void (*)(void *))ptcb->TASK_EntryAddr)(ptcb->TASK_EntryArg);
-
+#if(OS_CONFIG_EDF_EN == OS_CONFIG_DISABLE)
 	OS_TaskDelete(ptcb->TASK_priority);						/* The task can be ended after its context switch.
 																Internally, it calls OS_TaskDelete_CPU_Hook() which cleans pthread resources.						*/
-
+#else
+	OS_TaskReturn();										/* This should perform what is necessary to return safely from an EDF Task.								*/
+#endif
 	return NULL;
 }
 
