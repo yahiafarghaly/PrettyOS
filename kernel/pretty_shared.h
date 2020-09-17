@@ -57,16 +57,15 @@ extern OS_TASK_TCB*                 OS_tblTCBPrio [OS_CONFIG_TASK_COUNT];
 extern CPU_t08U     volatile        OS_IntNestingLvl;
 extern CPU_t08U     volatile        OS_LockSchedNesting;
 
-#if (OS_CONFIG_SYSTEM_TIME_SET_GET_EN == OS_CONFIG_ENABLE)
 extern OS_TICK		volatile		OS_TickTime;
-#endif
 
 extern OS_ERR                       OS_ERRNO;
 
 #if(OS_CONFIG_EDF_EN == OS_CONFIG_ENABLE)
 	extern List OS_ReadyList;
-	extern List OS_PendingList;
+	extern List OS_InactiveList;
 	extern List_Item OS_TCBList [OS_CONFIG_TASK_COUNT];
+	extern OS_TASK_COUNT volatile OS_SystemTasksCount;
 #endif
 
 /*

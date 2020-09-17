@@ -40,7 +40,7 @@ SOFTWARE.
 #include "pretty_os.h"
 #include "pretty_shared.h"
 
-
+#if(OS_CONFIG_EDF_EN == OS_CONFIG_DISABLE)
 /*
  * Function:  OS_DelayTicks
  * --------------------
@@ -129,6 +129,8 @@ OS_DelayTime(OS_TIME* ptime)
 
     OS_DelayTicks(ticks);
 }
+
+#endif
 
 #if (OS_CONFIG_SYSTEM_TIME_SET_GET_EN == OS_CONFIG_ENABLE)
 /*

@@ -23,6 +23,23 @@ SOFTWARE.
 ******************************************************************************/
 
 /*
+ * Author   : Yahia Farghaly Ashour
+ *
+ * Purpose  : PrettyOS sorted doubly linked list implementation.
+ * 				The sorting is in ascending order.
+ *
+ * 				It's similar to xList implementation from FreeRTOS code except
+ * 				the List structure is different.
+ *
+ * 				This picture shows the xList structure top overview
+ * 				https://www.aosabook.org/images/freertos/freertos-figures-full-ready-list.png
+ *
+ * Language:  C
+ *
+ * Set 1 tab = 4 spaces for better comments readability.
+ */
+
+/*
 *******************************************************************************
 *                               Includes Files                                *
 *******************************************************************************

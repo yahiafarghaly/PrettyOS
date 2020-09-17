@@ -105,6 +105,8 @@ SOFTWARE.
 *******************************************************************************
 */
 
+#if(OS_CONFIG_EDF_EN == OS_CONFIG_DISABLE)
+
 /* Array of bit-mask of tasks that are ready to run.
  * (Accessible by task priority)                                              */
 static CPU_tWORD OS_TblReady		[OS_AUTO_CONFIG_MAX_PRIO_ENTRIES] = { 0U };
@@ -113,6 +115,7 @@ static CPU_tWORD OS_TblReady		[OS_AUTO_CONFIG_MAX_PRIO_ENTRIES] = { 0U };
  * (Accessible by task priority)                                              */
 static CPU_tWORD OS_TblTimeBlocked	[OS_AUTO_CONFIG_MAX_PRIO_ENTRIES] = { 0U };
 
+#endif
 
 /*
 *******************************************************************************
@@ -120,9 +123,14 @@ static CPU_tWORD OS_TblTimeBlocked	[OS_AUTO_CONFIG_MAX_PRIO_ENTRIES] = { 0U };
 *******************************************************************************
 */
 
-static void         OS_ScheduleNext(void);
-static OS_PRIO      OS_PriorityHighestGet(void);
-static CPU_tWORD    OS_Log2(const CPU_tWORD x);
+#if(OS_CONFIG_EDF_EN == OS_CONFIG_DISABLE)
+
+	static OS_PRIO      OS_PriorityHighestGet(void);
+	static CPU_tWORD    OS_Log2(const CPU_tWORD x);
+
+#endif
+
+	static void         OS_ScheduleNext(void);
 
 /*
 *******************************************************************************
@@ -145,10 +153,8 @@ CPU_t08U       volatile OS_IntNestingLvl;
 /* Scheduler nesting lock level. Max lock levels is 255.                      */
 CPU_t08U       volatile OS_LockSchedNesting;
 
-#if (OS_CONFIG_SYSTEM_TIME_SET_GET_EN == OS_CONFIG_ENABLE)
 /* Contain the system time in clock ticks since the first OS_TimerTick call.  */
 OS_TICK		   volatile OS_TickTime;
-#endif
 
 /*
  * Array of TCBs pointers, where each pointer refers to a reserved TCB entry.
@@ -157,10 +163,19 @@ OS_TICK		   volatile OS_TickTime;
  *  */
 OS_TASK_TCB*            OS_tblTCBPrio [OS_CONFIG_TASK_COUNT];
 
-#if(OS_CONFIG_EDF_EN == OS_CONFIG_ENABLE)
-	List OS_ReadyList;
-	List OS_PendingList;
+#if(OS_CONFIG_EDF_EN == OS_CONFIG_ENABLE)		/* For the use with EDF scheduler.								*/
+/* An array of List Item objects, each list item is associated with TCB of a task.
+ * OS_TCBList[0] and OS_tblTCBPrio[0] are allocated for the use with the Idle task.								*/
 	List_Item OS_TCBList [OS_CONFIG_TASK_COUNT];
+/* A List of item lists which each associated with a task's TCB that is ready to run.
+ * The first item in the list is the one with the lowest deadline that will be scheduled first.
+ * This list nis sorted by tasks' absolute deadline.															*/
+	List OS_ReadyList;
+/* A List of item lists which each associated with a task's TCB that is inactive due to it's not ready to run.
+ * This list is sorted by tasks' arrival times.																	*/
+	List OS_InactiveList;
+/* A Global variable which holds the number of created tasks that will be scheduled using EDF.					*/
+	OS_TASK_COUNT volatile OS_SystemTasksCount = 0;
 #endif
 
 /*
@@ -189,7 +204,7 @@ OS_IdleTask (void* args)
 
 #if(OS_CONFIG_EDF_EN == OS_CONFIG_ENABLE)
 
-    	OS_TaskYield();
+    	OS_TaskYield();			/* Yield the Idle Tasks to allow others.	*/
 
 #endif
     }
@@ -236,7 +251,7 @@ OS_Init (CPU_tSTK* pStackBaseIdleTask, CPU_tSTK  stackSizeIdleTask)
 #if (OS_AUTO_CONFIG_INCLUDE_LIST == OS_CONFIG_ENABLE)
 
     list_Init(&OS_ReadyList);
-    list_Init(&OS_PendingList);
+    list_Init(&OS_InactiveList);
 
     for(idx = 0; idx < OS_CONFIG_TASK_COUNT; idx++)
     {
@@ -249,11 +264,16 @@ OS_Init (CPU_tSTK* pStackBaseIdleTask, CPU_tSTK  stackSizeIdleTask)
 
     OS_Memory_Init();
 
+
+#if(OS_CONFIG_EDF_EN == OS_CONFIG_DISABLE)
+
     for(idx = 0; idx < OS_AUTO_CONFIG_MAX_PRIO_ENTRIES; ++idx)
     {
         OS_TblReady[idx]        = 0U;
         OS_TblTimeBlocked[idx]  = 0U;
     }
+
+#endif
 
 #if (OS_AUTO_CONFIG_INCLUDE_EVENTS == OS_CONFIG_ENABLE)
 
@@ -275,13 +295,13 @@ OS_Init (CPU_tSTK* pStackBaseIdleTask, CPU_tSTK  stackSizeIdleTask)
 
 #else
 
-    OS_TaskCreate(OS_IdleTask,
+    OS_TaskCreate(OS_IdleTask,		 /* This is the first created task in the system, hence OS_SystemTasksCount is 0 at this moment.	*/
             OS_NULL(void),
             pStackBaseIdleTask,
             stackSizeIdleTask,
 			OS_TASK_PERIODIC,
-			(CPU_tWORD)0xFFFFFFFF,
-			OS_CONFIG_TICKS_PER_SEC);
+			(CPU_tWORD)0xFFFFFFFF,	 /* Dummy Value, Doesn't affect the creation of the idle task.										*/
+			OS_CONFIG_TICKS_PER_SEC);/* Dummy Value, Doesn't affect the creation of the idle task.										*/
 
 #if(OS_CONFIG_ERRNO_EN == OS_CONFIG_ENABLE)
     ret = OS_ERRNO;
@@ -343,23 +363,23 @@ OS_IntExit (void)
 {
     CPU_SR_ALLOC();
 
-    if(OS_TRUE == OS_Running)                           /* The kernel has already started.                            */
+    if(OS_TRUE == OS_Running)                           /* The kernel has already started.                            	*/
     {
         OS_CRTICAL_BEGIN();
-        if(OS_IntNestingLvl > 0U)                       /* Prevent OS_IntNestingLvl from wrapping                     */
+        if(OS_IntNestingLvl > 0U)                       /* Prevent OS_IntNestingLvl from wrapping                     	*/
         {
             --OS_IntNestingLvl;
         }
 
-        if(0U == OS_IntNestingLvl)                      /* Re-schedule if all ISRs are completed...                    */
+        if(0U == OS_IntNestingLvl)                      /* Re-schedule if all ISRs are completed...                    	*/
         {
-            if(0U == OS_LockSchedNesting)               /* ... and not locked                                          */
+            if(0U == OS_LockSchedNesting)               /* ... and not locked                                          	*/
             {
-#if(OS_CONFIG_EDF_EN == OS_CONFIG_DISABLE)
-                OS_ScheduleNext();                   	/* Determine the next high task to run.                        */
-                if(OS_nextTask != OS_currentTask)       /* No context switch if the current task is the highest.       */
+#if(OS_CONFIG_EDF_EN == OS_CONFIG_DISABLE)				/* Active this section in static priority based scheduling.		*/
+                OS_ScheduleNext();                   	/* Determine the next high task to run.                        	*/
+                if(OS_nextTask != OS_currentTask)       /* No context switch if the current task is the highest.       	*/
                 {
-                    OS_CPU_InterruptContexSwitch();     /* Perform a CPU specific code for interrupt context switch.   */
+                    OS_CPU_InterruptContexSwitch();     /* Perform a CPU specific code for interrupt context switch.   	*/
                 }
 #endif
             }
@@ -516,49 +536,48 @@ OS_ScheduleNext (void)
     OS_TASK_COUNT tskcnt = 1;
     OS_TASK_TCB* ptcb = OS_tblTCBPrio[1];
 
-    while(ptcb)
+    while(ptcb)													/* While there are tasks more than Idle task ...												*/
     {
-    	if(ptcb->pListItemOwner->pList == OS_NULL(List))		/* Make Sure it doesn't belong to a List. */
+    	if(ptcb->pListItemOwner->pList == OS_NULL(List))		/* ... and the task is not belong to a Ready or Pending list.									*/
     	{
-			if((ptcb->EDF_params.tick_absolate_deadline - ptcb->EDF_params.tick_arrive) <= OS_TickTime)
-			{
-				ptcb->pListItemOwner->itemVal = ptcb->EDF_params.tick_absolate_deadline;
+			if((ptcb->EDF_params.tick_absolute_deadline - ptcb->EDF_params.tick_arrive) <= OS_TickTime)
+			{													/*... and the difference between its deadline and arrival is before the current time. 			*/
+																/* Then, insert this task to the ready list which will be sorted according to its deadline. 	*/
+				ptcb->pListItemOwner->itemVal = ptcb->EDF_params.tick_absolute_deadline;
 				listItemInsert(&OS_ReadyList,ptcb->pListItemOwner);
 			}
     	}
 
         ++tskcnt;
-        ptcb = OS_tblTCBPrio[tskcnt];
+        ptcb = OS_tblTCBPrio[tskcnt];							/* See the next task's TCB.																		*/
     }
 
-    if(OS_ReadyList.itemsCnt != 0U)
+    if(OS_ReadyList.itemsCnt != 0U)								/* Is any task in the ready list ?																*/
     {
-    	OS_TASK_TCB* rdy_tsk = (OS_TASK_TCB*)OS_ReadyList.head->pOwner;
-        /* If a ready task with right time arrival, Schedule it first.          			*/
-    	if(rdy_tsk->EDF_params.tick_arrive <= OS_TickTime)
+    	OS_TASK_TCB* rdy_tsk = (OS_TASK_TCB*)OS_ReadyList.head->pOwner;		/* Extract The TCB with lowest deadline to be dispatched.		 					*/
+
+    	if(rdy_tsk->EDF_params.tick_arrive <= OS_TickTime)		/* Dispatch the ready task if its arrival time come or less than the current time.       		*/
 		{
-			OS_nextTask = rdy_tsk;
-			OS_nextTask->EDF_params.task_yield = OS_FAlSE;
-			(void)ListItemRemove(OS_ReadyList.head);
+			OS_nextTask = rdy_tsk;								/* Dispatch by making the TCB the next TCB to run.												*/
+			OS_nextTask->EDF_params.task_yield = OS_FAlSE;		/* Reset the yield to be false so it will be scheduled on the next context switch.				*/
+			(void)ListItemRemove(OS_ReadyList.head);			/* Remove the Dispatched TCB from the ready list.												*/
 		}
     	else
     	{
-    	/* Else, Ready tasks are ready but not in the right time, so schedule Idle Task. 	*/
+    															/* Else, the task is ready but not in the right time, so schedule Idle task. 					*/
     		OS_nextTask = (OS_TASK_TCB*)OS_TCBList[0].pOwner;
     	}
     }
     else
     {
-    	/* No Ready Tasks are available. 													*/
+    															/* No Ready Tasks are available. 																*/
     	if(OS_currentTask->EDF_params.task_yield == OS_TRUE)
     	{
-    		/* The Current Task wants to yield & No Ready Tasks. So, schedule Idle Task.	*/
-    		OS_nextTask = (OS_TASK_TCB*)OS_TCBList[0].pOwner;
+    		OS_nextTask = (OS_TASK_TCB*)OS_TCBList[0].pOwner;	/* The Current task wants to yield & No Ready Tasks. So, schedule Idle task.					*/
     	}
     	else
     	{
-    		/* Continue the current task execution.											*/
-    		OS_nextTask = OS_currentTask;
+    		OS_nextTask = OS_currentTask;						/* Continue the current task execution.															*/
     	}
     }
 
@@ -598,6 +617,7 @@ OS_Run (CPU_t32U cpuClockFreq)
     for(;;);                                       /* This should never be executed.                                         */
 }
 
+#if(OS_CONFIG_EDF_EN == OS_CONFIG_DISABLE)
 /*
  * Function:  OS_PriorityHighestGet
  * --------------------
@@ -728,6 +748,7 @@ OS_Log2(const CPU_tWORD x)
     }
     return 0;
 }
+#endif
 
 /*
  * Function:  OS_MemoryByteClear
@@ -754,46 +775,6 @@ OS_MemoryByteClear (CPU_t08U* pdest, CPU_t32U size)
     }
 }
 
-#if(OS_CONFIG_EDF_EN == OS_CONFIG_ENABLE)
-/*
- * Function:  OS_TaskYield
- * --------------------
- * Give up the current task execution from the CPU & schedule another task.
- *
- * Arguments    :   None.
- *
- * Returns      :   None.
- *
- * Note(s)		:	1) This Function should be used @ the end of task execution.
- */
-void
-OS_TaskYield (void)
-{
-	CPU_SR_ALLOC();
-
-	OS_CRTICAL_BEGIN();
-
-	if(OS_currentTask != (OS_TASK_TCB*)OS_TCBList[0].pOwner)
-	{
-		if(OS_currentTask->EDF_params.task_type == OS_TASK_PERIODIC)
-		{
-			if(OS_currentTask->EDF_params.tick_arrive < OS_TickTime)
-			{
-				OS_currentTask->EDF_params.tick_arrive += OS_currentTask->EDF_params.task_period;
-				OS_currentTask->EDF_params.tick_absolate_deadline = OS_currentTask->EDF_params.tick_arrive + OS_currentTask->EDF_params.tick_relative_deadline;
-				OS_currentTask->pListItemOwner->itemVal = OS_currentTask->EDF_params.tick_arrive;
-				OS_currentTask->EDF_params.task_yield	= OS_TRUE;
-				listItemInsert(&OS_PendingList,OS_currentTask->pListItemOwner);						/* Insert by arrival time.	*/
-			}
-		}
-	}
-
-    OS_CRTICAL_END();
-
-	OS_Sched();
-}
-#endif
-
 /*
  * Function:  OS_TimerTick
  * --------------------
@@ -809,8 +790,10 @@ OS_TaskYield (void)
 void
 OS_TimerTick (void)
 {
+#if(OS_CONFIG_EDF_EN == OS_CONFIG_DISABLE)
     CPU_tWORD i = 0;
     CPU_tWORD workingSet;
+#endif
     CPU_SR_ALLOC();
 
 #if (OS_CONFIG_SYSTEM_TIME_SET_GET_EN == OS_CONFIG_ENABLE)
@@ -874,21 +857,20 @@ OS_TimerTick (void)
     }
 #else
 
-    if(OS_PendingList.itemsCnt != 0U)
+    if(OS_InactiveList.itemsCnt != 0U)							/* Any task in the inactive list ?																		*/
     {
-        List_Item* pIterator = OS_PendingList.head;
+        List_Item* pIterator = OS_InactiveList.head;			/* ... Yes, Start with first list item to the end of the list.											*/
         while(pIterator != OS_NULL(List_Item))
         {
-        	OS_TASK_TCB* tsk = (OS_TASK_TCB*)pIterator->pOwner;
-				if(tsk->EDF_params.tick_arrive <= OS_TickTime)				/* if(Task'arrival time == current system tick)	*/
+        	OS_TASK_TCB* tsk = (OS_TASK_TCB*)pIterator->pOwner;	/* Extract the owner (TCB) from list item.	 															*/
+				if(tsk->EDF_params.tick_arrive <= OS_TickTime)	/* Does the current system tick greater or equal the task's arrival time ?								*/
 				{
-		        	tsk->TASK_Stat &= ~(OS_TASK_STAT_DELAY);
-					ListItemRemove(tsk->pListItemOwner);
-					pIterator->itemVal = tsk->EDF_params.tick_absolate_deadline;
-					tsk->EDF_params.task_yield = OS_FAlSE;
-					listItemInsert(&OS_ReadyList,pIterator);		/* Insert by absolute deadline time.			*/
+					ListItemRemove(tsk->pListItemOwner);		/* Yes, Remove the task from the inactive list.															*/
+					pIterator->itemVal = tsk->EDF_params.tick_absolute_deadline; /* Update the list item value for the task's absolute deadline.						*/
+					tsk->EDF_params.task_yield = OS_FAlSE;		/* Make it ready for the possible next context switch.													*/
+					listItemInsert(&OS_ReadyList,pIterator);	/* Add to the ready list and it will placed in the right order according to its absolute deadline time.	*/
 				}
-        	pIterator = pIterator->next;
+        	pIterator = pIterator->next;						/* See the next inactive list item.																		*/
         }
     }
 
@@ -897,6 +879,37 @@ OS_TimerTick (void)
     OS_CRTICAL_END();
 }
 
+#if(OS_CONFIG_EDF_EN == OS_CONFIG_ENABLE)
+
+/*
+ * Function:  OS_Is_CurrentTaskMissedDeadline
+ * ------------------------------------------
+ * Checks if the current executed task has passed its time deadline or not.
+ *
+ * Arguments    : 	None.
+ *
+ * Returns      :	OS_TRUE 	if it's missed its deadline.
+ * 					OS_FAlSE	if it has not missed its deadline.
+ */
+OS_BOOLEAN
+OS_Is_CurrentTaskMissedDeadline (void)
+{
+	CPU_SR_ALLOC();
+	OS_BOOLEAN result;
+
+	OS_CRTICAL_BEGIN();
+
+	result = OS_FAlSE;
+	if(OS_TickTime > OS_currentTask->EDF_params.tick_absolute_deadline)
+	{
+		result = OS_TRUE;
+	}
+
+	OS_CRTICAL_END();
+
+	return result;
+}
+#endif
 
 #if (OS_CONFIG_CPU_SOFT_STK_OVERFLOW_DETECTION == OS_CONFIG_ENABLE)
 
@@ -931,4 +944,135 @@ OS_StackOverflow_Detected ( void* ptcb )
     }
 }
 
+#endif
+
+
+
+/*
+*******************************************************************************
+*																			  *
+*																			  *
+*                       OS Miscellaneous Configurations                       *
+*                       			Check									  *
+*                                     										  *
+*******************************************************************************
+*/
+#ifndef OS_CONFIG_EDF_EN
+	#error "Missing  OS_CONFIG_EDF_EN "
+#endif
+
+#ifndef OS_CONFIG_MEMORY_EN
+	#error "Missing  OS_CONFIG_MEMORY_EN "
+#endif
+
+#ifndef OS_CONFIG_MUTEX_EN
+	#error "Missing  OS_CONFIG_MUTEX_EN "
+#endif
+
+#ifndef OS_CONFIG_SEMAPHORE_EN
+	#error "Missing  OS_CONFIG_SEMAPHORE_EN "
+#endif
+
+#ifndef OS_CONFIG_MAILBOX_EN
+	#error "Missing  OS_CONFIG_MAILBOX_EN "
+#endif
+
+#ifndef OS_CONFIG_FLAG_EN
+	#error "Missing  OS_CONFIG_FLAG_EN "
+#endif
+
+#ifndef OS_CONFIG_ERRNO_EN
+	#error "Missing  OS_CONFIG_ERRNO_EN "
+#endif
+
+#ifndef OS_CONFIG_TCB_TASK_ENTRY_STORE_EN
+	#error "Missing  OS_CONFIG_TCB_TASK_ENTRY_STORE_EN "
+#endif
+
+#ifndef OS_CONFIG_TCB_EXTENSION_EN
+	#error "Missing  OS_CONFIG_TCB_EXTENSION_EN "
+#endif
+
+#ifndef OS_CONFIG_SYSTEM_TIME_SET_GET_EN
+	#error "Missing OS_CONFIG_SYSTEM_TIME_SET_GET_EN"
+#endif
+
+#ifndef OS_CONFIG_TICKS_PER_SEC
+    #error  "Missing OS_CONFIG_TICKS_PER_SEC"
+#endif
+
+#ifndef OS_CONFIG_TASK_COUNT
+    #error  "Missing OS_CONFIG_TASK_COUNT"
+#endif
+
+#ifndef OS_CONFIG_MAX_EVENTS
+    #error  "Missing OS_CONFIG_MAX_EVENTS"
+#endif
+
+#ifndef	OS_CONFIG_MEMORY_PARTITION_COUNT
+	#error  "Missing OS_CONFIG_MEMORY_PARTITION_COUNT"
+#endif
+
+#ifndef OS_AUTO_CONFIG_INCLUDE_EVENTS
+    #error  "Missing OS_AUTO_CONFIG_INCLUDE_EVENTS"
+#endif
+
+#ifndef OS_CONFIG_APP_TASK_IDLE
+    #error  "Missing OS_CONFIG_APP_TASK_IDLE"
+#endif
+
+#ifndef OS_CONFIG_APP_TASK_SWITCH
+    #error  "Missing OS_CONFIG_APP_TASK_SWITCH"
+#endif
+
+#ifndef OS_CONFIG_APP_TASK_CREATED
+    #error  "Missing OS_CONFIG_APP_TASK_CREATED"
+#endif
+
+#ifndef OS_CONFIG_APP_TASK_DELETED
+    #error  "Missing OS_CONFIG_APP_TASK_DELETED"
+#endif
+
+#ifndef OS_CONFIG_APP_TASK_RETURNED
+    #error  "Missing OS_CONFIG_APP_TASK_RETURNED"
+#endif
+
+#ifndef OS_CONFIG_APP_TIME_TICK
+    #error  "Missing OS_CONFIG_APP_TIME_TICK"
+#endif
+
+#ifndef OS_CONFIG_APP_STACK_OVERFLOW
+    #error "Missing OS_CONFIG_APP_STACK_OVERFLOW"
+#endif
+
+#ifndef OS_CONFIG_CPU_INIT
+    #error  "Missing OS_CONFIG_CPU_INIT"
+#endif
+
+#ifndef OS_CONFIG_CPU_IDLE
+    #error  "Missing OS_CONFIG_CPU_IDLE"
+#endif
+
+#ifndef OS_CONFIG_CPU_CONTEXT_SWITCH
+    #error  "Missing OS_CONFIG_CPU_CONTEXT_SWITCH"
+#endif
+
+#ifndef OS_CONFIG_CPU_TASK_CREATED
+    #error  "Missing OS_CONFIG_CPU_TASK_CREATED"
+#endif
+
+#ifndef OS_CONFIG_CPU_TASK_DELETED
+    #error  "Missing OS_CONFIG_CPU_TASK_DELETED"
+#endif
+
+#ifndef OS_CONFIG_CPU_STACK_OVERFLOW
+    #error  "Missing OS_CONFIG_CPU_STACK_OVERFLOW"
+#endif
+
+#ifndef OS_CONFIG_CPU_TIME_TICK
+    #error  "Missing OS_CONFIG_CPU_TIME_TICK"
+#endif
+
+#ifndef OS_CONFIG_CPU_SOFT_STK_OVERFLOW_DETECTION
+    #error "Missing OS_CONFIG_CPU_SOFT_STK_OVERFLOW_DETECTION"
 #endif

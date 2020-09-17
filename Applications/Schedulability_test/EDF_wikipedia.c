@@ -28,53 +28,8 @@ SOFTWARE.
  * Purpose  : This example demonstrate the work of EDF scheduling. Make sure you set OS_CONFIG_EDF_EN to OS_CONFIG_ENABLE
  * 				such that the prettyOS is configured to work with EDF scheduling.
  *
- * 				In this example, We have 3 tasks with the following properties.
- *
-				 +----------------------
-				 | tsk|  T  |  C  |	 D 	|		T is the period of the task.
-				 +----------------+-----		C is the computation time for execution.
-				 | T1 |     |     |	 	|		D is the relative deadline for a task job.
-				 |    | 20  | 3   |	7	|
-				 +----------------+-----|		The unit of time here is second.
-				 | T2 |     |     |	4	|		The hyper period here of {20,5,10} is 20 which is calculated as LCM (Least Common Multip)
-				 |    |  5  | 2   |		|
-				 +----------------+-----|
-				 | T3 |     |     |		|
-				 |    |  10 | 2   |	8	|
-				 +----------------------+
-
-				 The expected behavior:
-							t[+00000] | Starts T_2
-							t[+00002] | Ends   T_2
-							===============================
-
-							t[+00002] | Starts T_1
-							t[+00004] | Ends   T_1
-							===============================
-
-							t[+00004] | Starts T_3
-							t[+00006] | Ends   T_3
-							===============================
-
-							t[+00006] | Starts T_2
-							t[+00008] | Ends   T_2
-							===============================
-							Idle
-							t[+00010] | Starts T_3
-							t[+00011] | Ends   T_3
-							===============================
-
-							t[+00011] | Starts T_2
-							t[+00014] | Ends   T_2
-							===============================
-							Idle
-							t[+00015] | Starts T_2
-							t[+00017] | Ends   T_2
-							===============================
-							Idle
-							t[+00020] | Starts T_1
-							t[+00023] | Ends   T_1
-
+ * 				The example shows a practical scheduling for the wikipedia example of EDF:
+ * 				https://en.wikipedia.org/wiki/Earliest_deadline_first_scheduling#Example
  *
  * Language	:  	C
  */
@@ -96,17 +51,17 @@ SOFTWARE.
 #define STACK_SIZE   (40U)
 
 /* Task's Parameters In Seconds.			*/
-#define Task_1_P	20U
+#define Task_1_P	8U
 #define Task_2_P	5U
 #define Task_3_P	10U
 
-#define Task_1_C	3U
+#define Task_1_C	1U
 #define Task_2_C	2U
-#define Task_3_C 	2U
+#define Task_3_C 	4U
 
-#define Task_1_D	7U
-#define Task_2_D 	4U
-#define Task_3_D 	8U
+#define Task_1_D	Task_1_P
+#define Task_2_D 	Task_2_P
+#define Task_3_D 	Task_3_P
 
 /*
 *******************************************************************************

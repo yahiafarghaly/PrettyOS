@@ -54,6 +54,7 @@ SOFTWARE.
 #define 	OS_CONFIG_DISABLE				(0U)		/* FALSE value for Disabling a macro. 		*/
 
 /*===============  Enable/Disable Using EDF Scheduler in the code.  ===========*/
+/* OS_CONFIG_DISABLE -> Disable EDF Scheduler and Use Static Priority Based Scheduler. */
 
 #define		OS_CONFIG_EDF_EN				(OS_CONFIG_ENABLE)
 
@@ -161,6 +162,34 @@ SOFTWARE.
 /******************************************************************************/
 /************************* A U T O GENERATED MACROS ***************************/
 /******************************************************************************/
+
+#if(OS_CONFIG_EDF_EN == OS_CONFIG_ENABLE)
+
+/*============ The Current Code Doesn't Support Mutex with EDF. ==============*/
+#if(OS_CONFIG_MUTEX_EN == OS_CONFIG_ENABLE)
+	#undef 		OS_CONFIG_MUTEX_EN
+	#define 	OS_CONFIG_MUTEX_EN				(OS_CONFIG_DISABLE)
+#endif
+
+/*======= The Current Code Doesn't Support Semaphores with EDF. ==============*/
+#if(OS_CONFIG_SEMAPHORE_EN == OS_CONFIG_ENABLE)
+	#undef 		OS_CONFIG_SEMAPHORE_EN
+	#define 	OS_CONFIG_SEMAPHORE_EN			(OS_CONFIG_DISABLE)
+#endif
+
+/*======= The Current Code Doesn't Support Mailboxes with EDF. ===============*/
+#if(OS_CONFIG_MAILBOX_EN == OS_CONFIG_ENABLE)
+	#undef 		OS_CONFIG_MAILBOX_EN
+	#define 	OS_CONFIG_MAILBOX_EN			(OS_CONFIG_DISABLE)
+#endif
+
+/*======= The Current Code Doesn't Support EventFlags with EDF. ==============*/
+#if(OS_CONFIG_FLAG_EN == OS_CONFIG_ENABLE)
+	#undef 		OS_CONFIG_FLAG_EN
+	#define 	OS_CONFIG_FLAG_EN				(OS_CONFIG_DISABLE)
+#endif
+
+#endif
 
 #define OS_AUTO_CONFIG_INCLUDE_EVENTS	(OS_CONFIG_SEMAPHORE_EN || OS_CONFIG_MUTEX_EN || OS_CONFIG_MAILBOX_EN)
 

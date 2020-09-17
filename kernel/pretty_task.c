@@ -102,42 +102,212 @@ OS_TCB_ListInit (void)
     for(idx = 0; idx < OS_CONFIG_TASK_COUNT - 1; ++idx)
     {
         OS_TblTask[idx].TASK_Stat   = OS_TASK_STAT_DELETED;
+
+#if(OS_CONFIG_EDF_EN == OS_CONFIG_DISABLE)
         OS_TblTask[idx].TASK_Ticks  = 0U;
+#endif
 
 #if (OS_AUTO_CONFIG_INCLUDE_EVENTS == OS_CONFIG_ENABLE)
 
         OS_TblTask[idx].TASK_Event    = OS_NULL(OS_EVENT);
-        OS_TblTask[idx].OSTCB_NextPtr = &OS_TblTask[idx + 1];
 
 #endif
 
+        OS_TblTask[idx].OSTCB_NextPtr = &OS_TblTask[idx + 1];
         OS_tblTCBPrio[idx]          = OS_NULL(OS_TASK_TCB);
     }
 
     OS_TblTask[OS_CONFIG_TASK_COUNT - 1].TASK_Stat   	= OS_TASK_STAT_DELETED;
+
+#if(OS_CONFIG_EDF_EN == OS_CONFIG_DISABLE)
     OS_TblTask[OS_CONFIG_TASK_COUNT - 1].TASK_Ticks  	= 0U;
+#endif
 
 #if (OS_AUTO_CONFIG_INCLUDE_EVENTS == OS_CONFIG_ENABLE)
 
     OS_TblTask[OS_CONFIG_TASK_COUNT - 1].TASK_Event    	= OS_NULL(OS_EVENT);
-    OS_TblTask[OS_CONFIG_TASK_COUNT - 1].OSTCB_NextPtr 	= &OS_TblTask[idx + 1];
 
 #endif
+
+    OS_TblTask[OS_CONFIG_TASK_COUNT - 1].OSTCB_NextPtr 	= &OS_TblTask[idx + 1];
 
     OS_tblTCBPrio[OS_CONFIG_TASK_COUNT - 1]          	= OS_NULL(OS_TASK_TCB);
 
     pTCBFreeList = &OS_TblTask[0];						/* Point to the first free TCB's task object.	*/
 }
 
-/*
-*******************************************************************************
-*                                                                             *
-*                         PrettyOS Task functions                             *
-*                                                                             *
-*******************************************************************************
-*/
+/* ****************************************************************************
+ *																			  *
+ * 			Tasks APIs For Earliest Deadline First Scheduling based.		  *
+ *																			  *
+ * ****************************************************************************
+ * */
 
-#if (OS_CONFIG_EDF_EN == OS_CONFIG_DISABLE)
+#if(OS_CONFIG_EDF_EN == OS_CONFIG_ENABLE)
+
+void
+OS_TaskCreate (void (*TASK_Handler)(void* params),
+                             void *params,
+                             CPU_tSTK* pStackBase,
+                             CPU_tSTK_SIZE  stackSize,
+                             OS_OPT task_type, OS_TICK task_relative_deadline, OS_TICK task_period )
+{
+
+	CPU_tWORD* stack_top;
+	OS_TASK_TCB* ptcb;
+
+	CPU_SR_ALLOC();
+
+	if(TASK_Handler == OS_NULL(void) || pStackBase == OS_NULL(CPU_tWORD) ||
+			stackSize == 0U )
+	{
+		OS_ERR_SET(OS_ERR_PARAM);
+		return;
+	}
+
+	if(task_type != OS_TASK_PERIODIC)	/* Current Implementation for the periodic tasks.			*/
+	{
+		OS_ERR_SET(OS_ERR_PARAM);
+		return;
+	}
+
+	OS_CRTICAL_BEGIN();
+
+	if(OS_IntNestingLvl > 0U)
+	{
+		OS_CRTICAL_END();
+		OS_ERR_SET(OS_ERR_TASK_CREATE_ISR);
+		return;
+	}
+
+	stack_top = OS_CPU_TaskStackInit(TASK_Handler, params, pStackBase, stackSize);
+
+	ptcb = OS_TCB_allocate();
+
+	if(ptcb == OS_NULL(OS_TASK_TCB) || OS_SystemTasksCount > OS_CONFIG_TASK_COUNT)
+	{
+		OS_CRTICAL_END();
+		OS_ERR_SET(OS_ERR_TASK_POOL_EMPTY);
+		return;
+	}
+
+	ptcb->TASK_SP       = stack_top;
+
+#if (OS_CONFIG_CPU_SOFT_STK_OVERFLOW_DETECTION == OS_CONFIG_ENABLE)
+	ptcb->TASK_SP_Limit = (void*)pStackBase;
+#endif
+
+	ptcb->TASK_Stat     = OS_TASK_STAT_READY;
+
+#if (OS_AUTO_CONFIG_INCLUDE_EVENTS == OS_CONFIG_ENABLE)
+
+	ptcb->TASK_PendStat = OS_STAT_PEND_OK;
+	ptcb->OSTCB_NextPtr = OS_NULL(OS_TASK_TCB);
+	ptcb->TASK_Event    = OS_NULL(OS_EVENT);
+
+#endif
+
+#if (OS_CONFIG_TCB_TASK_ENTRY_STORE_EN == OS_CONFIG_ENABLE)
+	ptcb->TASK_EntryAddr = TASK_Handler;
+	ptcb->TASK_EntryArg  = params;
+#endif
+
+	/* Fill The EDF Parameters in the TCB task.																					 */
+	ptcb->EDF_params.tick_relative_deadline = task_relative_deadline;
+	ptcb->EDF_params.task_period			= task_period;
+	ptcb->EDF_params.task_type				= task_type;
+	ptcb->EDF_params.task_yield				= OS_FAlSE;
+
+	if(task_type == OS_TASK_PERIODIC)
+	{
+		ptcb->EDF_params.tick_absolute_deadline = OS_TickTime + task_relative_deadline;
+	}
+
+	/* Insert into the Ready List with relative deadlines.																		 */
+	OS_TCBList[OS_SystemTasksCount].itemVal = task_relative_deadline;
+	/* Link the List Item object to the allocated TCB.																			 */
+	OS_TCBList[OS_SystemTasksCount].pOwner  = (void*)ptcb;
+	/* Link TCB to its List Item.																								 */
+	ptcb->pListItemOwner = &OS_TCBList[OS_SystemTasksCount];
+
+    OS_tblTCBPrio[OS_SystemTasksCount] = ptcb;			/* Link to the allocated TCB. 											 */
+
+	if(OS_SystemTasksCount != OS_IDLE_TASK_PRIO_LEVEL)
+	{
+	/* No Need to insert the Idle Task in the Ready List, It will be called when necessary.  								 	 */
+		listItemInsert(&OS_ReadyList,&OS_TCBList[OS_SystemTasksCount]);
+	}
+	/* Increment The Number of created tasks.																					 */
+	OS_SystemTasksCount++;
+
+#if(OS_CONFIG_CPU_TASK_CREATED == OS_CONFIG_ENABLE)
+		OS_CPU_Hook_TaskCreated (ptcb);
+#endif
+
+#if (OS_CONFIG_APP_TASK_CREATED == OS_CONFIG_ENABLE)
+		App_Hook_TaskCreated (ptcb);
+#endif
+
+	if(OS_TRUE == OS_Running)
+	{
+	/* Schedule whose deadline is nearest.   																				     */
+		OS_Sched();
+	}
+
+	OS_CRTICAL_END();
+
+	OS_ERR_SET(OS_ERR_NONE);
+}
+
+/*
+ * Function:  OS_TaskYield
+ * --------------------
+ * Give up the current task execution from the CPU & schedule another task.
+ *
+ * Arguments    :   None.
+ *
+ * Returns      :   None.
+ *
+ * Note(s)		:	1) This Function should be used @ the end of task execution.
+ */
+void
+OS_TaskYield (void)
+{
+	CPU_SR_ALLOC();
+
+	OS_CRTICAL_BEGIN();
+
+	if(OS_currentTask != (OS_TASK_TCB*)OS_TCBList[0].pOwner)
+	{
+		if(OS_currentTask->EDF_params.task_type == OS_TASK_PERIODIC)
+		{
+			/* For a periodic task ...															*/
+			/* ... The next call should be in its next period.									*/
+			OS_currentTask->EDF_params.tick_arrive += OS_currentTask->EDF_params.task_period;
+			/* ... The new absolute deadline. 													*/
+			OS_currentTask->EDF_params.tick_absolute_deadline = OS_currentTask->EDF_params.tick_arrive + OS_currentTask->EDF_params.tick_relative_deadline;
+			/* ... Indicate the the current task wants to yield (give up) the CPU resources.	*/
+			OS_currentTask->EDF_params.task_yield	= OS_TRUE;
+			/* Insert the current task in an inactive state till the next arrive time.			*/
+			OS_currentTask->pListItemOwner->itemVal = OS_currentTask->EDF_params.tick_arrive;
+			listItemInsert(&OS_InactiveList,OS_currentTask->pListItemOwner);
+		}
+	}
+
+    OS_CRTICAL_END();
+
+	OS_Sched();		/* Schedule the next least deadline time of a task.							*/
+}
+
+#else	/* OS_CONFIG_EDF_EN == OS_CONFIG_DISABLE 							  */
+
+/* ****************************************************************************
+ *																			  *
+ * 				Tasks APIs For Priority Assignment Scheduling based.		  *
+ *																			  *
+ * ****************************************************************************
+ * */
+
 /*
  * Function:  OS_TaskCreate
  * --------------------
@@ -245,110 +415,6 @@ OS_TaskCreate (void (*TASK_Handler)(void* params),
     OS_ERR_SET(OS_ERR_NONE);
     return (OS_ERR_NONE);
 }
-
-#else		/* Task Creation For Periodic Tasks in EDF scheduler. */
-
-void
-OS_TaskCreate (void (*TASK_Handler)(void* params),
-                             void *params,
-                             CPU_tSTK* pStackBase,
-                             CPU_tSTK_SIZE  stackSize,
-                             OS_OPT task_type, OS_TICK task_relative_deadline, OS_TICK task_period )
-{
-
-	CPU_tWORD* stack_top;
-	OS_TASK_TCB* ptcb;
-	static OS_TASK_COUNT tasksCntCreated = 0;
-
-	CPU_SR_ALLOC();
-
-	if(TASK_Handler == OS_NULL(void) || pStackBase == OS_NULL(CPU_tWORD) ||
-			stackSize == 0U )
-	{
-		OS_ERR_SET(OS_ERR_PARAM);
-	}
-
-	OS_CRTICAL_BEGIN();
-
-	if(OS_IntNestingLvl > 0U)
-	{
-		OS_CRTICAL_END();
-		OS_ERR_SET(OS_ERR_TASK_CREATE_ISR);
-	}
-
-	stack_top = OS_CPU_TaskStackInit(TASK_Handler, params, pStackBase, stackSize);
-
-	ptcb = OS_TCB_allocate();
-
-	if(ptcb == OS_NULL(OS_TASK_TCB) || tasksCntCreated > OS_CONFIG_TASK_COUNT)
-	{
-		OS_CRTICAL_END();
-		OS_ERR_SET(OS_ERR_TASK_POOL_EMPTY);
-	}
-
-	ptcb->TASK_SP       = stack_top;
-
-#if (OS_CONFIG_CPU_SOFT_STK_OVERFLOW_DETECTION == OS_CONFIG_ENABLE)
-	ptcb->TASK_SP_Limit = (void*)pStackBase;
-#endif
-
-	ptcb->TASK_Stat     = OS_TASK_STAT_READY;
-
-#if (OS_AUTO_CONFIG_INCLUDE_EVENTS == OS_CONFIG_ENABLE)
-
-	ptcb->TASK_PendStat = OS_STAT_PEND_OK;
-	ptcb->OSTCB_NextPtr = OS_NULL(OS_TASK_TCB);
-	ptcb->TASK_Event    = OS_NULL(OS_EVENT);
-
-#endif
-
-#if (OS_CONFIG_TCB_TASK_ENTRY_STORE_EN == OS_CONFIG_ENABLE)
-	ptcb->TASK_EntryAddr = TASK_Handler;
-	ptcb->TASK_EntryArg  = params;
-#endif
-
-	ptcb->EDF_params.tick_relative_deadline = task_relative_deadline;
-	ptcb->EDF_params.task_period			= task_period;
-	ptcb->EDF_params.task_type				= task_type;
-	ptcb->EDF_params.task_yield				= OS_FAlSE;
-
-	if(task_type == OS_TASK_PERIODIC)
-	{
-		ptcb->EDF_params.tick_absolate_deadline = OS_TickTimeGet() + task_relative_deadline;
-	}
-
-	OS_TCBList[tasksCntCreated].itemVal = task_relative_deadline;
-	OS_TCBList[tasksCntCreated].pOwner  = (void*)ptcb;
-
-	ptcb->pListItemOwner = &OS_TCBList[tasksCntCreated];
-	ptcb->TASK_priority	 = tasksCntCreated;
-    OS_tblTCBPrio[tasksCntCreated] = ptcb;
-
-	if(tasksCntCreated != 0U)		/* No Need to insert the Idle Task in the Ready List, It will be called when necessary. */
-	{
-		listItemInsert(&OS_ReadyList,&OS_TCBList[tasksCntCreated]);
-	}
-	tasksCntCreated++;
-
-#if(OS_CONFIG_CPU_TASK_CREATED == OS_CONFIG_ENABLE)
-		OS_CPU_Hook_TaskCreated (ptcb);						 					/* Call port specific task creation code.													  */
-#endif
-
-#if (OS_CONFIG_APP_TASK_CREATED == OS_CONFIG_ENABLE)
-		App_Hook_TaskCreated (ptcb);							 				/* Calls Application specific code for a successfully created task.						  	  */
-#endif
-
-	if(OS_TRUE == OS_Running)
-	{
-		OS_Sched();                                                             /* A higher priority task can be created inside another task. So, Schedule it immediately.    */
-	}
-
-	OS_CRTICAL_END();
-
-	OS_ERR_SET(OS_ERR_NONE);
-}
-
-#endif
 
 /*
  * Function:  OS_TaskDelete
@@ -754,17 +820,20 @@ OS_TaskRunningPriorityGet (void)
 	return (running_prio);
 }
 
+#endif
+
 /*
  * Function:  OS_TaskReturn
  * --------------------
  * This function should be called if a task is accidentally returns without deleting itself.
- * The address of the function should be set at the task stack register of the return address.
+ * The address of this function should be set at the task stack register of the return address.
  *
  * Arguments    :   None.
  *
  * Returns      :   None.
  *
  * Note(s)      :   1) This function is for internal use and the application should never called it.
+ * 					2) This function must be called from port layer if you want to support catching tasks return.
  */
 void
 OS_TaskReturn (void)
@@ -774,10 +843,17 @@ OS_TaskReturn (void)
 	App_Hook_TaskReturned (OS_currentTask); 			/* Calls Application specific code when a task returns intentionally. 								*/
 #endif
 
+#if(OS_CONFIG_EDF_EN == OS_CONFIG_DISABLE)
     OS_TaskDelete(OS_currentTask->TASK_priority);       /* Delete a task.            																		*/
+#endif
     for(;;)                                             /* If deletion fails, Loop Every OS_CONFIG_TICKS_PER_SEC											*/
     {
+#if(OS_CONFIG_EDF_EN == OS_CONFIG_DISABLE)
         OS_DelayTicks(OS_CONFIG_TICKS_PER_SEC);
+#else
+        OS_TaskYield();									/* If we reached to this point, this means that the aperiodic task doesn't call OS_TaskYield() at
+        													its epilogue. So we call it here.																*/
+#endif
     }
 }
 
