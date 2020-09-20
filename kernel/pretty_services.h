@@ -535,7 +535,7 @@ OS_FLAG OS_EVENT_FlagPost (OS_EVENT_FLAG_GRP* pflagGrp, OS_FLAG flags_pattern_wa
  * */
 
 /*
- * Function:  OS_MutexCreate
+ * Function:  OS_MailBoxCreate
  * --------------------
  * Creates a message mailbox container.
  *

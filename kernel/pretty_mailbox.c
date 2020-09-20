@@ -68,7 +68,7 @@ SOFTWARE.
 */
 
 /*
- * Function:  OS_MutexCreate
+ * Function:  OS_MailBoxCreate
  * --------------------
  * Creates a message mailbox container.
  *
